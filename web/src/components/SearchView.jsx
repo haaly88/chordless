@@ -264,7 +264,7 @@ export default function SearchView() {
             <>
               <div className="section-label" style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 4 }}>
                 <Clock size={12} style={{ color: 'var(--text-3)' }} />
-                RECENT SEARCHES
+                {t(lang, 'search.recent')}
                 {searchHistory.length > 0 && (
                   <button
                     className="icon-btn"
@@ -284,7 +284,7 @@ export default function SearchView() {
               </div>
             </>
           )}
-          <div className="section-label">TRENDING SEARCHES</div>
+          <div className="section-label">{t(lang, 'search.trending')}</div>
           <div className="chips">
             {SUGGESTIONS.map((s) => (
               <button key={s} className="chip" onClick={() => setQuery(s)}>{s}</button>

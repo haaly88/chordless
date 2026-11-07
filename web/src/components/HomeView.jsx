@@ -64,8 +64,8 @@ function ForYouHero({ forYou, loading, onPlay, onShuffle, onRefresh }) {
             <Sparkles size={36} strokeWidth={1.4} />
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div className="hero-kicker">AI MIX · FOR YOU</div>
-            <div className="foryou-title" style={{ fontSize: 20, fontWeight: 800, margin: '2px 0 4px' }}>Your personal mix</div>
+            <div className="hero-kicker">{t(lang, 'home.foryou.kicker')}</div>
+            <div className="foryou-title" style={{ fontSize: 20, fontWeight: 800, margin: '2px 0 4px' }}>{t(lang, 'home.foryou.empty')}</div>
             <p className="foryou-reason" style={{ fontSize: 13, margin: 0 }}>Play a few songs and I’ll build a daily mix from your taste. It refreshes each day.</p>
           </div>
           <button className="btn primary" onClick={onRefresh}><Sparkles size={15} /> Build my mix</button>
@@ -87,8 +87,8 @@ function ForYouHero({ forYou, loading, onPlay, onShuffle, onRefresh }) {
           ))}
         </div>
         <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
-          <div className="hero-kicker">AI MIX · FOR YOU</div>
-          <div className="foryou-title" style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.02, margin: '2px 0 2px' }}>For You <span className="foryou-sub" style={{ fontSize: 13, fontWeight: 600 }}>· {forYou.tracks.length} tracks{minsLabel}</span></div>
+          <div className="hero-kicker">{t(lang, 'home.foryou.kicker')}</div>
+          <div className="foryou-title" style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.02, margin: '2px 0 2px' }}>{t(lang, 'home.foryou.title')} <span className="foryou-sub" style={{ fontSize: 13, fontWeight: 600 }}>· {forYou.tracks.length} tracks{minsLabel}</span></div>
           <p className="foryou-reason" style={{ fontSize: 13, margin: '0 0 10px', lineHeight: 1.5 }}>{forYou.reason || 'Based on your listening'}</p>
           {topArtists.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
