@@ -7,6 +7,7 @@ import { getSegments, DEFAULT_CATEGORIES } from './sponsorblock.js';
 import { isValidVideoId, streamAudio, ytDlpAvailable, pipeUpstream } from './stream.js';
 import { getManifest, searchAddon, resolveAddonStream, testAddon, normalizeBase } from './addon.js';
 import { getLyrics, translateLyrics } from './lyrics.js';
+import { importFromUrl } from './import.js';
 import { coverImage } from './cover.js';
 import { createRoom, joinRoom, getRoom, pushState, leaveRoom } from './together.js';
 
@@ -150,6 +151,22 @@ app.post('/api/translate', async (req, res) => {
 });
 
 app.get('/api/cover', coverImage);
+
+// ---------- Import from link (YouTube / Deezer / Spotify → playable playlist) ----------
+app.post('/api/import', async (req, res) => {
+  const url = String(req.body?.url || '').trim();
+  if (!url) return res.status(400).json({ error: 'Missing URL' });
+  if (url.length > 500) return res.status(400).json({ error: 'URL too long' });
+  const gl = String(req.body?.gl || '');
+  const hl = String(req.body?.hl || '');
+  try {
+    const result = await importFromUrl(url, { gl, hl });
+    res.json(result);
+  } catch (e) {
+    console.error('[import]', e.message);
+    res.status(502).json({ error: e.message || 'Import failed.' });
+  }
+});
 
 // ---------- Listen Together ----------
 app.post('/api/together/create', (req, res) => {

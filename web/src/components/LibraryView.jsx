@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Heart, Clock, Play, Plus, Music2, Shuffle, Upload, X, Sparkles, TrendingUp, Star, History } from 'lucide-react';
+import { Heart, Clock, Play, Plus, Music2, Shuffle, Upload, X, Sparkles, TrendingUp, Star, History, Link2, Loader2 } from 'lucide-react';
 import usePlayer from '../store.js';
 import TrackRow, { TrackListHeader } from './TrackRow.jsx';
+import { apiImportLink } from '../lib/api.js';
+import { resolveRegion } from '../lib/region.js';
 
 /** One place for everything you own: likes, playlists, history. */
 export default function LibraryView() {
@@ -15,6 +17,8 @@ export default function LibraryView() {
   const importPlaylist = usePlayer((s) => s.importPlaylist);
   const forYou = usePlayer((s) => s.forYou);
   const generateForYouMix = usePlayer((s) => s.generateForYouMix);
+  const regionSetting = usePlayer((s) => s.settings.region || 'auto');
+  const region = resolveRegion(regionSetting);
 
   const recent = history.slice(0, 10);
 
@@ -48,10 +52,32 @@ export default function LibraryView() {
 
   const [importOpen, setImportOpen] = useState(false);
   const [importJson, setImportJson] = useState('');
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkError, setLinkError] = useState('');
+  const [linkPreview, setLinkPreview] = useState(null);
   const [smartPreview, setSmartPreview] = useState(null);
 
   const folderOf = (p) => folders.find((f) => f.id === p.folderId);
   const unfiled = playlists.filter((p) => !p.folderId);
+
+  const doLinkPreview = async () => {
+    const url = linkUrl.trim();
+    if (!url || linkBusy) return;
+    setLinkBusy(true);
+    setLinkError('');
+    setLinkPreview(null);
+    try {
+      const result = await apiImportLink(url, { gl: region.gl, hl: region.hl });
+      if (!result?.tracks?.length) throw new Error('No playable tracks found in this link.');
+      setLinkPreview(result);
+    } catch (e) {
+      setLinkError(e.message || 'Import failed. Check the link and try again.');
+    } finally {
+      setLinkBusy(false);
+    }
+  };
 
   const renderPlaylistCard = (p) => (
     <button key={p.id} className="playlist-card" onClick={() => setView({ name: 'playlist', id: p.id })}>
@@ -160,6 +186,11 @@ export default function LibraryView() {
           <b>Import Playlist</b>
           <span>Paste JSON</span>
         </button>
+        <button className="playlist-card create" onClick={() => { setLinkOpen(true); setLinkError(''); setLinkPreview(null); }}>
+          <div className="playlist-art-wrap create-art"><Link2 size={34} strokeWidth={1.6} /></div>
+          <b>Import from link</b>
+          <span>YouTube · Deezer · Spotify</span>
+        </button>
         {unfiled.map(renderPlaylistCard)}
       </div>
 
@@ -217,6 +248,63 @@ export default function LibraryView() {
             <div className="modal-actions" style={{ justifyContent: 'flex-end', gap: 8 }}>
               <button className="btn" onClick={() => { setImportOpen(false); setImportJson(''); }}>Cancel</button>
               <button className="btn primary" onClick={() => { importPlaylist(importJson); setImportOpen(false); setImportJson(''); }} disabled={!importJson.trim()}>Import</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* import-from-link modal */}
+      {linkOpen && (
+        <div className="modal-backdrop" onClick={() => setLinkOpen(false)} role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Import from link" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <h2 style={{ margin: 0 }}>Import from link</h2>
+              <button className="icon-btn" onClick={() => setLinkOpen(false)} aria-label="Close"><X size={20} /></button>
+            </div>
+            <p>Paste a YouTube Music, Deezer, or Spotify playlist/track link. Tracks resolve to playable YouTube audio.</p>
+            <input
+              className="field"
+              value={linkUrl}
+              onChange={(e) => { setLinkUrl(e.target.value); setLinkError(''); setLinkPreview(null); }}
+              placeholder="https://music.youtube.com/playlist?list=PL…"
+              aria-label="Playlist link"
+              onKeyDown={(e) => { if (e.key === 'Enter' && linkUrl.trim()) doLinkPreview(); }}
+            />
+            {linkError && <p style={{ color: '#ff7a7a', fontSize: 12.5, margin: '10px 0 0' }}>{linkError}</p>}
+            {linkPreview && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>{linkPreview.title} <span style={{ color: 'var(--text-3)', fontWeight: 600 }}>· {linkPreview.source} · {linkPreview.tracks.length} tracks</span></div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8, maxHeight: 220, overflowY: 'auto' }}>
+                  {linkPreview.tracks.slice(0, 10).map((t) => (
+                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5 }}>
+                      {t.thumbnail ? <img src={t.thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} /> : null}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><b>{t.title}</b> — {t.artist}</span>
+                    </div>
+                  ))}
+                  {linkPreview.tracks.length > 10 && <span style={{ fontSize: 12, color: 'var(--text-3)' }}>+ {linkPreview.tracks.length - 10} more</span>}
+                </div>
+              </div>
+            )}
+            <div className="modal-actions" style={{ justifyContent: 'flex-end', gap: 8 }}>
+              <button className="btn" onClick={() => setLinkOpen(false)}>Cancel</button>
+              {!linkPreview && (
+                <button className="btn primary" disabled={!linkUrl.trim() || linkBusy} onClick={doLinkPreview}>
+                  {linkBusy ? <><Loader2 size={15} style={{ animation: 'spin .8s linear infinite' }} /> Fetching…</> : 'Preview'}
+                </button>
+              )}
+              {linkPreview && (
+                <button
+                  className="btn primary"
+                  disabled={!linkPreview.tracks.length}
+                  onClick={() => {
+                    const p = createPlaylist(linkPreview.title || 'Imported playlist', linkPreview.tracks);
+                    setLinkOpen(false); setLinkUrl(''); setLinkPreview(null); setLinkError('');
+                    setView({ name: 'playlist', id: p.id });
+                  }}
+                >
+                  Create playlist
+                </button>
+              )}
             </div>
           </div>
         </div>

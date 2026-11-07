@@ -98,6 +98,16 @@ export function coverProxy(url) {
   return url ? `/api/cover?url=${encodeURIComponent(url)}` : '';
 }
 
+/** Import a YouTube/Deezer/Spotify link as a playable playlist. */
+export async function apiImportLink(url, { gl, hl, signal } = {}) {
+  return json(await fetch('/api/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, gl, hl }),
+    signal,
+  }));
+}
+
 /** Listen Together */
 export async function apiTogetherCreate(name, { signal } = {}) {
   return json(await fetch('/api/together/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }), signal }));
