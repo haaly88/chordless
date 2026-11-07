@@ -1623,6 +1623,15 @@ export const usePlayer = create((set, get) => ({
   },
 
   // ---------- playlist tools (sort / dedupe / merge / bulk remove) ----------
+  removeDuplicateAcross(trackId, keepPlaylistId) {
+    const playlists = get().playlists.map((p) =>
+      p.id !== keepPlaylistId && p.tracks.some((t) => t.id === trackId)
+        ? { ...p, tracks: p.tracks.filter((t) => t.id !== trackId) }
+        : p,
+    );
+    set({ playlists });
+    write('cl:playlists', playlists);
+  },
   sortPlaylist(playlistId, mode) {
     const target = get().playlists.find((p) => p.id === playlistId);
     if (!target) return;

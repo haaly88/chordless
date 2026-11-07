@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Heart, Clock, Play, Plus, Music2, Shuffle, Upload, X, Sparkles, TrendingUp, Star, History, Link2, Loader2, Download, Trash2 } from 'lucide-react';
+import { Heart, Clock, Play, Plus, Music2, Shuffle, Upload, X, Sparkles, TrendingUp, Star, History, Link2, Loader2, Download, Trash2, Files } from 'lucide-react';
 import usePlayer from '../store.js';
 import TrackRow, { TrackListHeader } from './TrackRow.jsx';
 import { apiImportLink } from '../lib/api.js';
@@ -63,6 +63,18 @@ export default function LibraryView() {
       { key: 'top-rated', name: 'Top Rated', sub: 'Your liked songs', Icon: Star, tracks: topRated },
     ];
   }, [history, liked, forYou]);
+
+  const duplicates = useMemo(() => {
+    const byTrack = new Map();
+    for (const p of playlists) {
+      for (const t of p.tracks) {
+        if (!byTrack.has(t.id)) byTrack.set(t.id, { track: t, playlists: [] });
+        byTrack.get(t.id).playlists.push(p);
+      }
+    }
+    return [...byTrack.values()].filter((g) => g.playlists.length > 1).slice(0, 20);
+  }, [playlists]);
+  const removeDuplicateAcross = usePlayer((s) => s.removeDuplicateAcross);
 
   const [importOpen, setImportOpen] = useState(false);
   const [importJson, setImportJson] = useState('');
@@ -226,6 +238,31 @@ export default function LibraryView() {
           </div>
         </div>
       ))}
+
+      {/* duplicates across playlists */}
+      {duplicates.length > 0 && (
+        <>
+          <div className="section-label" style={{ paddingLeft: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Files size={13} style={{ color: 'var(--accent)' }} /> DUPLICATES ACROSS PLAYLISTS ({duplicates.length})
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+            {duplicates.map(({ track, playlists: pls }) => (
+              <div key={track.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--stroke)', borderRadius: 12 }}>
+                {track.thumbnail ? <img src={track.thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'cover' }} /> : null}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{track.title}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {track.artist} · in {pls.map((p) => p.name).join(', ')}
+                  </div>
+                </div>
+                <button className="pill" onClick={() => removeDuplicateAcross(track.id, pls[0].id)} title={`Keep in “${pls[0].name}”, remove from ${pls.length - 1} other playlist(s)`}>
+                  Keep first only
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* downloaded (offline) */}
       <div className="section-label" style={{ paddingLeft: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
