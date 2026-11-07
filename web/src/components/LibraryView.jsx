@@ -202,14 +202,14 @@ export default function LibraryView() {
 
       {/* smart playlists */}
       <div className="section-label" style={{ paddingLeft: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Sparkles size={13} style={{ color: 'var(--accent)' }} /> SMART PLAYLISTS
+        <Sparkles size={13} style={{ color: 'var(--accent)' }} /> {t(lang, 'lib.smart')}
       </div>
       <div className="playlist-grid">
         {smart.map(renderSmartCard)}
       </div>
 
       {/* playlists */}
-      <div className="section-label" style={{ paddingLeft: 2 }}>YOUR PLAYLISTS</div>
+      <div className="section-label" style={{ paddingLeft: 2 }}>{t(lang, 'lib.playlists')}</div>
       <div className="playlist-grid">
         <button className="playlist-card create" onClick={() => { const p = createPlaylist('New Playlist'); setView({ name: 'playlist', id: p.id }); }}>
           <div className="playlist-art-wrap create-art"><Plus size={36} strokeWidth={1.6} /></div>
@@ -268,7 +268,7 @@ export default function LibraryView() {
 
       {/* downloaded (offline) */}
       <div className="section-label" style={{ paddingLeft: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Download size={13} style={{ color: 'var(--accent)' }} /> DOWNLOADED
+        <Download size={13} style={{ color: 'var(--accent)' }} /> {t(lang, 'lib.downloaded')}
         {offlineEntries.length > 0 && (
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
             <span style={{ fontWeight: 600 }}>{offlineEntries.length} · {(offlineSize / 1048576).toFixed(1)} MB</span>
@@ -297,7 +297,7 @@ export default function LibraryView() {
       )}
 
       {/* recently played */}
-      <div className="section-label" style={{ paddingLeft: 2 }}>RECENTLY PLAYED</div>
+      <div className="section-label" style={{ paddingLeft: 2 }}>{t(lang, 'lib.recent')}</div>
       {recent.length === 0 ? (
         <div className="empty-state" style={{ paddingTop: 30 }}>
           <Clock />

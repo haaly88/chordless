@@ -171,7 +171,7 @@ export default function StatsView() {
 
       {/* 7-day bar chart */}
       <div className="chart-card" style={{ marginTop: 10 }}>
-        <div className="section-label" style={{ padding: 0, marginBottom: 14 }}>LAST 7 DAYS</div>
+        <div className="section-label" style={{ padding: 0, marginBottom: 14 }}>{t(lang, 'stats.last7')}</div>
         <div className="chart-bars">
           {stats.days.map((d, i) => (
             <div key={i} className="chart-col">
@@ -186,7 +186,7 @@ export default function StatsView() {
 
       {/* 24-hour chart */}
       <div className="chart-card" style={{ marginTop: 10 }}>
-        <div className="section-label" style={{ padding: 0, marginBottom: 14 }}>BY HOUR · PEAK {peakLabel}</div>
+        <div className="section-label" style={{ padding: 0, marginBottom: 14 }}>{t(lang, 'stats.byHour')} · PEAK {peakLabel}</div>
         <div className="chart-bars" style={{ gap: 4 }}>
           {stats.hours24.map((count, h) => (
             <div key={h} className="chart-col" title={`${h}:00 — ${count} plays`}>
@@ -203,7 +203,7 @@ export default function StatsView() {
       <div className="two-col">
         {/* top artists */}
         <section className="chart-card">
-          <div className="section-label" style={{ padding: 0, marginBottom: 10 }}>TOP ARTISTS</div>
+          <div className="section-label" style={{ padding: 0, marginBottom: 10 }}>{t(lang, 'stats.topArtists')}</div>
           {stats.topArtists.map(([artist, count], i) => (
             <div key={artist} className="rank-row">
               <span className="rank-num">{i + 1}</span>
@@ -215,7 +215,7 @@ export default function StatsView() {
 
         {/* top tracks */}
         <section className="chart-card">
-          <div className="section-label" style={{ padding: 0, marginBottom: 10 }}>TOP TRACKS</div>
+          <div className="section-label" style={{ padding: 0, marginBottom: 10 }}>{t(lang, 'stats.topTracks')}</div>
           {stats.topTracks.map(({ track, count }, i) => (
             <button key={track.id} className="rank-row as-button" onClick={() => playTrack(track, stats.topTracks.map((s) => s.track))}>
               <span className="rank-num">{i + 1}</span>

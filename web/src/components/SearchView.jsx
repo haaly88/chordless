@@ -293,7 +293,7 @@ export default function SearchView() {
           <div className="empty-state" style={{ paddingTop: 56 }}>
             <Search />
             <h3>{t(lang, 'search.emptyTitle')}</h3>
-            <p>Type at least two characters — results stream as audio only, straight from the source. Press <span className="kbd">Ctrl</span> + <span className="kbd">K</span> anytime to jump here.</p>
+            <p>{t(lang, 'search.emptyHint')} Press <span className="kbd">Ctrl</span> + <span className="kbd">K</span> anytime.</p>
           </div>
         </>
       )}
