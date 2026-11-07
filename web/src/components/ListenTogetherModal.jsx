@@ -14,6 +14,8 @@ export default function ListenTogetherModal() {
   const leaveTogetherRoom = usePlayer((s) => s.leaveTogetherRoom);
   const _togetherPollOnce = usePlayer((s) => s._togetherPollOnce);
   const sendTogetherChat = usePlayer((s) => s.sendTogetherChat);
+  const queue = usePlayer((s) => (s.together?.code ? s.queue : []));
+  const nowPlaying = usePlayer((s) => (s.together?.code ? s.currentTrack() : null));
   const messages = together?.messages || [];
 
   const [name, setName] = useState(() => readString('cl:togetherName', ''));
@@ -111,7 +113,17 @@ export default function ListenTogetherModal() {
               </button>
             </div>
 
-            <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>IN THE ROOM ({(together.members || []).length})</div>
+             <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>IN THE ROOM ({(together.members || []).length})</div>
+            {nowPlaying && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--stroke)', borderRadius: 10, marginBottom: 8 }}>
+                {nowPlaying.thumbnail ? <img src={nowPlaying.thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ width: 30, height: 30, borderRadius: 6, objectFit: 'cover' }} /> : null}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 800, letterSpacing: '.08em' }}>{together.isHost ? 'NOW PLAYING (YOU)' : 'NOW PLAYING (HOST)'}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nowPlaying.title} — {nowPlaying.artist}</div>
+                </div>
+                <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{queue.length} in queue</span>
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto', marginBottom: 12 }}>
               {(together.members || []).map((m) => (
                 <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--stroke)', borderRadius: 10 }}>

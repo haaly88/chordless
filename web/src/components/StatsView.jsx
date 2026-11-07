@@ -80,6 +80,40 @@ export default function StatsView() {
   const weekDelta = stats.thisWeekPlays - stats.prevWeekPlays;
   const peakLabel = `${stats.peakHour}:00`;
 
+  const exportStory = async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080; canvas.height = 1080;
+    const ctx = canvas.getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, 1080, 1080);
+    g.addColorStop(0, '#17171f'); g.addColorStop(1, '#0d0d12');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 1080, 1080);
+    ctx.fillStyle = 'rgba(255,255,255,.06)';
+    ctx.beginPath(); ctx.arc(900, 160, 340, 0, Math.PI * 2); ctx.fill();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#f59e0b'; ctx.font = '800 30px sans-serif';
+    ctx.fillText('MY LISTENING WEEK', 540, 130);
+    ctx.fillStyle = '#ffffff'; ctx.font = '800 130px sans-serif';
+    ctx.fillText(`${weekHours > 0 ? `${weekHours}h ${weekMinutes}m` : `${weekMinutes}m`}`, 540, 300);
+    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = '600 34px sans-serif';
+    ctx.fillText(`${stats.thisWeekPlays} plays · streak ${stats.streak} ${stats.streak === 1 ? 'day' : 'days'}`, 540, 400);
+    ctx.fillStyle = '#ffffff'; ctx.font = '700 44px sans-serif';
+    ctx.fillText('TOP ARTIST', 540, 520);
+    ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.font = '800 40px sans-serif';
+    ctx.fillText((stats.topArtists[0]?.[0] || '—').slice(0, 28), 540, 590);
+    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = '600 30px sans-serif';
+    ctx.fillText(`Total ${stats.totalPlays} plays · peak hour ${peakLabel}`, 540, 700);
+    ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.font = '600 26px sans-serif';
+    ctx.fillText('SHARED FROM CHORDLESS', 540, 960);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'chordless-listening-week.png';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }, 'image/png');
+  };
+
   if (stats.totalPlays === 0) {
     return (
       <div className="empty-state">
@@ -92,7 +126,10 @@ export default function StatsView() {
 
   return (
     <div>
-      <h1 className="view-title">Your stats<span className="sub">FROM YOUR LISTENING</span></h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <h1 className="view-title" style={{ margin: 0 }}>Your stats<span className="sub">FROM YOUR LISTENING</span></h1>
+        <button className="btn" onClick={exportStory} style={{ marginLeft: 'auto' }}>Export story PNG</button>
+      </div>
 
       {/* headline cards */}
       <div className="stat-cards">

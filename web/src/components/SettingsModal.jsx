@@ -165,8 +165,24 @@ export default function SettingsModal() {
   const [addonUrl, setAddonUrl] = useState('');
   const [addonTesting, setAddonTesting] = useState(false);
   const [addonStatus, setAddonStatus] = useState(null);
+  const [remapFor, setRemapFor] = useState(null);
   const panelRef = useRef(null);
   const importRef = useRef(null);
+
+  useEffect(() => {
+    if (!remapFor) return undefined;
+    const onKey = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === 'Escape') { setRemapFor(null); return; }
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      const keybinds = { ...settings.keybinds, [remapFor]: [key] };
+      updateSettings({ keybinds });
+      setRemapFor(null);
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
+  }, [remapFor, settings.keybinds, updateSettings]);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') setSettingsOpen(false); };
@@ -254,6 +270,30 @@ export default function SettingsModal() {
                 aria-checked={settings.theme === value}
                 className={settings.theme === value ? 'active' : ''}
                 onClick={() => updateSettings({ theme: value })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* language */}
+        <div className="setting-row">
+          <div>
+            <b>Language</b>
+            <small>Bahasa antarmuka (sidebar, beranda, judul halaman). Stage 1.</small>
+          </div>
+          <div className="segmented" role="radiogroup" aria-label="Language" style={{ flexWrap: 'wrap' }}>
+            {[
+              ['en', 'English'],
+              ['id', 'Bahasa Indonesia'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                role="radio"
+                aria-checked={(settings.lang || 'en') === value}
+                className={(settings.lang || 'en') === value ? 'active' : ''}
+                onClick={() => updateSettings({ lang: value })}
               >
                 {label}
               </button>
@@ -852,6 +892,43 @@ export default function SettingsModal() {
           <span style={{ fontSize: 11.5, color: 'var(--text-2)', minWidth: 64, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
             {Number(settings.balance) === 0 ? 'Center' : Number(settings.balance) < 0 ? `L ${Math.round(-Number(settings.balance) * 50)}` : `R ${Math.round(Number(settings.balance) * 50)}`}
           </span>
+        </div>
+        <div className="setting-row">
+          <div>
+            <b>Skip silence</b>
+            <small>Automatically jump past long quiet gaps (2.5s+ of near-silence) during playback.</small>
+          </div>
+          <button
+            className={`switch${settings.skipSilence ? ' on' : ''}`}
+            role="switch"
+            aria-checked={Boolean(settings.skipSilence)}
+            aria-label="Skip silence"
+            onClick={() => updateSettings({ skipSilence: !settings.skipSilence })}
+          />
+        </div>
+
+        {/* keyboard remap */}
+        <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+          <div>
+            <b>Keyboard shortcuts</b>
+            <small>Click a key, then press a new key to remap. Space/K play-pause, N next, P previous by default.</small>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+            {[['playPause', 'Play / Pause'], ['next', 'Next'], ['prev', 'Previous']].map(([id, label]) => {
+              const keys = (settings.keybinds?.[id] || []).join(' + ') || '—';
+              return (
+                <button
+                  key={id}
+                  className={`pill${remapFor === id ? ' active' : ''}`}
+                  onClick={() => setRemapFor(remapFor === id ? null : id)}
+                  title={`Remap ${label}`}
+                >
+                  {label}: <b>{keys}</b>
+                </button>
+              );
+            })}
+            {remapFor && <span style={{ fontSize: 12, color: 'var(--text-2)' }}>Press a key now… (Esc to cancel)</span>}
+          </div>
         </div>
 
         {/* reset */}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Home, Search, Heart, Plus, Music2, Check, X, Library, BarChart3, Settings, Moon, Sun, ListPlus, Folder, ChevronRight, Trash2 } from 'lucide-react';
 import usePlayer from '../store.js';
+import { t } from '../lib/i18n.js';
 
 function PlaylistArt({ playlist }) {
   const covers = [...new Set(playlist.tracks.map((t) => t.thumbnail).filter(Boolean))].slice(0, 4);
@@ -41,6 +42,7 @@ export default function Sidebar({ open = false, onClose }) {
   const setSettingsOpen = usePlayer((s) => s.setSettingsOpen);
   const theme = usePlayer((s) => s.settings.theme);
   const updateSettings = usePlayer((s) => s.updateSettings);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [folderCreating, setFolderCreating] = useState(false);
@@ -88,10 +90,10 @@ export default function Sidebar({ open = false, onClose }) {
   };
 
   const nav = [
-    { id: 'home', label: 'Home', Icon: Home },
-    { id: 'search', label: 'Search', Icon: Search },
-    { id: 'library', label: 'Library', Icon: Library },
-    { id: 'stats', label: 'Stats', Icon: BarChart3 },
+    { id: 'home', label: t(lang, 'nav.home'), Icon: Home },
+    { id: 'search', label: t(lang, 'nav.search'), Icon: Search },
+    { id: 'library', label: t(lang, 'nav.library'), Icon: Library },
+    { id: 'stats', label: t(lang, 'nav.stats'), Icon: BarChart3 },
   ];
 
   const isActive = (id) =>
@@ -127,17 +129,17 @@ export default function Sidebar({ open = false, onClose }) {
           </button>
         ))}
         <button className="nav-item" onClick={() => setSettingsOpen(true)}>
-          <Settings aria-hidden="true" /><span className="txt">Settings</span>
+          <Settings aria-hidden="true" /><span className="txt">{t(lang, 'nav.settings')}</span>
         </button>
       </nav>
 
       {/* new playlist pill */}
       <button className="new-playlist-pill" onClick={() => setCreating((v) => !v)} aria-label="Create playlist">
         {creating ? <X size={17} /> : <Plus size={17} strokeWidth={2.4} />}
-        {creating ? 'Cancel' : 'New Playlist'}
+        {creating ? 'Cancel' : t(lang, 'home.shortcut.newPlaylist')}
       </button>
       <button className="new-playlist-pill" style={{ height: 36, marginTop: -6 }} onClick={() => setFolderCreating((v) => !v)} aria-label="Create folder">
-        <Folder size={15} /> {folderCreating ? 'Cancel' : 'New Folder'}
+        <Folder size={15} /> {folderCreating ? 'Cancel' : t(lang, 'home.shortcut.newFolder')}
       </button>
 
       {folderCreating && (

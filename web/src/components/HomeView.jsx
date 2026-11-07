@@ -6,6 +6,7 @@ import {
 import usePlayer, { readMigrated, write } from '../store.js';
 import { apiHome, apiSearch, apiCharts } from '../lib/api.js';
 import { greeting, formatTime } from '../lib/format.js';
+import { t } from '../lib/i18n.js';
 import { resolveRegion } from '../lib/region.js';
 
 const MOOD_CHIPS = [
@@ -251,6 +252,7 @@ export default function HomeView() {
   const forYouLoading = usePlayer((s) => s.forYouLoading);
   const generateForYouMix = usePlayer((s) => s.generateForYouMix);
   const homeSections = usePlayer((s) => s.settings.homeSections || {});
+  const lang = usePlayer((s) => s.settings.lang || 'en');
 
   const HOME_SECTIONS = [
     { key: 'foryou', label: 'For You' },
@@ -358,13 +360,32 @@ export default function HomeView() {
   const dateLine = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   const chips = chipSet === 'mood' ? MOOD_CHIPS : GENRE_CHIPS;
 
+  // Pull-to-refresh (touch): pull down at top of scroll to reload feed.
+  const pullStart = useRef(null);
+  const [pulling, setPulling] = useState(false);
+  const onTouchStart = (e) => {
+    const el = e.currentTarget.closest('.main');
+    if (el && el.scrollTop <= 0) pullStart.current = e.touches?.[0]?.clientY ?? null;
+  };
+  const onTouchMove = (e) => {
+    if (pullStart.current == null) return;
+    const y = e.touches?.[0]?.clientY ?? 0;
+    setPulling(y - pullStart.current > 90);
+  };
+  const onTouchEnd = () => {
+    if (pulling) setReloadTick((n) => n + 1);
+    pullStart.current = null;
+    setPulling(false);
+  };
+
   return (
-    <div aria-label="Home">
+    <div aria-label="Home" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+      {pulling && <div style={{ textAlign: 'center', fontSize: 12.5, color: 'var(--accent)', fontWeight: 700, padding: '6px 0' }}>Release to refresh…</div>}
       {/* head row: greeting + refresh + search pill */}
       <div className="home-head">
         <div style={{ minWidth: 0 }}>
-          <h1 className="greeting">{greeting(now)}</h1>
-          <div className="greeting-sub">{dateLine} · pick something</div>
+          <h1 className="greeting">{greeting(now, lang)}</h1>
+          <div className="greeting-sub">{dateLine} · {t(lang, 'home.pickSomething')}</div>
         </div>
         <div className="home-head-actions">
           <button className="icon-btn home-refresh" onClick={() => setReloadTick((n) => n + 1)} aria-label="Refresh feed" title="Refresh feed">

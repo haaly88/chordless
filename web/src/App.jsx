@@ -323,6 +323,10 @@ export default function App() {
       if (typing) return;
 
       const s = usePlayer.getState();
+      const kb = s.settings?.keybinds || {};
+      const isPlayPause = (kb.playPause || [' ', 'k']).includes(e.key) || (kb.playPause || [' ', 'k']).includes(e.key.toLowerCase());
+      const isNext = (kb.next || ['n']).includes(e.key) || (kb.next || ['n']).includes(e.key.toLowerCase());
+      const isPrev = (kb.prev || ['p']).includes(e.key) || (kb.prev || ['p']).includes(e.key.toLowerCase());
       switch (e.key) {
         case ' ':
         case 'k':
@@ -344,8 +348,6 @@ export default function App() {
           e.preventDefault();
           s.setVolume(s.volume - 0.05);
           break;
-        case 'n': case 'N': s.next(true); break;
-        case 'p': case 'P': s.prev(); break;
         case 'l': case 'L': s.toggleLyrics(); break;
         case 'c': case 'C': s.toggleKaraoke(); break;
         case 'q': case 'Q': s.toggleQueue(); break;
@@ -353,6 +355,10 @@ export default function App() {
         case 'm': case 'M': s.toggleMute(); break;
         default: break;
       }
+      // Custom keybinds (Settings) override defaults above.
+      if (isPlayPause && ![' ', 'k', 'K'].includes(e.key)) { e.preventDefault(); s.togglePlay(); }
+      if (isNext) { s.next(true); }
+      if (isPrev) { s.prev(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

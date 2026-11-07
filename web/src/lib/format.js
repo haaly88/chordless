@@ -14,8 +14,15 @@ export function formatClock(d = new Date()) {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-export function greeting(d = new Date()) {
+export function greeting(d = new Date(), lang = 'en') {
   const h = d.getHours();
+  if (lang === 'id') {
+    if (h < 5) return 'Selamat dini hari';
+    if (h < 12) return 'Selamat pagi';
+    if (h < 18) return 'Selamat siang';
+    if (h < 20) return 'Selamat sore';
+    return 'Selamat malam';
+  }
   if (h < 5) return 'Late night';
   if (h < 12) return 'Good morning';
   if (h < 18) return 'Good afternoon';
