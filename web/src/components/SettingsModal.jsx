@@ -33,9 +33,8 @@ function SettingsDropdown({ value, onChange, label }) {
     document.addEventListener('pointerdown', onDoc);
     document.addEventListener('keydown', onEsc);
     setTimeout(() => inputRef.current?.focus(), 30);
-    // Keep the menu inside the modal viewport: scroll the modal so the
-    // trigger sits near the top, leaving room for the ~300px menu below.
-    // (Menu is absolutely positioned inside the scrolling modal.)
+    // Menu expands in-flow and pushes content down — scroll the modal so
+    // the Region row sits near the top and the full list is visible.
     requestAnimationFrame(() => {
       const modal = wrapRef.current?.closest('.modal');
       const row = wrapRef.current?.closest('.setting-row');
@@ -63,7 +62,7 @@ function SettingsDropdown({ value, onChange, label }) {
   };
 
   return (
-    <div className="settings-dd" ref={wrapRef} style={{ position: 'relative', width: 210, flexShrink: 0 }}>
+    <div className={`settings-dd${open ? ' open' : ''}`} ref={wrapRef} style={{ width: 210, flexShrink: 0 }}>
       <button
         type="button"
         className={`settings-dd-trigger${open ? ' open' : ''}`}

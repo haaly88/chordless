@@ -414,9 +414,10 @@ img { user-select: none; -webkit-user-drag: none; }
 [data-theme='light'] .pill.active { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 92%, white) 0%, var(--accent) 48%, color-mix(in srgb, var(--accent) 82%, black) 100%); color: #fff; }
 .pill:disabled { opacity: .5; pointer-events: none; }
 
-/* custom dropdown (Settings region, etc.) */
+/* custom dropdown (Settings region, etc.) — expands in-flow (pushes content down, never overlaps) */
 .settings-dd { z-index: 60; }
-.setting-row:has(> .settings-dd) { position: relative; }
+.settings-dd.open { width: 100% !important; flex: 1 1 100%; order: 2; margin-top: 2px; }
+.setting-row:has(.settings-dd.open) { flex-wrap: wrap; }
 .settings-dd-trigger {
   display: flex; align-items: center; gap: 8px; width: 100%; height: 42px; padding: 0 12px;
   border-radius: 12px; border: 1px solid var(--stroke-strong);
@@ -434,11 +435,10 @@ img { user-select: none; -webkit-user-drag: none; }
 .settings-dd-chev { opacity: .65; flex: 0 0 auto; transition: transform .22s var(--ease); }
 .settings-dd-chev.open { transform: rotate(180deg); opacity: 1; color: var(--accent); }
 .settings-dd-menu {
-  position: absolute; right: 0; left: auto; top: calc(100% + 8px); z-index: 999;
-  width: max(280px, 100%); max-width: calc(100vw - 48px);
+  position: static; width: 100%; margin-top: 10px;
   background: #1a1a22;
   border: 1px solid var(--stroke-strong); border-radius: 16px; padding: 6px;
-  box-shadow: 0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.07);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.25);
   animation: menu-in .16s var(--ease);
 }
 [data-theme='light'] .settings-dd-menu { background: #ffffff; box-shadow: 0 24px 60px rgba(20,20,40,.18), inset 0 1px 0 rgba(255,255,255,.9); }
