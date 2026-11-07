@@ -144,6 +144,9 @@ export async function apiTogetherPush(code, memberId, state, { signal } = {}) {
 export async function apiTogetherChat(code, memberId, text, { signal } = {}) {
   return json(await fetch(`/api/together/${encodeURIComponent(code)}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ memberId, text }), signal }));
 }
+export async function apiTogetherPresence(code, memberId, track, { signal } = {}) {
+  return json(await fetch(`/api/together/${encodeURIComponent(code)}/presence`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ memberId, track }), signal }));
+}
 export async function apiTogetherLeave(code, memberId, { signal } = {}) {
   return json(await fetch(`/api/together/${encodeURIComponent(code)}/leave`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ memberId }), signal }));
 }

@@ -5,7 +5,7 @@
  * settings — all persisted to localStorage where appropriate.
  */
 import { create } from 'zustand';
-import { apiSponsorBlock, apiChapters, apiAddonSearch, apiTranslate, apiSearch, addonTrackUrl, apiTogetherCreate, apiTogetherJoin, apiTogetherState, apiTogetherPush, apiTogetherLeave, apiShareCreate, apiShareGet } from './lib/api.js';
+import { apiSponsorBlock, apiChapters, apiAddonSearch, apiTranslate, apiSearch, addonTrackUrl, apiTogetherCreate, apiTogetherJoin, apiTogetherState, apiTogetherPush, apiTogetherChat, apiTogetherPresence, apiTogetherLeave, apiShareCreate, apiShareGet } from './lib/api.js';
 import { upgradeTracks } from './lib/thumb.js';
 import { totalDuration, formatTotalDuration } from './lib/format.js';
 import { buildForYouMix } from './lib/ai-mix.js';
@@ -578,6 +578,7 @@ export const usePlayer = create((set, get) => ({
     write('cl:queue', { queue: get().queue, index, position: 0 });
     get()._fadeInIfEnabled();
     get()._togetherPushState?.();
+    get()._togetherPushPresence?.();
   },
 
   // ---------- For You AI Mix ----------
@@ -882,6 +883,7 @@ export const usePlayer = create((set, get) => ({
   async leaveTogetherRoom() {
     const { together } = get();
     if (!together?.code) return;
+    try { await apiTogetherPresence(together.code, together.memberId, null); } catch { /* best-effort */ }
     try { await apiTogetherLeave(together.code, together.memberId); } catch { /* best-effort */ }
     set({ together: { code: null, memberId: null, name: '', isHost: false, members: [], messages: [], remoteVersion: 0, lastSyncAt: 0 } });
     get().toast('Left room', 'Back to solo listening.');
@@ -894,6 +896,16 @@ export const usePlayer = create((set, get) => ({
       const room = await apiTogetherChat(together.code, together.memberId, msg);
       if (room?.messages) set((prev) => ({ together: { ...prev.together, messages: room.messages } }));
     } catch { /* poll will retry on next heartbeat */ }
+  },
+  _togetherPushPresence() {
+    const { together } = get();
+    if (!together?.code) return;
+    const track = get().currentTrack();
+    apiTogetherPresence(together.code, together.memberId, track || null)
+      .then((room) => {
+        if (room?.members) set((prev) => ({ together: { ...prev.together, members: room.members } }));
+      })
+      .catch(() => {});
   },
   _togetherPushState() {
     const { together } = get();

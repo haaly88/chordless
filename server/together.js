@@ -30,9 +30,13 @@ function prune() {
 setInterval(prune, 5 * 60 * 1000).unref?.();
 
 function publicRoom(room) {
+  const members = [...room.members.values()].map((m) => {
+    const presence = room.presence.get(m.id);
+    return { id: m.id, name: m.name, joinedAt: m.joinedAt, isHost: m.id === room.hostId, track: presence?.track || null };
+  });
   return {
     code: room.code,
-    members: [...room.members.values()].map((m) => ({ id: m.id, name: m.name, joinedAt: m.joinedAt, isHost: m.id === room.hostId })),
+    members,
     hostId: room.hostId,
     createdAt: room.createdAt,
     state: room.state,
@@ -53,6 +57,7 @@ export function createRoom(name) {
     members: new Map([[memberId, { id: memberId, name: cleanName, joinedAt: now() }]]),
     state: { track: null, queue: [], index: -1, isPlaying: false, currentTime: 0, updatedAt: now(), version: 0 },
     messages: [],
+    presence: new Map(),
     createdAt: now(),
     lastSeen: now(),
   };
@@ -96,6 +101,20 @@ export function pushState(code, memberId, patch) {
   return publicRoom(r);
 }
 
+export function pushPresence(code, memberId, track) {
+  const r = rooms.get(String(code || '').trim().toUpperCase());
+  if (!r) return null;
+  const member = r.members.get(memberId);
+  if (!member) return null;
+  if (track && track.id) {
+    r.presence.set(memberId, { track, at: now() });
+  } else {
+    r.presence.delete(memberId);
+  }
+  r.lastSeen = now();
+  return publicRoom(r);
+}
+
 export function pushChat(code, memberId, text) {
   const r = rooms.get(String(code || '').trim().toUpperCase());
   if (!r) return null;
@@ -109,9 +128,11 @@ export function pushChat(code, memberId, text) {
   return publicRoom(r);
 }
 
-export function leaveRoom(code, memberId) {  const r = rooms.get(String(code || '').trim().toUpperCase());
+export function leaveRoom(code, memberId) {
+  const r = rooms.get(String(code || '').trim().toUpperCase());
   if (!r) return { left: true };
   r.members.delete(memberId);
+  r.presence.delete(memberId);
   if (memberId === r.hostId) {
     const next = [...r.members.values()].sort((a, b) => a.joinedAt - b.joinedAt)[0];
     if (!next) {

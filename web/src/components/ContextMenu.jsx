@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
-  Play, ListPlus, ListStart, Heart, ListMusic, Trash2, Search, Check, Plus, ChevronRight, Download, Loader2,
+  Play, ListPlus, ListStart, Heart, ListMusic, Trash2, Search, Check, Plus, ChevronRight, Download, Loader2, ListOrdered,
 } from 'lucide-react';
 import usePlayer from '../store.js';
+import { apiChapters } from '../lib/api.js';
 
 /**
  * Right-click menu for any track: play now / next / later, like,
@@ -27,6 +28,9 @@ export default function ContextMenu() {
   const removeOfflineTrack = usePlayer((s) => s.removeOfflineTrack);
   const offlineIds = usePlayer((s) => s.offlineIds);
   const downloadingIds = usePlayer((s) => s.downloadingIds);
+  const toast = usePlayer((s) => s.toast);
+  const playTrackForChapter = usePlayer((s) => s.playTrack);
+  const [chapterBusy, setChapterBusy] = useState(false);
 
   const ref = useRef(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -94,6 +98,30 @@ export default function ContextMenu() {
         <Heart size={17} fill={isLiked ? 'var(--accent)' : 'none'} color={isLiked ? 'var(--accent)' : undefined} />
         {isLiked ? 'Remove from Liked Songs' : 'Like'}
       </button>
+
+      {!track.isAddon && track.id && (
+        <button
+          className="ctx-item"
+          role="menuitem"
+          disabled={chapterBusy}
+          onClick={async () => {
+            setChapterBusy(true);
+            closeMenu();
+            try {
+              const data = await apiChapters(track.id);
+              const chapters = data?.chapters || [];
+              if (!chapters.length) { toast('No chapters', `“${track.title}” has no chapters.`); return; }
+              toast('Chapters · ' + chapters.length, chapters.slice(0, 5).map((c) => c.title).join(' · ') + (chapters.length > 5 ? ' · +' + (chapters.length - 5) : ''));
+            } catch (e) {
+              toast('Chapters failed', e.message || 'Could not load chapters.');
+            } finally {
+              setChapterBusy(false);
+            }
+          }}
+        >
+          <ListOrdered size={17} /> {chapterBusy ? 'Chapters…' : 'View chapters'}
+        </button>
+      )}
 
       {(() => {
         const downloading = downloadingIds.includes(track.id);

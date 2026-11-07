@@ -130,7 +130,10 @@ export default function ListenTogetherModal() {
                   <span style={{ width: 30, height: 30, borderRadius: '50%', display: 'grid', placeItems: 'center', background: 'var(--hover-strong)', fontWeight: 800, fontSize: 13 }}>
                     {String(m.name || '?')[0].toUpperCase()}
                   </span>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13.5 }}>{m.name}{m.id === together.memberId ? ' (you)' : ''}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13.5 }}>{m.name}{m.id === together.memberId ? ' (you)' : ''}</span>
+                    {m.track?.title && <span style={{ display: 'block', fontSize: 11, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>▶ {m.track.title}</span>}
+                  </span>
                   {m.isHost && <span className="pill active" style={{ cursor: 'default', fontSize: 10.5 }}>HOST</span>}
                 </div>
               ))}
