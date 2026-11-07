@@ -156,6 +156,30 @@ export default function SearchView() {
   const albums = (results || []).filter((t) => t.kind === 'album');
   const visible = filter === 'song' ? songs : filter === 'video' ? videos : filter === 'artist' ? artists : filter === 'album' ? albums : results || [];
 
+  // Auto-complete: prefix/infix matches from saved + history + trending.
+  const suggestions = (() => {
+    const q = query.trim().toLowerCase();
+    if (q.length < 1) return [];
+    const seen = new Set();
+    const pool = [
+      ...savedSearches.map((s) => ({ label: s.query, kind: 'Saved', apply: () => { setQuery(s.query); setFilter(s.filter || 'all'); } })),
+      ...searchHistory.map((s) => ({ label: s, kind: 'Recent', apply: () => setQuery(s) })),
+      ...SUGGESTIONS.map((s) => ({ label: s, kind: 'Trending', apply: () => setQuery(s) })),
+    ];
+    const out = [];
+    for (const item of pool) {
+      const label = String(item.label || '');
+      const key = label.toLowerCase();
+      if (!key || seen.has(key)) continue;
+      if (key.includes(q)) {
+        seen.add(key);
+        out.push(item);
+      }
+      if (out.length >= 8) break;
+    }
+    return out;
+  })();
+
   return (
     <div className="search-wrap">
       <div className="search-box" role="search">
@@ -189,6 +213,18 @@ export default function SearchView() {
           </button>
         )}
       </div>
+
+      {/* auto-complete suggestions */}
+      {query.trim().length >= 1 && suggestions.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '10px 2px 4px' }} aria-label="Suggestions">
+          {suggestions.map((s, i) => (
+            <button key={`${s.kind}-${s.label}-${i}`} className="chip" onClick={s.apply} title={`${s.kind}: ${s.label}`}>
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.06em', color: 'var(--text-3)', marginRight: 6 }}>{s.kind.toUpperCase()}</span>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* suggestions when empty */}
       {!query.trim() && (
