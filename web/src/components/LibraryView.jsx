@@ -93,20 +93,27 @@ export default function LibraryView() {
     }
   };
 
-  const renderPlaylistCard = (p) => (
+  const renderPlaylistCard = (p) => {
+    const covers = p.coverUrl ? [p.coverUrl] : [...new Set(p.tracks.map((t) => t.thumbnail).filter(Boolean))].slice(0, 4);
+    return (
     <button key={p.id} className="playlist-card" onClick={() => setView({ name: 'playlist', id: p.id })}>
       <div className="playlist-art-wrap">
-        {p.tracks[0] ? (
-          <img src={p.tracks[0].thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" />
-        ) : (
+        {covers.length === 0 ? (
           <div className="playlist-art-fallback"><Music2 size={34} strokeWidth={1.4} /></div>
+        ) : covers.length === 1 ? (
+          <img src={covers[0]} alt="" loading="lazy" referrerPolicy="no-referrer" />
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', width: '100%', height: '100%' }}>
+            {covers.map((c) => <img key={c} src={c} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />)}
+          </div>
         )}
         <span className="pl-play"><Play size={17} fill="#fff" strokeWidth={0} /></span>
       </div>
       <b>{p.name}</b>
       <span>{p.tracks.length} {p.tracks.length === 1 ? 'track' : 'tracks'}{folderOf(p) ? ` · ${folderOf(p).name}` : ''}</span>
     </button>
-  );
+    );
+  };
 
   const renderSmartCard = (s) => (
     <button key={s.key} className="playlist-card" disabled={s.key !== 'for-you' && !s.tracks.length} onClick={() => {

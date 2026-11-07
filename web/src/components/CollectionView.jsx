@@ -49,6 +49,7 @@ export default function CollectionView({ playlistId }) {
   const folders = usePlayer((s) => s.folders);
   const setPlaylistFolder = usePlayer((s) => s.setPlaylistFolder);
   const setView = usePlayer((s) => s.setView);
+  const toast = usePlayer((s) => s.toast);
   const sortPlaylist = usePlayer((s) => s.sortPlaylist);
   const dedupePlaylist = usePlayer((s) => s.dedupePlaylist);
   const mergePlaylist = usePlayer((s) => s.mergePlaylist);
@@ -162,13 +163,13 @@ export default function CollectionView({ playlistId }) {
                 )}
               </div>
               {coverEditing && !editing && (
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', margin: '2px 0 12px' }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', margin: '2px 0 12px', flexWrap: 'wrap' }}>
                   <input
                     ref={coverRef}
                     className="field"
-                    style={{ flex: 1, fontSize: 15, height: 44 }}
+                    style={{ flex: 1, minWidth: 200, fontSize: 15, height: 44 }}
                     value={coverUrl}
-                    placeholder="Cover image URL…"
+                    placeholder="Cover image URL… (empty = auto collage)"
                     onChange={(e) => setCoverUrl(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') { commitCover(); }
@@ -178,6 +179,13 @@ export default function CollectionView({ playlistId }) {
                   />
                   <button className="icon-btn accent" onClick={commitCover} aria-label="Save cover"><Check size={22} /></button>
                   <button className="icon-btn" onClick={() => { setCoverEditing(false); setCoverUrl(''); }} aria-label="Cancel"><X size={20} /></button>
+                  <button
+                    className="pill"
+                    onClick={() => { updatePlaylistCover(playlistId, undefined); setCoverEditing(false); toast('Auto cover on', 'Artwork collage restored.'); }}
+                    title="Use automatic collage cover from track art"
+                  >
+                    Use auto cover
+                  </button>
                 </div>
               )}
             </>
