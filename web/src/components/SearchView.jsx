@@ -4,6 +4,7 @@ import usePlayer from '../store.js';
 import { apiSearch, apiAddonSearch } from '../lib/api.js';
 import TrackRow, { TrackListHeader } from './TrackRow.jsx';
 import { resolveRegion } from '../lib/region.js';
+import { t } from '../lib/i18n.js';
 
 const SUGGESTIONS = ['Top hits 2026', 'Blinding Lights', 'Indonesian pop', 'Lofi hip hop', 'K-pop', 'Taylor Swift', 'City pop', 'Drake', 'Dangdut koplo', 'Phonk'];
 
@@ -42,6 +43,7 @@ export default function SearchView() {
   const enabledKey = enabledAddons.map((a) => a.manifest.base).join('|');
   const setView = usePlayer((s) => s.setView);
   const regionSetting = usePlayer((s) => s.settings.region || 'auto');
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const region = resolveRegion(regionSetting);
 
   // external focus requests (Ctrl+K)
@@ -190,7 +192,7 @@ export default function SearchView() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
-          placeholder="Songs, artists, albums…"
+          placeholder={t(lang, 'search.placeholder')}
           aria-label="Search music"
           autoComplete="off"
           spellCheck="false"

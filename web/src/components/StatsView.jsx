@@ -2,11 +2,13 @@ import { useMemo } from 'react';
 import { Clock, Headphones, Users, Flame, CalendarDays, Music2, TrendingUp } from 'lucide-react';
 import usePlayer from '../store.js';
 import { pluralize } from '../lib/format.js';
+import { t } from '../lib/i18n.js';
 
 /** Your listening stats, computed from local play history. */
 export default function StatsView() {
   const history = usePlayer((s) => s.history);
   const playTrack = usePlayer((s) => s.playTrack);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
 
   const stats = useMemo(() => {
     const totalPlays = history.length;
@@ -127,7 +129,7 @@ export default function StatsView() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <h1 className="view-title" style={{ margin: 0 }}>Your stats<span className="sub">FROM YOUR LISTENING</span></h1>
+        <h1 className="view-title" style={{ margin: 0 }}>{t(lang, 'stats.title')}<span className="sub">FROM YOUR LISTENING</span></h1>
         <button className="btn" onClick={exportStory} style={{ marginLeft: 'auto' }}>Export story PNG</button>
       </div>
 

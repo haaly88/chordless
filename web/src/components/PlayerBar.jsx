@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import usePlayer from '../store.js';
 import { formatTime, formatTotalDuration } from '../lib/format.js';
+import { t } from '../lib/i18n.js';
 import SeekBar from './SeekBar.jsx';
 
 const SLEEP_OPTIONS = [
@@ -150,6 +151,7 @@ export default function PlayerBar() {
   const openMenu = usePlayer((s) => s.openMenu);
   const miniPlayer = usePlayer((s) => s.miniPlayer);
   const toggleMiniPlayer = usePlayer((s) => s.toggleMiniPlayer);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
 
   const repeatLabel = repeat === 'one' ? 'Repeat this track' : repeat === 'all' ? 'Repeat all' : 'Repeat off';
 
@@ -212,21 +214,21 @@ export default function PlayerBar() {
             <button className={`icon-btn${shuffle ? ' active' : ''}`} onClick={toggleShuffle} aria-pressed={shuffle} aria-label="Shuffle" title="Shuffle">
               <Shuffle size={18} />
             </button>
-            <button className="icon-btn" onClick={prev} aria-label="Previous track" title="Previous">
+            <button className="icon-btn" onClick={prev} aria-label={t(lang, 'player.prev')} title={t(lang, 'player.prev')}>
               <SkipBack size={21} fill="currentColor" strokeWidth={0} />
             </button>
             <button
               className={`pb-play${trackLoading ? ' is-loading' : ''}`}
               onClick={togglePlay}
-              aria-label={isPlaying ? 'Pause' : 'Play'}
-              title={isPlaying ? 'Pause' : 'Play'}
+              aria-label={isPlaying ? t(lang, 'player.pause') : t(lang, 'player.play')}
+              title={isPlaying ? t(lang, 'player.pause') : t(lang, 'player.play')}
               disabled={!track}
             >
               {trackLoading ? <span className="spinner" aria-hidden="true" /> : isPlaying
                 ? <Pause size={19} />
                 : <Play size={19} style={{ marginLeft: 2 }} />}
             </button>
-            <button className="icon-btn" onClick={() => next(true)} aria-label="Next track" title="Next">
+            <button className="icon-btn" onClick={() => next(true)} aria-label={t(lang, 'player.next')} title={t(lang, 'player.next')}>
               <SkipForward size={21} fill="currentColor" strokeWidth={0} />
             </button>
             <button className={`icon-btn${repeat !== 'off' ? ' active' : ''}`} onClick={cycleRepeat} aria-pressed={repeat !== 'off'} aria-label={repeatLabel} title={repeatLabel}>

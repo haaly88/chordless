@@ -3,6 +3,7 @@ import { X, Moon, Sun, Trash2, Palette, Info, Keyboard, Heart, ExternalLink, Plu
 import usePlayer from '../store.js';
 import { apiAddonTest } from '../lib/api.js';
 import { REGION_OPTIONS, resolveRegion } from '../lib/region.js';
+import { t } from '../lib/i18n.js';
 
 const REGION_FLAGS = {
   auto: '🌐', ID: '🇮🇩', MY: '🇲🇾', SG: '🇸🇬', TH: '🇹🇭', VN: '🇻🇳', PH: '🇵🇭', JP: '🇯🇵', KR: '🇰🇷',
@@ -127,6 +128,7 @@ function SettingsDropdown({ value, onChange, label }) {
 
 export default function SettingsModal() {
   const settings = usePlayer((s) => s.settings);
+  const lang = settings.lang || 'en';
   const updateSettings = usePlayer((s) => s.updateSettings);
   const setSettingsOpen = usePlayer((s) => s.setSettingsOpen);
   const clearHistory = usePlayer((s) => s.clearHistory);
@@ -255,7 +257,7 @@ export default function SettingsModal() {
         {/* theme */}
         <div className="setting-row">
           <div>
-            <b>Appearance</b>
+            <b>{t(lang, 'settings.appearance')}</b>
             <small>Choose the app theme. “System” follows your OS dark/light setting.</small>
           </div>
           <div className="segmented" role="radiogroup" aria-label="Theme" style={{ flexWrap: 'wrap' }}>
@@ -396,7 +398,7 @@ export default function SettingsModal() {
         {/* playback engine */}
         <div className="setting-row">
           <div>
-            <b>Playback engine</b>
+            <b>{t(lang, 'settings.playbackEngine')}</b>
             <small>“Auto” streams audio directly and falls back to the embedded player if blocked. “Stream” is lighter. “Embedded” always works.</small>
           </div>
           <div className="segmented" role="radiogroup" aria-label="Playback engine" style={{ flexWrap: 'wrap' }}>
@@ -436,7 +438,7 @@ export default function SettingsModal() {
         {/* lossless addons (multi + failover) */}
         <div className="setting-row" style={{ alignItems: 'flex-start' }}>
           <div>
-            <b><Flame size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />Lossless addons</b>
+            <b><Flame size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{t(lang, 'settings.lossless')}</b>
             <small>Search queries every addon; if one fails, playback automatically tries the next, then YouTube. Order = priority (top is first).</small>
           </div>
         </div>
@@ -614,7 +616,7 @@ export default function SettingsModal() {
         {/* equalizer */}
         <div className="setting-row">
           <div>
-            <b>Equalizer</b>
+            <b>{t(lang, 'settings.equalizer')}</b>
             <small>Adjust bass, mid and treble. Presets apply instantly.</small>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -684,7 +686,7 @@ export default function SettingsModal() {
         {/* crossfade */}
         <div className="setting-row">
           <div>
-            <b>Crossfade</b>
+            <b>{t(lang, 'settings.crossfade')}</b>
             <small>Fades out smoothly near the end of each track and fades in on the next — no abrupt cuts. Works with the Stream engine (addon &amp; YouTube streams).</small>
           </div>
           <button
@@ -750,7 +752,7 @@ export default function SettingsModal() {
         {/* spatial audio */}
         <div className="setting-row">
           <div>
-            <b>Spatial audio</b>
+            <b>{t(lang, 'settings.spatial')}</b>
             <small>Widens the stereo image for headphones (mid/side processing). Works with the Stream engine (addons &amp; YouTube streams).</small>
           </div>
           <button

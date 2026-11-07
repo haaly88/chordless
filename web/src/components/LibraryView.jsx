@@ -5,6 +5,7 @@ import TrackRow, { TrackListHeader } from './TrackRow.jsx';
 import { apiImportLink } from '../lib/api.js';
 import { resolveRegion } from '../lib/region.js';
 import { listOfflineEntries, offlineBytes } from '../lib/offline.js';
+import { t } from '../lib/i18n.js';
 
 /** One place for everything you own: likes, playlists, history. */
 export default function LibraryView() {
@@ -19,6 +20,7 @@ export default function LibraryView() {
   const forYou = usePlayer((s) => s.forYou);
   const generateForYouMix = usePlayer((s) => s.generateForYouMix);
   const regionSetting = usePlayer((s) => s.settings.region || 'auto');
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const region = resolveRegion(regionSetting);
   const offlineIds = usePlayer((s) => s.offlineIds);
   const removeOfflineTrack = usePlayer((s) => s.removeOfflineTrack);
@@ -151,7 +153,7 @@ export default function LibraryView() {
   return (
     <div>
       <h1 className="view-title">
-        Your library<span className="sub">{liked.length + playlists.length} SAVED ITEMS</span>
+        {t(lang, 'lib.title')}<span className="sub">{liked.length + playlists.length} SAVED ITEMS</span>
       </h1>
 
       {smartPreview && (
