@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Heart, Play, Shuffle, Music2, Pencil, Check, Trash2, X, ListMusic, Image, Copy,
-  ArrowDownAZ, Files, Merge, CheckSquare,
+  ArrowDownAZ, Files, Merge, CheckSquare, Link2,
 } from 'lucide-react';
 import usePlayer from '../store.js';
 import { formatTotalDuration, pluralize } from '../lib/format.js';
@@ -46,6 +46,7 @@ export default function CollectionView({ playlistId }) {
   const deletePlaylist = usePlayer((s) => s.deletePlaylist);
   const updatePlaylistCover = usePlayer((s) => s.updatePlaylistCover);
   const sharePlaylist = usePlayer((s) => s.sharePlaylist);
+  const sharePlaylistLink = usePlayer((s) => s.sharePlaylistLink);
   const folders = usePlayer((s) => s.folders);
   const setPlaylistFolder = usePlayer((s) => s.setPlaylistFolder);
   const setView = usePlayer((s) => s.setView);
@@ -154,10 +155,18 @@ export default function CollectionView({ playlistId }) {
                     <button
                       className="icon-btn"
                       onClick={() => sharePlaylist(playlist.id)}
-                      aria-label="Share playlist (copy to clipboard)"
-                      title="Share playlist"
+                      aria-label="Share playlist (copy JSON to clipboard)"
+                      title="Share playlist (JSON)"
                     >
                       <Copy size={19} />
+                    </button>
+                    <button
+                      className="icon-btn"
+                      onClick={() => sharePlaylistLink(playlist.id)}
+                      aria-label="Copy share link"
+                      title="Copy share link (7-day expiry)"
+                    >
+                      <Link2 size={19} />
                     </button>
                   </>
                 )}

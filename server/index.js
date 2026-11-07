@@ -8,6 +8,7 @@ import { isValidVideoId, streamAudio, ytDlpAvailable, pipeUpstream } from './str
 import { getManifest, searchAddon, resolveAddonStream, testAddon, normalizeBase } from './addon.js';
 import { getLyrics, translateLyrics } from './lyrics.js';
 import { importFromUrl } from './import.js';
+import { createShare, getShare } from './share.js';
 import { coverImage } from './cover.js';
 import { createRoom, joinRoom, getRoom, pushState, leaveRoom } from './together.js';
 
@@ -151,6 +152,22 @@ app.post('/api/translate', async (req, res) => {
 });
 
 app.get('/api/cover', coverImage);
+
+// ---------- Shared playlist links ----------
+app.post('/api/share', (req, res) => {
+  const { name, tracks } = req.body || {};
+  if (!Array.isArray(tracks) || !tracks.length) return res.status(400).json({ error: 'Missing tracks' });
+  if (tracks.length > 200) return res.status(400).json({ error: 'Playlist too large (max 200 tracks)' });
+  const created = createShare({ name, tracks });
+  if (!created) return res.status(400).json({ error: 'Could not create share link' });
+  res.json({ ...created, url: `${req.protocol}://${req.get('host')}/share/${created.id}` });
+});
+
+app.get('/api/share/:id', (req, res) => {
+  const data = getShare(req.params.id);
+  if (!data) return res.status(404).json({ error: 'Share link not found or expired (7 days).' });
+  res.json(data);
+});
 
 // ---------- Import from link (YouTube / Deezer / Spotify → playable playlist) ----------
 app.post('/api/import', async (req, res) => {

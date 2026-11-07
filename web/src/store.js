@@ -5,7 +5,7 @@
  * settings — all persisted to localStorage where appropriate.
  */
 import { create } from 'zustand';
-import { apiSponsorBlock, apiAddonSearch, apiTranslate, apiSearch, addonTrackUrl, apiTogetherCreate, apiTogetherJoin, apiTogetherState, apiTogetherPush, apiTogetherLeave } from './lib/api.js';
+import { apiSponsorBlock, apiAddonSearch, apiTranslate, apiSearch, addonTrackUrl, apiTogetherCreate, apiTogetherJoin, apiTogetherState, apiTogetherPush, apiTogetherLeave, apiShareCreate, apiShareGet } from './lib/api.js';
 import { upgradeTracks } from './lib/thumb.js';
 import { totalDuration, formatTotalDuration } from './lib/format.js';
 import { buildForYouMix } from './lib/ai-mix.js';
@@ -1461,6 +1461,32 @@ export const usePlayer = create((set, get) => ({
       get().toast('Playlist copied', `“${playlist.name}” — paste to import elsewhere`);
       return json;
     });
+  },
+  async sharePlaylistLink(playlistId) {
+    const playlist = get().playlists.find((p) => p.id === playlistId);
+    if (!playlist) return null;
+    try {
+      const res = await apiShareCreate(playlist.name, playlist.tracks);
+      const fullUrl = res.url || `${window.location.origin}/share/${res.id}`;
+      await navigator.clipboard.writeText(fullUrl);
+      get().toast('Share link copied', `“${playlist.name}” — expires in 7 days`);
+      return fullUrl;
+    } catch (e) {
+      get().toast('Share failed', e.message || 'Server unreachable.');
+      return null;
+    }
+  },
+  async openSharedPlaylist(id) {
+    try {
+      const data = await apiShareGet(id);
+      if (!data?.tracks?.length) throw new Error('Empty shared playlist');
+      const playlist = get().createPlaylist(data.name || 'Shared playlist', data.tracks);
+      get().toast('Shared playlist imported', `“${playlist.name}” (${data.tracks.length} tracks)`);
+      return playlist;
+    } catch (e) {
+      get().toast('Share link failed', e.message || 'Link expired or offline.');
+      return null;
+    }
   },
   importPlaylist(json) {
     try {

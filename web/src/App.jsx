@@ -210,6 +210,21 @@ export default function App() {
       });
   }, []);
 
+  // ---------- shared playlist link (/share/:id) ----------
+  useEffect(() => {
+    const m = window.location.pathname.match(/^\/share\/([A-Za-z0-9]+)$/);
+    if (!m) return undefined;
+    const id = m[1];
+    let cancelled = false;
+    usePlayer.getState().toast('Opening shared playlist…', 'Fetching tracks from the link.');
+    usePlayer.getState().openSharedPlaylist(id).then((playlist) => {
+      if (cancelled) return;
+      window.history.replaceState(null, '', '/');
+      if (playlist) usePlayer.getState().setView({ name: 'playlist', id: playlist.id });
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   // ---------- network-adaptive quality (init once) ----------
   useEffect(() => {
     try { usePlayer.getState().initNetworkAdaptive?.(); } catch { /* ignore */ }

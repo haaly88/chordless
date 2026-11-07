@@ -108,6 +108,19 @@ export async function apiImportLink(url, { gl, hl, signal } = {}) {
   }));
 }
 
+/** Shared playlist link (7-day expiry). */
+export async function apiShareCreate(name, tracks, { signal } = {}) {
+  return json(await fetch('/api/share', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, tracks }),
+    signal,
+  }));
+}
+export async function apiShareGet(id, { signal } = {}) {
+  return json(await fetch(`/api/share/${encodeURIComponent(id)}`, { signal }));
+}
+
 /** Listen Together */
 export async function apiTogetherCreate(name, { signal } = {}) {
   return json(await fetch('/api/together/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }), signal }));
