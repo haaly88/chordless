@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Clock, Headphones, Users } from 'lucide-react';
+import { Clock, Headphones, Users, Flame, CalendarDays, Music2, TrendingUp } from 'lucide-react';
 import usePlayer from '../store.js';
 import { pluralize } from '../lib/format.js';
 
@@ -37,11 +37,48 @@ export default function StatsView() {
     }
     const maxDay = Math.max(1, ...days.map((d) => d.count));
 
-    return { totalPlays, totalSeconds, topArtists, topTracks, days, maxDay };
+    // --- advanced: weekly totals, streak, peak hour, hourly chart, uniques ---
+    const now = Date.now();
+    const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const twoWeeksAgo = now - 14 * 24 * 60 * 60 * 1000;
+    const thisWeek = history.filter((t) => (t.playedAt || 0) >= weekAgo);
+    const prevWeek = history.filter((t) => (t.playedAt || 0) >= twoWeeksAgo && (t.playedAt || 0) < weekAgo);
+    const weekSeconds = thisWeek.reduce((acc, t) => acc + (t.duration || 180), 0);
+    const prevWeekPlays = prevWeek.length;
+
+    // streak: consecutive calendar days with >=1 play, counting back from today
+    // (today counts if there was a play today, else start from yesterday)
+    const dayKey = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
+    const activeDays = new Set(history.map((t) => dayKey(new Date(t.playedAt || now))));
+    let streak = 0;
+    const cursor = new Date();
+    if (!activeDays.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+    while (activeDays.has(dayKey(cursor))) {
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    // peak hour (0-23) + hourly distribution
+    const hours24 = new Array(24).fill(0);
+    for (const t of history) {
+      const h = new Date(t.playedAt || now).getHours();
+      hours24[h] += 1;
+    }
+    const peakHour = hours24.indexOf(Math.max(...hours24));
+    const maxHour = Math.max(1, ...hours24);
+
+    const uniqueArtists = byArtist.size;
+    const uniqueTracks = byTrack.size;
+
+    return { totalPlays, totalSeconds, topArtists, topTracks, days, maxDay, thisWeekPlays: thisWeek.length, weekSeconds, prevWeekPlays, streak, hours24, maxHour, peakHour, uniqueArtists, uniqueTracks };
   }, [history]);
 
   const hours = Math.floor(stats.totalSeconds / 3600);
   const minutes = Math.round((stats.totalSeconds % 3600) / 60);
+  const weekHours = Math.floor(stats.weekSeconds / 3600);
+  const weekMinutes = Math.round((stats.weekSeconds % 3600) / 60);
+  const weekDelta = stats.thisWeekPlays - stats.prevWeekPlays;
+  const peakLabel = `${stats.peakHour}:00`;
 
   if (stats.totalPlays === 0) {
     return (
@@ -73,8 +110,28 @@ export default function StatsView() {
         </div>
       </div>
 
+      {/* advanced cards: this week, streak, peak hour, uniques */}
+      <div className="stat-cards" style={{ marginTop: 10 }}>
+        <div className="stat-card">
+          <div className="stat-icon red"><TrendingUp size={20} /></div>
+          <div><b>{stats.thisWeekPlays} plays · {weekHours > 0 ? `${weekHours}h ${weekMinutes}m` : `${weekMinutes}m`}</b><span>This week{weekDelta !== 0 ? ` (${weekDelta > 0 ? '+' : ''}${weekDelta} vs last)` : ''}</span></div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon amber"><CalendarDays size={20} /></div>
+          <div><b>{stats.streak} {stats.streak === 1 ? 'day' : 'days'}</b><span>Listening streak</span></div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon green"><Flame size={20} /></div>
+          <div><b>{peakLabel}</b><span>Peak listening hour</span></div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon red"><Music2 size={20} /></div>
+          <div><b>{stats.uniqueArtists} artists · {stats.uniqueTracks} tracks</b><span>Unique in history</span></div>
+        </div>
+      </div>
+
       {/* 7-day bar chart */}
-      <div className="chart-card">
+      <div className="chart-card" style={{ marginTop: 10 }}>
         <div className="section-label" style={{ padding: 0, marginBottom: 14 }}>LAST 7 DAYS</div>
         <div className="chart-bars">
           {stats.days.map((d, i) => (
@@ -83,6 +140,22 @@ export default function StatsView() {
                 <div className="chart-bar" style={{ height: `${(d.count / stats.maxDay) * 100}%` }} />
               </div>
               <span>{d.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 24-hour chart */}
+      <div className="chart-card" style={{ marginTop: 10 }}>
+        <div className="section-label" style={{ padding: 0, marginBottom: 14 }}>BY HOUR · PEAK {peakLabel}</div>
+        <div className="chart-bars" style={{ gap: 4 }}>
+          {stats.hours24.map((count, h) => (
+            <div key={h} className="chart-col" title={`${h}:00 — ${count} plays`}>
+              <div className="chart-bar-wrap">
+                <div className="chart-bar" style={{ height: `${(count / stats.maxHour) * 100}%` }} />
+              </div>
+              {h % 6 === 0 && <span>{h}</span>}
+              {h % 6 !== 0 && <span> </span>}
             </div>
           ))}
         </div>
