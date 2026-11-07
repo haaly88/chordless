@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, GripVertical, ListMusic, Trash2, BookmarkPlus, Play, Search } from 'lucide-react';
 import usePlayer from '../store.js';
 import { formatTime, formatTotalDuration } from '../lib/format.js';
+import { t } from '../lib/i18n.js';
 
 /**
  * Up-next queue — drag to reorder, remove individual tracks, clear the
@@ -19,6 +20,7 @@ export default function QueuePanel() {
   const clearQueue = usePlayer((s) => s.clearQueue);
   const saveQueueAsPlaylist = usePlayer((s) => s.saveQueueAsPlaylist);
   const queueDurationFormatted = usePlayer((s) => s.queueDurationFormatted());
+  const lang = usePlayer((s) => s.settings.lang || 'en');
 
   const [dragFrom, setDragFrom] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
@@ -35,7 +37,7 @@ export default function QueuePanel() {
     <section className="queue-panel" aria-label="Play queue">
       <div className="queue-head">
         <div>
-          <h3>Up Next</h3>
+          <h3>{t(lang, 'queue.title')}</h3>
           <small>{filtering ? `${visible.length} of ${queue.length} tracks` : `${queue.length} ${queue.length === 1 ? 'track' : 'tracks'}`}{index >= 0 ? ` · ${upNextCount} to play` : ''} · {queue.length > 0 ? queueDurationFormatted : ''}</small>
         </div>
         <div className="queue-actions">
@@ -71,7 +73,7 @@ export default function QueuePanel() {
       {queue.length === 0 ? (
         <div className="empty-state" style={{ padding: '60px 16px' }}>
           <ListMusic />
-          <h3>Queue is empty</h3>
+          <h3>{t(lang, 'queue.empty')}</h3>
           <p>Play a song and it will show up here. Right-click any track to add it to the queue.</p>
         </div>
       ) : visible.length === 0 ? (

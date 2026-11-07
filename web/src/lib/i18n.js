@@ -1,6 +1,6 @@
 /**
- * Chordless — UI language (ID/EN). Stage 1 covers the most visible chrome:
- * sidebar, Home headings, Settings titles, PlayerBar, Library headings.
+ * Chordless — UI language (ID/EN). Stages 1-3: core chrome, player/search/
+ * stats/library/settings, queues/karaoke/now-playing, and toast titles.
  * `t(lang, key)` falls back to English, then to the key itself.
  */
 
@@ -38,6 +38,29 @@ const DICT = {
     'player.pause': 'Pause',
     'player.next': 'Next track',
     'player.prev': 'Previous track',
+    'queue.title': 'Queue',
+    'queue.empty': 'Your queue is empty',
+    'karaoke.title': 'Karaoke',
+    'np.share': 'Share card',
+    'search.recent': 'RECENT SEARCHES',
+    'search.trending': 'TRENDING SEARCHES',
+    'stats.totalPlays': 'Total plays',
+    'stats.time': 'Time listening',
+    'stats.topArtist': 'Top artist',
+    'toast.playlistCreated': 'Playlist created',
+    'toast.playlistDeleted': 'Playlist deleted',
+    'toast.addedToPlaylist': 'Added to playlist',
+    'toast.removedFromPlaylist': 'Removed from playlist',
+    'toast.downloaded': 'Downloaded for offline',
+    'toast.downloadFailed': 'Download failed',
+    'toast.searchSaved': 'Search saved',
+    'toast.roomCreated': 'Room created',
+    'toast.joinedRoom': 'Joined room',
+    'toast.leftRoom': 'Left room',
+    'toast.eqApplied': 'EQ applied',
+    'toast.libraryExported': 'Library exported',
+    'toast.libraryImported': 'Library imported',
+    'toast.importFailed': 'Import failed',
   },
   id: {
     'nav.home': 'Beranda',
@@ -72,11 +95,57 @@ const DICT = {
     'player.pause': 'Jeda',
     'player.next': 'Lagu berikutnya',
     'player.prev': 'Lagu sebelumnya',
+    'queue.title': 'Antrean',
+    'queue.empty': 'Antreanmu kosong',
+    'karaoke.title': 'Karaoke',
+    'np.share': 'Bagikan kartu',
+    'search.recent': 'PENCARIAN TERAKHIR',
+    'search.trending': 'BERIKUTNYA',
+    'stats.totalPlays': 'Total putaran',
+    'stats.time': 'Waktu mendengar',
+    'stats.topArtist': 'Artis teratas',
+    'toast.playlistCreated': 'Playlist dibuat',
+    'toast.playlistDeleted': 'Playlist dihapus',
+    'toast.addedToPlaylist': 'Ditambahkan ke playlist',
+    'toast.removedFromPlaylist': 'Dihapus dari playlist',
+    'toast.downloaded': 'Diunduh untuk offline',
+    'toast.downloadFailed': 'Unduhan gagal',
+    'toast.searchSaved': 'Pencarian disimpan',
+    'toast.roomCreated': 'Room dibuat',
+    'toast.joinedRoom': 'Bergabung ke room',
+    'toast.leftRoom': 'Keluar dari room',
+    'toast.eqApplied': 'EQ diterapkan',
+    'toast.libraryExported': 'Lib diekspor',
+    'toast.libraryImported': 'Lib diimpor',
+    'toast.importFailed': 'Impor gagal',
   },
 };
 
 export function t(lang, key) {
   return DICT[lang]?.[key] || DICT.en[key] || key;
+}
+
+/** Map a known English toast title to a localized one (stage 3 bridge). */
+const TOAST_KEYS = {
+  'Playlist created': 'toast.playlistCreated',
+  'Playlist deleted': 'toast.playlistDeleted',
+  'Added to playlist': 'toast.addedToPlaylist',
+  'Removed from playlist': 'toast.removedFromPlaylist',
+  'Downloaded for offline': 'toast.downloaded',
+  'Download failed': 'toast.downloadFailed',
+  'Search saved': 'toast.searchSaved',
+  'Room created': 'toast.roomCreated',
+  'Joined room': 'toast.joinedRoom',
+  'Left room': 'toast.leftRoom',
+  'EQ applied': 'toast.eqApplied',
+  'Library exported': 'toast.libraryExported',
+  'Library imported': 'toast.libraryImported',
+  'Import failed': 'toast.importFailed',
+};
+
+export function translateToastTitle(lang, title) {
+  const key = TOAST_KEYS[title];
+  return key ? t(lang, key) : title;
 }
 
 export const SUPPORTED_LANGS = [
