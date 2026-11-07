@@ -1542,6 +1542,68 @@ export const usePlayer = create((set, get) => ({
     write('cl:playlists', playlists);
   },
 
+  // ---------- playlist tools (sort / dedupe / merge / bulk remove) ----------
+  sortPlaylist(playlistId, mode) {
+    const target = get().playlists.find((p) => p.id === playlistId);
+    if (!target) return;
+    const tracks = [...target.tracks];
+    if (mode === 'az') tracks.sort((a, b) => a.title.localeCompare(b.title));
+    else if (mode === 'za') tracks.sort((a, b) => b.title.localeCompare(a.title));
+    else if (mode === 'artist') tracks.sort((a, b) => (a.artist || '').localeCompare(b.artist || '') || a.title.localeCompare(b.title));
+    else if (mode === 'duration-desc') tracks.sort((a, b) => (b.duration || 0) - (a.duration || 0));
+    else if (mode === 'duration-asc') tracks.sort((a, b) => (a.duration || 0) - (b.duration || 0));
+    else return;
+    const playlists = get().playlists.map((p) => (p.id === playlistId ? { ...p, tracks } : p));
+    set({ playlists });
+    write('cl:playlists', playlists);
+    get().toast('Playlist sorted', target.name);
+  },
+  dedupePlaylist(playlistId) {
+    const target = get().playlists.find((p) => p.id === playlistId);
+    if (!target) return 0;
+    const seen = new Set();
+    const tracks = target.tracks.filter((t) => {
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
+    const removed = target.tracks.length - tracks.length;
+    if (!removed) {
+      get().toast('No duplicates found', target.name);
+      return 0;
+    }
+    const playlists = get().playlists.map((p) => (p.id === playlistId ? { ...p, tracks } : p));
+    set({ playlists });
+    write('cl:playlists', playlists);
+    get().toast('Duplicates removed', `${removed} removed from “${target.name}”`);
+    return removed;
+  },
+  mergePlaylist(targetId, sourceId) {
+    const target = get().playlists.find((p) => p.id === targetId);
+    const source = get().playlists.find((p) => p.id === sourceId);
+    if (!target || !source || targetId === sourceId) return 0;
+    const existing = new Set(target.tracks.map((t) => t.id));
+    const fresh = source.tracks.filter((t) => !existing.has(t.id));
+    const playlists = get().playlists.map((p) =>
+      p.id === targetId ? { ...p, tracks: [...p.tracks, ...fresh.map((t) => ({ ...t }))] } : p,
+    );
+    set({ playlists });
+    write('cl:playlists', playlists);
+    get().toast('Playlists merged', `${fresh.length} new tracks added to “${target.name}”`);
+    return fresh.length;
+  },
+  removeTracksFromPlaylist(playlistId, trackIds) {
+    const drop = new Set(trackIds || []);
+    if (!drop.size) return;
+    const target = get().playlists.find((p) => p.id === playlistId);
+    const playlists = get().playlists.map((p) =>
+      p.id === playlistId ? { ...p, tracks: p.tracks.filter((t) => !drop.has(t.id)) } : p,
+    );
+    set({ playlists });
+    write('cl:playlists', playlists);
+    get().toast('Tracks removed', `${drop.size} removed from “${target?.name || 'playlist'}”`);
+  },
+
   // ---------- playlist folders ----------
   createFolder(name) {
     const clean = String(name || '').trim().slice(0, 60);

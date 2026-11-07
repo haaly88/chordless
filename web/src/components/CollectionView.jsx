@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Heart, Play, Shuffle, Music2, Pencil, Check, Trash2, X, ListMusic, Image, Copy,
+  ArrowDownAZ, Files, Merge, CheckSquare,
 } from 'lucide-react';
 import usePlayer from '../store.js';
 import { formatTotalDuration, pluralize } from '../lib/format.js';
@@ -48,6 +49,10 @@ export default function CollectionView({ playlistId }) {
   const folders = usePlayer((s) => s.folders);
   const setPlaylistFolder = usePlayer((s) => s.setPlaylistFolder);
   const setView = usePlayer((s) => s.setView);
+  const sortPlaylist = usePlayer((s) => s.sortPlaylist);
+  const dedupePlaylist = usePlayer((s) => s.dedupePlaylist);
+  const mergePlaylist = usePlayer((s) => s.mergePlaylist);
+  const removeTracksFromPlaylist = usePlayer((s) => s.removeTracksFromPlaylist);
 
   const tracks = isLikedView ? likes : playlist?.tracks || [];
 
@@ -56,6 +61,10 @@ export default function CollectionView({ playlistId }) {
   const [deleteArm, setDeleteArm] = useState(false);
   const [coverEditing, setCoverEditing] = useState(false);
   const [coverUrl, setCoverUrl] = useState('');
+  const [sortMode, setSortMode] = useState('az');
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selected, setSelected] = useState(() => new Set());
   const nameRef = useRef(null);
   const coverRef = useRef(null);
 
@@ -63,6 +72,9 @@ export default function CollectionView({ playlistId }) {
     setEditing(false);
     setDeleteArm(false);
     setCoverEditing(false);
+    setBulkMode(false);
+    setSelected(new Set());
+    setMergeOpen(false);
     setName(playlist?.name || '');
     setCoverUrl(playlist?.coverUrl || '');
   }, [playlistId]);
@@ -207,6 +219,38 @@ export default function CollectionView({ playlistId }) {
               </button>
             )}
           </div>
+          {!isLikedView && tracks.length > 1 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 12 }} aria-label="Playlist tools">
+              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: 'var(--text-3)' }}>TOOLS</span>
+              <select
+                value={sortMode}
+                onChange={(e) => { setSortMode(e.target.value); sortPlaylist(playlistId, e.target.value); }}
+                aria-label="Sort playlist"
+                className="pill"
+                style={{ cursor: 'pointer' }}
+              >
+                <option value="az">Sort: A → Z</option>
+                <option value="za">Sort: Z → A</option>
+                <option value="artist">Sort: Artist</option>
+                <option value="duration-desc">Longest first</option>
+                <option value="duration-asc">Shortest first</option>
+              </select>
+              <button className="pill" onClick={() => dedupePlaylist(playlistId)} title="Remove duplicate tracks">
+                <Files size={14} /> Dedupe
+              </button>
+              <button className="pill" onClick={() => setMergeOpen(true)} title="Merge another playlist into this one">
+                <Merge size={14} /> Merge
+              </button>
+              <button
+                className={`pill${bulkMode ? ' active' : ''}`}
+                onClick={() => { setBulkMode((v) => !v); setSelected(new Set()); }}
+                aria-pressed={bulkMode}
+                title="Select tracks to remove in bulk"
+              >
+                <CheckSquare size={14} /> {bulkMode ? 'Done' : 'Select'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -225,19 +269,75 @@ export default function CollectionView({ playlistId }) {
         </div>
       ) : (
         <>
+          {bulkMode && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', padding: '10px 12px', marginBottom: 8, border: '1px solid var(--stroke)', borderRadius: 14, background: 'var(--glass)' }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{selected.size} selected</span>
+              <button className="pill" onClick={() => setSelected(new Set(tracks.map((t) => t.id)))}>Select all</button>
+              <button className="pill" onClick={() => setSelected(new Set())}>Clear</button>
+              <button
+                className="pill"
+                style={{ color: '#ff7a7a', borderColor: 'rgba(255,90,90,.4)' }}
+                onClick={() => { removeTracksFromPlaylist(playlistId, [...selected]); setSelected(new Set()); }}
+                disabled={!selected.size}
+              >
+                <Trash2 size={14} /> Remove selected
+              </button>
+            </div>
+          )}
           <TrackListHeader />
           <div role="rowgroup">
-            {tracks.map((track, i) => (
-              <TrackRow
-                key={`${track.id}-${i}`}
-                track={track}
-                index={i}
-                contextList={tracks}
-                playlistId={isLikedView ? undefined : playlistId}
-              />
-            ))}
+            {tracks.map((track, i) => {
+              const checked = selected.has(track.id);
+              return (
+                <div key={`${track.id}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: bulkMode ? 10 : 0 }}>
+                  {bulkMode && (
+                    <button
+                      className={`icon-btn${checked ? ' active' : ''}`}
+                      style={{ color: checked ? 'var(--accent)' : 'var(--text-3)', flexShrink: 0 }}
+                      onClick={() => setSelected((prev) => { const next = new Set(prev); if (next.has(track.id)) next.delete(track.id); else next.add(track.id); return next; })}
+                      aria-pressed={checked}
+                      aria-label={checked ? 'Deselect' : 'Select'} title={checked ? 'Deselect' : 'Select'}
+                    >
+                      {checked ? <Check size={18} strokeWidth={3} /> : <span style={{ width: 18, height: 18, border: '1.5px solid currentColor', borderRadius: 5, display: 'block' }} />}
+                    </button>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <TrackRow
+                      track={track}
+                      index={i}
+                      contextList={tracks}
+                      playlistId={isLikedView ? undefined : playlistId}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </>
+      )}
+
+      {mergeOpen && (
+        <div className="modal-backdrop" onClick={() => setMergeOpen(false)} role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Merge playlist" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <h2 style={{ margin: 0 }}>Merge into “{playlist?.name}”</h2>
+              <button className="icon-btn" onClick={() => setMergeOpen(false)} aria-label="Close"><X size={20} /></button>
+            </div>
+            <p>Pick a playlist to merge in. New tracks are appended (duplicates skipped).</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 300, overflowY: 'auto' }}>
+              {playlists.filter((p) => p.id !== playlistId).map((p) => (
+                <button key={p.id} className="ctx-item" onClick={() => { mergePlaylist(playlistId, p.id); setMergeOpen(false); }}>
+                  <ListMusic size={16} />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                  <span style={{ marginLeft: 'auto', color: 'var(--text-3)', fontSize: 11.5 }}>{p.tracks.length} tracks</span>
+                </button>
+              ))}
+              {playlists.filter((p) => p.id !== playlistId).length === 0 && (
+                <div className="ctx-empty">No other playlists to merge</div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
