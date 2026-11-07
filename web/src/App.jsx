@@ -198,6 +198,7 @@ export default function App() {
   // ---------- network-adaptive quality (init once) ----------
   useEffect(() => {
     try { usePlayer.getState().initNetworkAdaptive?.(); } catch { /* ignore */ }
+    try { usePlayer.getState().refreshOffline?.(); } catch { /* ignore */ }
     return undefined;
   }, []);
 

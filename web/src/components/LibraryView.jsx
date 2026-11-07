@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
-import { Heart, Clock, Play, Plus, Music2, Shuffle, Upload, X, Sparkles, TrendingUp, Star, History, Link2, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Heart, Clock, Play, Plus, Music2, Shuffle, Upload, X, Sparkles, TrendingUp, Star, History, Link2, Loader2, Download, Trash2 } from 'lucide-react';
 import usePlayer from '../store.js';
 import TrackRow, { TrackListHeader } from './TrackRow.jsx';
 import { apiImportLink } from '../lib/api.js';
 import { resolveRegion } from '../lib/region.js';
+import { listOfflineEntries, offlineBytes } from '../lib/offline.js';
 
 /** One place for everything you own: likes, playlists, history. */
 export default function LibraryView() {
@@ -19,6 +20,19 @@ export default function LibraryView() {
   const generateForYouMix = usePlayer((s) => s.generateForYouMix);
   const regionSetting = usePlayer((s) => s.settings.region || 'auto');
   const region = resolveRegion(regionSetting);
+  const offlineIds = usePlayer((s) => s.offlineIds);
+  const removeOfflineTrack = usePlayer((s) => s.removeOfflineTrack);
+  const clearOfflineDownloads = usePlayer((s) => s.clearOfflineDownloads);
+  const [offlineEntries, setOfflineEntries] = useState([]);
+  const [offlineSize, setOfflineSize] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([listOfflineEntries(), offlineBytes()]).then(([entries, bytes]) => {
+      if (!cancelled) { setOfflineEntries(entries); setOfflineSize(bytes); }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [offlineIds]);
 
   const recent = history.slice(0, 10);
 
@@ -205,6 +219,36 @@ export default function LibraryView() {
           </div>
         </div>
       ))}
+
+      {/* downloaded (offline) */}
+      <div className="section-label" style={{ paddingLeft: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Download size={13} style={{ color: 'var(--accent)' }} /> DOWNLOADED
+        {offlineEntries.length > 0 && (
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontWeight: 600 }}>{offlineEntries.length} · {(offlineSize / 1048576).toFixed(1)} MB</span>
+            <button className="pill" onClick={clearOfflineDownloads} title="Remove all offline downloads"><Trash2 size={13} /> Clear</button>
+          </span>
+        )}
+      </div>
+      {offlineEntries.length === 0 ? (
+        <div style={{ fontSize: 12.5, color: 'var(--text-3)', padding: '4px 4px 14px' }}>
+          Right-click any track → Download for offline, or use the download button in Now Playing. Downloaded songs play without internet.
+        </div>
+      ) : (
+        <div>
+          <TrackListHeader />
+          <div role="rowgroup">
+            {offlineEntries.map((e, i) => (
+              <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <TrackRow track={e.track} index={i} contextList={offlineEntries.map((x) => x.track)} />
+                </div>
+                <button className="icon-btn" onClick={() => removeOfflineTrack(e.id)} aria-label="Remove download" title="Remove download"><Trash2 size={16} /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* recently played */}
       <div className="section-label" style={{ paddingLeft: 2 }}>RECENTLY PLAYED</div>

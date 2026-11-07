@@ -14,6 +14,7 @@ import { streamSrc, qualityFromConnection, connectionSnapshot, lowerQuality } fr
 import { SB_LABELS, DEFAULT_SB_CATEGORIES, sbCategories } from './lib/sb.js';
 import { uid, shuffled, sameTrack, smartShuffle } from './lib/shuffle.js';
 import { embedBridge, isEmbedEngine } from './lib/embed.js';
+import { hasOffline, listOfflineIds, getOfflineUrl, saveOffline, removeOffline, clearOffline } from './lib/offline.js';
 
 // Re-exported so existing imports from './store.js' keep working.
 export { read, write, readString, writeString, readMigrated };
@@ -355,6 +356,10 @@ export const usePlayer = create((set, get) => ({
   preloadedTrackId: null,
   gaplessStatus: 'off',
 
+  // ---- offline downloads (IndexedDB blobs) ----
+  offlineIds: [],
+  downloadingIds: [],
+
   // ---- Listen Together ----
   together: { code: null, memberId: null, name: '', isHost: false, members: [], remoteVersion: 0, lastSyncAt: 0 },
   togetherApplyingRemote: false,
@@ -447,7 +452,7 @@ export const usePlayer = create((set, get) => ({
     return { url, useAddon, orphan, addonManifest };
   },
 
-  _loadAndPlay(index, list, { fromGapless = false } = {}) {
+  async _loadAndPlay(index, list, { fromGapless = false } = {}) {
     // Guests are driven by the host — ignore local playback requests.
     if (get().together?.code && !get().together?.isHost && !get().togetherApplyingRemote) {
       get().toast('Listen Together', 'You are a guest — playback is controlled by the host.');
@@ -468,7 +473,12 @@ export const usePlayer = create((set, get) => ({
     el.removeAttribute('src');
     el.currentTime = 0;
 
-    const { url, useAddon, orphan } = get()._resolveTrackUrl(track);
+    // Offline first: if this track is downloaded, play its blob.
+    let offlineUrl = null;
+    try { offlineUrl = await getOfflineUrl(track.id); } catch { offlineUrl = null; }
+    if (token !== transitionToken) return; // superseded by a newer load
+    const { url: networkUrl, useAddon, orphan } = get()._resolveTrackUrl(track);
+    const url = offlineUrl || networkUrl;
 
     // Orphan addon track: saved in queue/history while an addon was on,
     // but that addon is now disabled/removed. Its ID (Qobuz/Deezer) is not
@@ -504,7 +514,7 @@ export const usePlayer = create((set, get) => ({
     get()._recordHistory(track);
     void get()._fetchSegments(track);
 
-    if (!useAddon && isEmbedEngine(get())) {
+    if (!offlineUrl && !useAddon && isEmbedEngine(get())) {
       // YouTube IFrame engine — plays straight through youtube.com, no proxy needed
       embedBridge.pendingId = track.id;
       embedBridge.loadedId = track.id;
@@ -1602,6 +1612,45 @@ export const usePlayer = create((set, get) => ({
     set({ playlists });
     write('cl:playlists', playlists);
     get().toast('Tracks removed', `${drop.size} removed from “${target?.name || 'playlist'}”`);
+  },
+
+  // ---------- offline downloads ----------
+  async refreshOffline() {
+    try {
+      const ids = await listOfflineIds();
+      set({ offlineIds: ids });
+    } catch { /* IndexedDB unavailable */ }
+  },
+  async downloadTrack(track) {
+    if (!track?.id) return false;
+    if (get().offlineIds.includes(track.id)) return true;
+    if (get().downloadingIds.includes(track.id)) return false;
+    set({ downloadingIds: [...get().downloadingIds, track.id] });
+    try {
+      const { url, orphan } = get()._resolveTrackUrl(track);
+      if (orphan || !url) throw new Error('No playable source for this track.');
+      await saveOffline(track, url);
+      set({
+        offlineIds: [...get().offlineIds, track.id],
+        downloadingIds: get().downloadingIds.filter((x) => x !== track.id),
+      });
+      get().toast('Downloaded for offline', track.title);
+      return true;
+    } catch (e) {
+      set({ downloadingIds: get().downloadingIds.filter((x) => x !== track.id) });
+      get().toast('Download failed', e.message || 'Could not save this track.');
+      return false;
+    }
+  },
+  async removeOfflineTrack(id) {
+    await removeOffline(id);
+    set({ offlineIds: get().offlineIds.filter((x) => x !== id) });
+    get().toast('Removed from downloads');
+  },
+  async clearOfflineDownloads() {
+    await clearOffline();
+    set({ offlineIds: [] });
+    get().toast('Downloads cleared', 'All offline audio removed.');
   },
 
   // ---------- playlist folders ----------

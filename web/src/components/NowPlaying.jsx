@@ -29,6 +29,10 @@ export default function NowPlaying() {
   const cycleRepeat = usePlayer((s) => s.cycleRepeat);
   const liked = usePlayer((s) => (track ? s.liked.some((t) => t.id === track.id) : false));
   const toggleLike = usePlayer((s) => s.toggleLike);
+  const downloadTrack = usePlayer((s) => s.downloadTrack);
+  const removeOfflineTrack = usePlayer((s) => s.removeOfflineTrack);
+  const isDownloaded = usePlayer((s) => (track ? s.offlineIds.includes(track.id) : false));
+  const isDownloading = usePlayer((s) => (track ? s.downloadingIds.includes(track.id) : false));
   const toggleNowPlaying = usePlayer((s) => s.toggleNowPlaying);
   const lyricsOpen = usePlayer((s) => s.lyricsOpen);
   const toggleLyrics = usePlayer((s) => s.toggleLyrics);
@@ -213,6 +217,18 @@ export default function NowPlaying() {
               title={liked ? 'Unlike' : 'Like'}
             >
               <Heart size={22} fill={liked ? 'var(--accent)' : 'none'} />
+            </button>
+
+            <button
+              className={`icon-btn${isDownloaded ? ' active' : ''}`}
+              style={{ color: isDownloaded ? 'var(--accent)' : 'rgba(255,255,255,.7)' }}
+              onClick={() => (isDownloaded ? removeOfflineTrack(track.id) : downloadTrack(track))}
+              disabled={isDownloading}
+              aria-pressed={isDownloaded}
+              aria-label={isDownloaded ? 'Remove offline download' : 'Download for offline'}
+              title={isDownloaded ? 'Downloaded — click to remove' : 'Download for offline'}
+            >
+              {isDownloading ? <Loader2 size={20} style={{ animation: 'spin .8s linear infinite' }} /> : <Download size={20} />}
             </button>
 
             <div style={{ position: 'relative' }} ref={speedRef}>

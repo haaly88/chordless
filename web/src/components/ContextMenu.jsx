@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
-  Play, ListPlus, ListStart, Heart, ListMusic, Trash2, Search, Check, Plus, ChevronRight,
+  Play, ListPlus, ListStart, Heart, ListMusic, Trash2, Search, Check, Plus, ChevronRight, Download, Loader2,
 } from 'lucide-react';
 import usePlayer from '../store.js';
 
@@ -23,6 +23,10 @@ export default function ContextMenu() {
   const createPlaylist = usePlayer((s) => s.createPlaylist);
   const searchFor = usePlayer((s) => s.searchFor);
   const setView = usePlayer((s) => s.setView);
+  const downloadTrack = usePlayer((s) => s.downloadTrack);
+  const removeOfflineTrack = usePlayer((s) => s.removeOfflineTrack);
+  const offlineIds = usePlayer((s) => s.offlineIds);
+  const downloadingIds = usePlayer((s) => s.downloadingIds);
 
   const ref = useRef(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -86,10 +90,34 @@ export default function ContextMenu() {
 
       <div className="ctx-sep" />
 
-      <button className="ctx-item" role="menuitem" aria-pressed={isLiked} onClick={act(() => toggleLike(track))}>
+      <button className="ctx-item" role="menuitem" onClick={act(() => toggleLike(track))}>
         <Heart size={17} fill={isLiked ? 'var(--accent)' : 'none'} color={isLiked ? 'var(--accent)' : undefined} />
         {isLiked ? 'Remove from Liked Songs' : 'Like'}
       </button>
+
+      {(() => {
+        const downloading = downloadingIds.includes(track.id);
+        const downloaded = offlineIds.includes(track.id);
+        if (downloading) {
+          return (
+            <button className="ctx-item" disabled aria-disabled="true">
+              <Loader2 size={17} style={{ animation: 'spin .8s linear infinite' }} /> Downloading…
+            </button>
+          );
+        }
+        if (downloaded) {
+          return (
+            <button className="ctx-item" role="menuitem" onClick={act(() => removeOfflineTrack(track.id))}>
+              <Check size={17} color="var(--accent)" /> Downloaded — remove
+            </button>
+          );
+        }
+        return (
+          <button className="ctx-item" role="menuitem" onClick={act(() => downloadTrack(track))}>
+            <Download size={17} /> Download for offline
+          </button>
+        );
+      })()}
 
       {/* add-to-playlist submenu */}
       <div
