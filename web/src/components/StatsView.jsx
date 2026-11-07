@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
-import { Clock, Headphones, Users, Flame, CalendarDays, Music2, TrendingUp } from 'lucide-react';
+import { Clock, Headphones, Users, Flame, CalendarDays, Music2, TrendingUp, Gauge } from 'lucide-react';
 import usePlayer from '../store.js';
 import { pluralize } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
+import { readPerf } from '../lib/perf.js';
 
 /** Your listening stats, computed from local play history. */
 export default function StatsView() {
@@ -81,6 +82,14 @@ export default function StatsView() {
   const weekMinutes = Math.round((stats.weekSeconds % 3600) / 60);
   const weekDelta = stats.thisWeekPlays - stats.prevWeekPlays;
   const peakLabel = `${stats.peakHour}:00`;
+  const perf = readPerf();
+  const heapMB = (() => {
+    try {
+      const used = performance.memory?.usedJSHeapSize;
+      return used ? (used / 1048576).toFixed(1) : null;
+    } catch { return null; }
+  })();
+  const conn = navigator.connection ? `${navigator.connection.effectiveType || '?'}${navigator.connection.downlink ? ` · ${navigator.connection.downlink}Mbps` : ''}` : 'n/a';
 
   const exportStory = async () => {
     const canvas = document.createElement('canvas');
@@ -197,6 +206,21 @@ export default function StatsView() {
               {h % 6 !== 0 && <span> </span>}
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* diagnostics */}
+      <div className="chart-card" style={{ marginTop: 10 }}>
+        <div className="section-label" style={{ padding: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Gauge size={13} style={{ color: 'var(--accent)' }} /> DIAGNOSTICS
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8, fontSize: 12.5 }}>
+          <div><b>{perf?.lcp != null ? `${perf.lcp}ms` : '—'}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>LCP</small></div>
+          <div><b>{perf?.cls != null ? perf.cls : '—'}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>CLS</small></div>
+          <div><b>{perf?.inp != null ? `${perf.inp}ms` : '—'}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>INP</small></div>
+          <div><b>{heapMB ? `${heapMB} MB` : '—'}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>JS heap</small></div>
+          <div><b>{conn}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>Connection</small></div>
+          <div><b>{perf ? `${perf.samples} samples` : 'Keep using the app'}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>Telemetry</small></div>
         </div>
       </div>
 
