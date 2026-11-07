@@ -15,6 +15,10 @@ const MOOD_CHIPS = [
   ['Party', 'party songs'], ['Workout', 'workout music'], ['Romance', 'romantic songs'],
   ['Focus', 'focus instrumental'],
 ];
+const MOOD_ID = {
+  Relax: 'Santai', Commute: 'Komute', Sleep: 'Tidur', Sad: 'Sedih', Energize: 'Semangat',
+  'Feel good': 'Senang', Party: 'Pesta', Workout: 'Olahraga', Romance: 'Romansa', Focus: 'Fokus',
+};
 const GENRE_CHIPS = [
   ['Pop', 'pop hits'], ['Hip-hop', 'hip hop songs'], ['Rock', 'rock songs'], ['K-Pop', 'kpop hits'],
   ['EDM', 'edm songs'], ['R&B', 'r&b songs'], ['Jazz', 'jazz'], ['Lo-fi', 'lofi hip hop'],
@@ -89,7 +93,7 @@ function ForYouHero({ forYou, loading, onPlay, onShuffle, onRefresh }) {
         </div>
         <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
           <div className="hero-kicker">{t(lang, 'home.foryou.kicker')}</div>
-          <div className="foryou-title" style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.02, margin: '2px 0 2px' }}>{t(lang, 'home.foryou.title')} <span className="foryou-sub" style={{ fontSize: 13, fontWeight: 600 }}>· {forYou.tracks.length} tracks{minsLabel}</span></div>
+          <div className="foryou-title" style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.02, margin: '2px 0 2px' }}>{t(lang, 'home.foryou.title')} <span className="foryou-sub" style={{ fontSize: 13, fontWeight: 600 }}>· {forYou.tracks.length} {t(lang, 'home.tracksSuffix')}{minsLabel}</span></div>
           <p className="foryou-reason" style={{ fontSize: 13, margin: '0 0 10px', lineHeight: 1.5 }}>{forYou.reason || 'Based on your listening'}</p>
           {topArtists.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
@@ -100,9 +104,9 @@ function ForYouHero({ forYou, loading, onPlay, onShuffle, onRefresh }) {
           )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
             <button className="btn primary" onClick={onPlay} disabled={!forYou.tracks.length}>
-              <Play size={16} fill="#fff" strokeWidth={0} /> Play
+              <Play size={16} fill="#fff" strokeWidth={0} /> {t(lang, 'btn.play')}
             </button>
-            <button className="btn" onClick={onShuffle} disabled={!forYou.tracks.length}><Shuffle size={15} /> Shuffle</button>
+            <button className="btn" onClick={onShuffle} disabled={!forYou.tracks.length}><Shuffle size={15} /> {t(lang, 'btn.shuffle')}</button>
             <button className="btn" onClick={onRefresh}><RefreshCw size={14} /> Regenerate</button>
           </div>
         </div>
@@ -196,20 +200,21 @@ function ShortcutsRow({ onAddShortcut, pins, onTogglePin }) {
   const playTracks = usePlayer((s) => s.playTracks);
   const setView = usePlayer((s) => s.setView);
   const playlists = usePlayer((s) => s.playlists);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
 
   const pinned = playlists.filter((p) => pins.includes(p.id));
 
   const quick = [
-    { key: 'mix', label: 'Your mix', sub: 'Shuffled from likes', Icon: Shuffle, onClick: () => { if (!liked.length && !history.length) return; const pool = [...liked, ...history]; const seen = new Set(); const tracks = []; for (const t of pool) { if (!seen.has(t.id)) { seen.add(t.id); tracks.push(t); } } playTracks(tracks, 0, { shuffle: true }); } },
-    { key: 'recent', label: 'Recently played', sub: `${Math.min(history.length, 99)} in history`, Icon: History, onClick: () => playTracks(history.slice(0, 20), 0) },
-    { key: 'liked', label: 'Liked Songs', sub: `${liked.length} tracks`, Icon: Heart, onClick: () => setView({ name: 'liked' }) },
+    { key: 'mix', label: t(lang, 'home.yourMix'), sub: t(lang, 'home.yourMixSub'), Icon: Shuffle, onClick: () => { if (!liked.length && !history.length) return; const pool = [...liked, ...history]; const seen = new Set(); const tracks = []; for (const t of pool) { if (!seen.has(t.id)) { seen.add(t.id); tracks.push(t); } } playTracks(tracks, 0, { shuffle: true }); } },
+    { key: 'recent', label: t(lang, 'home.recent'), sub: `${Math.min(history.length, 99)} ${t(lang, 'home.recentSub')}`, Icon: History, onClick: () => playTracks(history.slice(0, 20), 0) },
+    { key: 'liked', label: t(lang, 'home.shortcut.likedSongs'), sub: `${liked.length} ${t(lang, 'home.likedSub')}`, Icon: Heart, onClick: () => setView({ name: 'liked' }) },
     { key: 'quickpicks', label: 'Quick picks', sub: 'Fresh from your mix', Icon: Sparkles, onClick: () => quickPicks.length && playTracks(quickPicks, 0, { shuffle: true }) },
   ];
 
   return (
     <section className="shelf" aria-label="Shortcuts">
       <div className="shelf-head">
-        <h2><ListMusic size={18} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />Shortcuts</h2>
+        <h2><ListMusic size={18} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />{t(lang, 'home.shortcuts')}</h2>
       </div>
       <div className="shortcut-grid">
         {quick.map(({ key, label, sub, Icon, onClick }) => (
@@ -358,7 +363,7 @@ export default function HomeView() {
   }, [history, liked]);
 
   const now = new Date();
-  const dateLine = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  const dateLine = now.toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const chips = chipSet === 'mood' ? MOOD_CHIPS : GENRE_CHIPS;
 
   // Pull-to-refresh (touch): pull down at top of scroll to reload feed.
@@ -407,14 +412,17 @@ export default function HomeView() {
                 title={chipSet === 'mood' ? 'Show genres' : 'Show moods'}>
           <LayoutGrid size={17} />
         </button>
-        <button role="tab" aria-selected={!activeChip} className={`pill${!activeChip ? ' active' : ''}`} onClick={() => setActiveChip(null)}>All</button>
-        {chips.map(([label]) => (
-          <button key={label} role="tab" aria-selected={activeChip === label}
-                  className={`pill${activeChip === label ? ' active' : ''}`}
-                  onClick={() => setActiveChip((cur) => (cur === label ? null : label))}>
-            {label}
-          </button>
-        ))}
+        <button role="tab" aria-selected={!activeChip} className={`pill${!activeChip ? ' active' : ''}`} onClick={() => setActiveChip(null)}>{lang === 'id' ? t(lang, 'home.chip.all') : 'All'}</button>
+        {chips.map(([label]) => {
+          const display = lang === 'id' ? MOOD_ID[label] || label : label;
+          return (
+            <button key={label} role="tab" aria-selected={activeChip === label}
+                    className={`pill${activeChip === label ? ' active' : ''}`}
+                    onClick={() => setActiveChip((cur) => (cur === label ? null : label))}>
+              {display}
+            </button>
+          );
+        })}
       </div>
 
       {activeChip ? (

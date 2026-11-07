@@ -193,8 +193,8 @@ export default function Sidebar({ open = false, onClose }) {
             <Heart aria-hidden="true" size={20} />
           </div>
           <div className="lib-meta">
-            <b>Liked Songs</b>
-            <small>{likedCount} {likedCount === 1 ? 'track' : 'tracks'}</small>
+            <b>{t(lang, 'home.shortcut.likedSongs')}</b>
+            <small>{likedCount} {t(lang, 'home.likedSub')}</small>
           </div>
         </button>
 
@@ -236,7 +236,7 @@ export default function Sidebar({ open = false, onClose }) {
 
         {playlists.length === 0 && !creating && (
           <div className="foot-note" style={{ padding: '6px 12px' }}>
-            No playlists yet.<br />Press <ListPlus size={11} style={{ verticalAlign: '-1px' }} /> create yours.
+            {t(lang, 'home.noPlaylists')}<br />Press <ListPlus size={11} style={{ verticalAlign: '-1px' }} /> create yours.
           </div>
         )}
       </div>
