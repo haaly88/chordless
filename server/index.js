@@ -11,7 +11,7 @@ import { importFromUrl } from './import.js';
 import { getChapters } from './chapters.js';
 import { createShare, getShare } from './share.js';
 import { coverImage } from './cover.js';
-import { createRoom, joinRoom, getRoom, pushState, leaveRoom } from './together.js';
+import { createRoom, joinRoom, getRoom, pushState, pushChat, leaveRoom } from './together.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -218,6 +218,11 @@ app.get('/api/together/:code/state', (req, res) => {
 });
 app.post('/api/together/:code/state', (req, res) => {
   const room = pushState(req.params.code, req.body?.memberId, req.body?.state || {});
+  if (!room) return res.status(404).json({ error: 'Room not found' });
+  res.json(room);
+});
+app.post('/api/together/:code/chat', (req, res) => {
+  const room = pushChat(req.params.code, req.body?.memberId, req.body?.text || '');
   if (!room) return res.status(404).json({ error: 'Room not found' });
   res.json(room);
 });

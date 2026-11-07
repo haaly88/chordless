@@ -36,6 +36,7 @@ function publicRoom(room) {
     hostId: room.hostId,
     createdAt: room.createdAt,
     state: room.state,
+    messages: (room.messages || []).slice(-50),
   };
 }
 
@@ -51,6 +52,7 @@ export function createRoom(name) {
     hostId: memberId,
     members: new Map([[memberId, { id: memberId, name: cleanName, joinedAt: now() }]]),
     state: { track: null, queue: [], index: -1, isPlaying: false, currentTime: 0, updatedAt: now(), version: 0 },
+    messages: [],
     createdAt: now(),
     lastSeen: now(),
   };
@@ -94,8 +96,20 @@ export function pushState(code, memberId, patch) {
   return publicRoom(r);
 }
 
-export function leaveRoom(code, memberId) {
+export function pushChat(code, memberId, text) {
   const r = rooms.get(String(code || '').trim().toUpperCase());
+  if (!r) return null;
+  const member = r.members.get(memberId);
+  if (!member) return null;
+  const msg = String(text || '').trim().slice(0, 200);
+  if (!msg) return publicRoom(r);
+  r.messages.push({ id: uid(), memberId, name: member.name, text: msg, at: now() });
+  if (r.messages.length > 50) r.messages = r.messages.slice(-50);
+  r.lastSeen = now();
+  return publicRoom(r);
+}
+
+export function leaveRoom(code, memberId) {  const r = rooms.get(String(code || '').trim().toUpperCase());
   if (!r) return { left: true };
   r.members.delete(memberId);
   if (memberId === r.hostId) {

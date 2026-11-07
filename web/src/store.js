@@ -369,7 +369,7 @@ export const usePlayer = create((set, get) => ({
   downloadingIds: [],
 
   // ---- Listen Together ----
-  together: { code: null, memberId: null, name: '', isHost: false, members: [], remoteVersion: 0, lastSyncAt: 0 },
+  together: { code: null, memberId: null, name: '', isHost: false, members: [], messages: [], remoteVersion: 0, lastSyncAt: 0 },
   togetherApplyingRemote: false,
 
   // ---------- toasts ----------
@@ -831,7 +831,7 @@ export const usePlayer = create((set, get) => ({
     const clean = String(name || 'Host').trim().slice(0, 40) || 'Host';
     try {
       const res = await apiTogetherCreate(clean);
-      set({ together: { code: res.code, memberId: res.memberId, name: clean, isHost: true, members: res.room?.members || [], remoteVersion: res.room?.state?.version || 0, lastSyncAt: Date.now() } });
+      set({ together: { code: res.code, memberId: res.memberId, name: clean, isHost: true, members: res.room?.members || [], messages: res.room?.messages || [], remoteVersion: res.room?.state?.version || 0, lastSyncAt: Date.now() } });
       get().toast('Room created', `Share code ${res.code} — others join with the same code.`);
       get()._togetherPushState();
       return res;
@@ -846,7 +846,7 @@ export const usePlayer = create((set, get) => ({
     if (!cleanCode) { get().toast('Missing code', 'Enter the 5-letter room code.'); return null; }
     try {
       const res = await apiTogetherJoin(cleanCode, cleanName);
-      set({ together: { code: res.code, memberId: res.memberId, name: cleanName, isHost: false, members: res.room?.members || [], remoteVersion: res.room?.state?.version || 0, lastSyncAt: Date.now() } });
+      set({ together: { code: res.code, memberId: res.memberId, name: cleanName, isHost: false, members: res.room?.members || [], messages: res.room?.messages || [], remoteVersion: res.room?.state?.version || 0, lastSyncAt: Date.now() } });
       get().toast('Joined room', `Room ${res.code} — following the host.`);
       get()._togetherPollOnce();
       return res;
@@ -859,8 +859,17 @@ export const usePlayer = create((set, get) => ({
     const { together } = get();
     if (!together?.code) return;
     try { await apiTogetherLeave(together.code, together.memberId); } catch { /* best-effort */ }
-    set({ together: { code: null, memberId: null, name: '', isHost: false, members: [], remoteVersion: 0, lastSyncAt: 0 } });
+    set({ together: { code: null, memberId: null, name: '', isHost: false, members: [], messages: [], remoteVersion: 0, lastSyncAt: 0 } });
     get().toast('Left room', 'Back to solo listening.');
+  },
+  async sendTogetherChat(text) {
+    const msg = String(text || '').trim().slice(0, 200);
+    const { together } = get();
+    if (!together?.code || !msg) return;
+    try {
+      const room = await apiTogetherChat(together.code, together.memberId, msg);
+      if (room?.messages) set((prev) => ({ together: { ...prev.together, messages: room.messages } }));
+    } catch { /* poll will retry on next heartbeat */ }
   },
   _togetherPushState() {
     const { together } = get();
@@ -889,6 +898,10 @@ export const usePlayer = create((set, get) => ({
       const wasHost = together.isHost;
       const isHostNow = room.hostId === together.memberId;
       const members = room.members || [];
+      const messages = room.messages || [];
+      if (messages.length !== (together.messages || []).length) {
+        set((prev) => ({ together: { ...prev.together, messages } }));
+      }
       if (version !== together.remoteVersion || !wasHost && isHostNow) {
         set((prev) => ({ together: { ...prev.together, members, isHost: isHostNow, remoteVersion: version, lastSyncAt: Date.now() } }));
         if (!isHostNow && !get().togetherApplyingRemote) {
@@ -935,7 +948,7 @@ export const usePlayer = create((set, get) => ({
       }
     } catch (e) {
       if (e.message && e.message.includes('404')) {
-        set({ together: { code: null, memberId: null, name: '', isHost: false, members: [], remoteVersion: 0, lastSyncAt: 0 } });
+        set({ together: { code: null, memberId: null, name: '', isHost: false, members: [], messages: [], remoteVersion: 0, lastSyncAt: 0 } });
         get().toast('Room closed', 'The host left — back to solo listening.');
       }
     }

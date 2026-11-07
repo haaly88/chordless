@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, Users, Copy, Check, LogOut, RefreshCw } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { X, Users, Copy, Check, LogOut, RefreshCw, Send, MessageCircle } from 'lucide-react';
 import usePlayer, { readString, writeString } from '../store.js';
 
 /**
@@ -13,11 +13,19 @@ export default function ListenTogetherModal() {
   const joinTogetherRoom = usePlayer((s) => s.joinTogetherRoom);
   const leaveTogetherRoom = usePlayer((s) => s.leaveTogetherRoom);
   const _togetherPollOnce = usePlayer((s) => s._togetherPollOnce);
+  const sendTogetherChat = usePlayer((s) => s.sendTogetherChat);
+  const messages = together?.messages || [];
 
   const [name, setName] = useState(() => readString('cl:togetherName', ''));
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [chatText, setChatText] = useState('');
+  const chatRef = useRef(null);
+
+  useEffect(() => {
+    chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight });
+  }, [messages.length]);
 
   const saveName = (v) => {
     setName(v);
@@ -116,7 +124,7 @@ export default function ListenTogetherModal() {
               ))}
             </div>
 
-            <div className="modal-actions" style={{ justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <div className="modal-actions" style={{ justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginTop: 0 }}>
               <button className="btn" onClick={() => _togetherPollOnce?.()} aria-label="Sync now">
                 <RefreshCw size={14} /> Sync now
               </button>
@@ -126,6 +134,48 @@ export default function ListenTogetherModal() {
                   <LogOut size={14} /> Leave
                 </button>
               </div>
+            </div>
+
+            <div className="section-label" style={{ paddingLeft: 0, margin: '14px 0 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <MessageCircle size={13} style={{ color: 'var(--accent)' }} /> ROOM CHAT
+            </div>
+            <div ref={chatRef} style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto', padding: '8px 10px', border: '1px solid var(--stroke)', borderRadius: 12, marginBottom: 8 }}>
+              {messages.length === 0 ? (
+                <span style={{ fontSize: 12.5, color: 'var(--text-3)' }}>Say hi — messages last for the room (ephemeral).</span>
+              ) : messages.map((m) => (
+                <div key={m.id} style={{ fontSize: 12.5, lineHeight: 1.4 }}>
+                  <b style={{ color: m.memberId === together.memberId ? 'var(--accent)' : 'var(--text)' }}>{m.name}</b>{' '}
+                  <span style={{ color: 'var(--text-2)' }}>{m.text}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                className="field"
+                style={{ flex: 1, height: 40, fontSize: 13 }}
+                value={chatText}
+                onChange={(e) => setChatText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && chatText.trim()) { sendTogetherChat(chatText); setChatText(''); } }}
+                placeholder="Message the room…"
+                aria-label="Room message"
+                maxLength={200}
+              />
+              <button
+                className="btn primary"
+                style={{ padding: '8px 12px' }}
+                disabled={!chatText.trim()}
+                onClick={() => { sendTogetherChat(chatText); setChatText(''); }}
+                aria-label="Send message"
+              >
+                <Send size={15} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+              {['👍', '❤️', '🔥', '😮'].map((emoji) => (
+                <button key={emoji} className="pill" onClick={() => sendTogetherChat(emoji)} aria-label={`Send ${emoji} reaction`} style={{ fontSize: 15, padding: '4px 10px' }}>
+                  {emoji}
+                </button>
+              ))}
             </div>
           </>
         )}
