@@ -44,6 +44,7 @@ function QuickTile({ track, contextList }) {
 }
 
 function ForYouHero({ forYou, loading, onPlay, onShuffle, onRefresh }) {
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const thumbs = (forYou?.tracks || []).slice(0, 4);
   const topArtists = forYou?.topArtists || [];
   if (loading) {
