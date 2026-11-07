@@ -3,7 +3,7 @@ import {
   ChevronLeft, ChevronRight, Play, Pause, Sparkles, History, RotateCcw, CloudOff,
   Search, LayoutGrid, X, Check, Shuffle, Heart, ListMusic, Flame, Clock, RefreshCw,
 } from 'lucide-react';
-import usePlayer from '../store.js';
+import usePlayer, { readMigrated, write } from '../store.js';
 import { apiHome, apiSearch, apiCharts } from '../lib/api.js';
 import { greeting, formatTime } from '../lib/format.js';
 import { resolveRegion } from '../lib/region.js';
@@ -270,11 +270,12 @@ export default function HomeView() {
   const [shortcutModal, setShortcutModal] = useState(false);
   const playlists = usePlayer((s) => s.playlists);
   const [pins, setPins] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('cl:shortcuts') || '[]'); } catch { return []; }
+    const v = readMigrated('cl:shortcuts', []);
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
   });
   const togglePin = (id) => setPins((prev) => {
     const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-    try { localStorage.setItem('cl:shortcuts', JSON.stringify(next)); } catch { /* full */ }
+    write('cl:shortcuts', next);
     return next;
   });
 

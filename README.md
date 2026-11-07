@@ -2,23 +2,30 @@
 
 An aesthetic, ad-free **YouTube Music web client** for the browser — audio only, never video. Inspired by [BitChord](https://github.com/kushagrasinghx/BitChord) and [limusic](https://github.com/SimoHypers/limusic), rebuilt as a local web app.
 
-Plays music straight from YouTube Music (search, home feed, album/track pages), with **line-synced lyrics from [LRCLIB](https://lrclib.net)**, a real-time visualizer, dynamic artwork-driven theming and a full library system (likes, playlists, history, queue) — all stored locally in your browser.
+Plays music straight from YouTube Music (search, home feed, album/track pages), with **line-synced lyrics from [LRCLIB](https://lrclib.net)**, a real-time visualizer, dynamic artwork-driven theming and a full library system — all stored locally in your browser.
 
 ## Features
 
-- **Search & home feed** straight from YouTube Music (Songs / Videos filter, trending chips, "Quick picks", "Recently played")
+- **Search & home feed** straight from YouTube Music (Songs / Videos filter, trending chips, mood/genre chips, "Quick picks", "Recently played", region-aware charts via `gl/hl`)
 - **Audio-only streaming** — two engines:
   - **Stream** (default in Auto): local proxy via `yt-dlp` with full HTTP Range support — seeking, low bandwidth
-  - **YouTube player** (fallback or forced): hidden YouTube iframe, the officially-sanctioned path — works even when direct streams are throttled/blocked on your network
-  - **Auto** (default): tries Stream, falls back to the YouTube player automatically if YouTube throttles
-- **Synced lyrics** from LRCLIB — Apple-Music-style large lines, active word highlighting, auto-scroll (suspends on manual scroll, "jump to line" button), click any line to seek, plain-lyrics fallback, ±0.5s sync offset, instrumental detection
-- **Dynamic theming** — the whole app recolors itself from the artwork of the track you're playing (extracted via canvas, proxy-safe)
-- **Real-time spectrum visualizer** (Web Audio API, no media element taint), animated equalizer indicators on playing tracks
-- **Skip sponsor segments** via [SponsorBlock](https://github.com/ajayyy/SponsorBlock) (`sponsor.ajay.app`) — creator-inserted promotional / self-promo / subscribe-reminder / non-music sections are crowdsourced and skipped automatically, with an **Undo** button on each skip; categories configurable in Settings. Note: SponsorBlock does not (and cannot) block the platform’s own ad slots in Embedded mode — the **Stream** engine carries no ads.
-- **Library**: Liked Songs, custom playlists (create / rename / delete / reorder covers from member tracks), full history, "Recently played" shelf
-- **Queue**: drag-to-reorder, play-next / add-to-queue, clear, **Save as playlist**, survives restarts (restored paused at your position)
-- **Playback**: shuffle, repeat off/all/one, playback speed 0.5–2×, sleep timer (fixed presets or “end of this track”), volume + mute, keyboard shortcuts, Media Session API (OS lock-screen controls)
-- **Interactions**: right-click context menu on every track (play / play next / queue / like / add-to-playlist with submenu / jump to artist search), toasts, settings with dark/light theme + adaptive accent + listening-history clear
+  - **YouTube player** (fallback or forced): hidden YouTube iframe — works even when direct streams are throttled
+  - **Auto** (default): tries Stream, falls back to the YouTube player automatically
+- **Lossless addons (multi + failover)** — search queries every enabled addon; playback tries the next addon on failure, then YouTube. Order = priority. Deezer preset included (full FLAC needs a personal URL at `deezer.nom.deno.net`)
+- **Synced lyrics** from LRCLIB — Apple-Music-style large lines, active line highlight, auto-scroll, click any line to seek, plain-lyrics fallback, ±0.5s offset, instrumental detection, plus **translation** (Google GTX → MyMemory) in 14 languages
+- **Karaoke Mode** (`C`) — fullscreen lyric overlay with karaoke progress fill, click-to-seek, font sizes, translate, offset
+- **True Gapless + Preload** — dual `<audio>` slots with background preload (10/20/30s ahead). Stream engine only; replaces Crossfade when enabled
+- **Crossfade** — fade transition (3/5/8/12s). Mutually exclusive with Gapless
+- **For You AI Mix** — local taste engine (`lib/ai-mix.js`) scoring play count, likes, recency and artist affinity, enriched with fresh search picks
+- **Smart Playlists** — Recently Added, Most Played, Top Rated (+ For You) in Library
+- **Share Card** — 1080×1080 PNG from Now Playing (cover art, title/artist, active lyric line, progress bar, "SHARED FROM CHORDLESS") with Download PNG + Web Share / clipboard copy
+- **Listen Together** — host-authoritative sync rooms (code-based join, guest polling, drift correction, host migration)
+- **Audio** — 3-band EQ + presets, spatial audio (mid/side widening), loudness normalize, stereo balance, playback speed 0.5–2×, YouTube quality high/medium/low, **network-adaptive quality** (downgrades next track on stalls/`navigator.connection`)
+- **Skip sponsor segments** via [SponsorBlock](https://github.com/ajayyy/SponsorBlock) with Undo; categories configurable in Settings
+- **Library**: Liked Songs, custom playlists (create / rename / delete / reorder covers), playlist folders, share/import via clipboard JSON, export/import library JSON, full history, "Recently played" shelf
+- **Queue**: drag-to-reorder, play-next / add-to-queue, clear, Save as playlist, survives restarts (restored paused), queue filter/search
+- **Playback**: shuffle (smart, avoids same-artist back-to-back), repeat off/all/one, autoplay/radio (appends similar tracks at queue end), sleep timer, volume + mute, keyboard shortcuts, Media Session API
+- **Interactions**: right-click context menu on every track, toasts, voice search, search history (20 max, corruption-safe), PWA + service worker
 - **Mobile layout**: sidebar collapses to an off-canvas drawer with hamburger; mini player keeps controls usable
 
 ## Requirements
@@ -60,16 +67,52 @@ Environment variables (optional):
 | Var | Default | Meaning |
 |---|---|---|
 | `PORT` | `3001` | API/static server port |
-| `YT_GL` | `ID` | YouTube region hint for home/search results (e.g. `US`, `GB`, `JP`) |
-| `YT_HL` | `en` | UI language hint for YouTube responses |
+| `NODE_ENV` | unset | Set to `production` for production mode |
+
+Region (`gl/hl`) is detected in the browser (language/timezone) and can be overridden in Settings — server-side `YT_GL`/`YT_HL` are no longer used.
 
 In-app (Settings, gear icon in the sidebar):
 
-- **Appearance** — dark / light theme
-- **Adaptive theme** — recolor from artwork (on by default)
+- **Appearance** — dark / light / system theme, adaptive accent from artwork
+- **Region** — custom dropdown with flag/search/keyboard (Auto + manual override)
 - **Playback engine** — Auto / Stream / YouTube player
-- **Stream source** — which YouTube embed client to extract streams through (try switching if a song won't play)
-- **Reset app data** — wipe likes, playlists, queue, settings
+- **Stream source & quality** — YouTube client + high/medium/low, adaptive quality toggle
+- **Lossless addons** — add/remove/reorder/enable multi-addons, Deezer preset
+- **Audio** — EQ, spatial, normalize, balance, crossfade/gapless, SponsorBlock categories
+- **Library data** — export/import JSON, clear history, reset app data
+
+## Project structure
+
+```
+server/               Express backend (Node, ESM)
+  index.js            routes: /api/search|home|charts|playlist|artist|album|stream|lyrics|translate|cover|sponsorblock|addon/*|together/*
+  innertube.js        YouTube InnerTube (WEB_REMIX) client
+  stream.js           yt-dlp stream extraction + Range proxy
+  lyrics.js           LRCLIB + translation (GTX → MyMemory)
+  together.js         Listen Together in-memory rooms (host migration, TTL)
+  addon.js            addon manifest/search/track proxy
+  cover.js  cache.js  sponsorblock.js
+
+web/src/
+  store.js            zustand store: playback, gapless dual-audio, Web Audio chain,
+                      together sync, library. Pure helpers extracted to lib/* and
+                      re-exported here for backwards compatibility.
+  App.jsx             shell: views, audio wiring, media session, shortcuts, together polling
+  components/         22 components (Home, Search, Library, NowPlaying, Karaoke,
+                      ListenTogetherModal, Queue, Settings, PlayerBar, …)
+  lib/
+    api.js            fetch client for /api/* incl. gl/hl, addon, together
+    storage.js        localStorage helpers (cl:* JSON + plain-string, bc:* migration)
+    quality.js        streamSrc + network-adaptive quality (pure)
+    sb.js             SponsorBlock labels/categories (pure)
+    shuffle.js        uid / shuffled / smartShuffle / sameTrack (pure)
+    embed.js          YouTube IFrame bridge + isEmbedEngine (pure)
+    ai-mix.js         For You taste engine (scoring + interleaving)
+    region.js         region detection + REGION_OPTIONS
+    lrc.js  format.js  palette.js  thumb.js
+  styles.css          single stylesheet (base + Beautify v2 override layer)
+web/public/           sw.js (PWA cache), manifest.json, icons
+```
 
 ## How it works
 
@@ -82,18 +125,18 @@ In-app (Settings, gear icon in the sidebar):
  │ Visualizer (WebAudio) │ ◄────────► │  → yt-dlp -g → googlevideo      │
  └───────────────────────┘  range     │  → Range-aware proxy            │
                                         │ /api/lyrics                    │
-                                        │  → LRCLIB (synced LRC)          │
-                                        │ /api/cover                       │
+                                        │  → LRCLIB (synced LRC) + translate│
+                                        │ /api/cover                     │
                                         │  → whitelisted artwork proxy     │
                                         └────────────────────────────────┘
 ```
 
-- **Search / home / metadata** come from YouTube Music’s InnerTube API (`music.youtube.com/youtubei/v1/…`) with no key. Cache: 5–15 min in memory.
-- **Streaming** resolves the direct audio URL per track with `yt-dlp --js-runtimes node`, tries embedded clients in order (`tv_embedded → web_safari → ios`), verifies the URL with a 1-byte range request, then streams it through your machine with proper `206 Partial Content` responses (seeking + Web Audio analyser work). Stream URLs are cached ~4 h; failures are negatively cached 45 s.
-- **If YouTube refuses** (per-IP throttle / proof-of-origin rollout): you get a toast and, in **Auto** mode, playback automatically switches to the hidden YouTube player. You can also force **YouTube player** in Settings — it always works, at the cost of YouTube serving its usual media pipeline instead of raw audio bytes.
-- **Lyrics** are fetched from LRCLIB (`/api/lyrics`) — exact match by artist/track/duration with a search fallback; cached 6 h.
-- **Library** (likes, playlists, history, queue, settings) lives in `localStorage` — nothing leaves your machine except the music requests themselves.
-- **Artwork** is proxied through `/api/cover` (host-whitelisted) so the canvas may sample it for the adaptive theme.
+- **Search / home / metadata** come from YouTube Music's InnerTube API with no key. Cache: 5–15 min in memory.
+- **Streaming** resolves the direct audio URL per track with `yt-dlp`, tries embedded clients in order, verifies with a 1-byte range request, then streams with proper `206 Partial Content` (seeking + Web Audio analyser work). Stream URLs cached ~4 h; failures negatively cached 45 s.
+- **If YouTube refuses**: toast + automatic fallback to the hidden YouTube player in Auto mode.
+- **Lyrics** are fetched from LRCLIB (`/api/lyrics`) — exact match by artist/track/duration with search fallback; cached 6 h.
+- **Library** (likes, playlists, history, queue, settings, shortcuts, together name) lives in `localStorage` under `cl:*` — nothing leaves your machine except the music requests themselves.
+- **Artwork** is proxied through `/api/cover` (host-whitelisted) so the canvas may sample it for the adaptive theme and Share Card.
 
 ## Keyboard shortcuts
 
@@ -104,6 +147,7 @@ In-app (Settings, gear icon in the sidebar):
 | `↑` / `↓` | Volume |
 | `N` / `P` | Next / previous |
 | `L` | Toggle lyrics |
+| `C` | Toggle Karaoke Mode |
 | `Q` | Toggle queue |
 | `F` | Now Playing fullscreen |
 | `M` | Mute |
@@ -114,6 +158,6 @@ In-app (Settings, gear icon in the sidebar):
 
 ## Disclaimer
 
-Chordless is an independent, unofficial client. It is **not affiliated with Google or YouTube**. It hosts no media — it streams what YouTube already serves to your browser. Use it for personal listening only, and at your own discretion; you are responsible for complying with YouTube’s Terms of Service and your local copyright law.
+Chordless is an independent, unofficial client. It is **not affiliated with Google or YouTube**. It hosts no media — it streams what YouTube already serves to your browser (or what addons you configure). Use it for personal listening only, and at your own discretion; you are responsible for complying with YouTube's Terms of Service and your local copyright law.
 
 Inspired by BitChord (GPL-3.0) and limusic (GPL-3.0). Lyrics by LRCLIB. Built with React, Vite, Express and yt-dlp.

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Users, Copy, Check, LogOut, RefreshCw } from 'lucide-react';
-import usePlayer from '../store.js';
+import usePlayer, { readString, writeString } from '../store.js';
 
 /**
  * Listen Together — create/join a room, see members, leave.
@@ -14,16 +14,14 @@ export default function ListenTogetherModal() {
   const leaveTogetherRoom = usePlayer((s) => s.leaveTogetherRoom);
   const _togetherPollOnce = usePlayer((s) => s._togetherPollOnce);
 
-  const [name, setName] = useState(() => {
-    try { return localStorage.getItem('cl:togetherName') || ''; } catch { return ''; }
-  });
+  const [name, setName] = useState(() => readString('cl:togetherName', ''));
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const saveName = (v) => {
     setName(v);
-    try { localStorage.setItem('cl:togetherName', v); } catch { /* ignore */ }
+    writeString('cl:togetherName', v);
   };
 
   const onCreate = async () => {

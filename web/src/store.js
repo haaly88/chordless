@@ -5,25 +5,21 @@
  * settings — all persisted to localStorage where appropriate.
  */
 import { create } from 'zustand';
-import { apiSponsorBlock, apiAddonSearch, apiTranslate, apiSearch, apiTogetherCreate, apiTogetherJoin, apiTogetherState, apiTogetherPush, apiTogetherLeave } from './lib/api.js';
+import { apiSponsorBlock, apiAddonSearch, apiTranslate, apiSearch, addonTrackUrl, apiTogetherCreate, apiTogetherJoin, apiTogetherState, apiTogetherPush, apiTogetherLeave } from './lib/api.js';
 import { upgradeTracks } from './lib/thumb.js';
-import { addonTrackUrl } from './lib/api.js';
 import { totalDuration, formatTotalDuration } from './lib/format.js';
 import { buildForYouMix } from './lib/ai-mix.js';
+import { read, write, readString, writeString, readMigrated } from './lib/storage.js';
+import { streamSrc, qualityFromConnection, connectionSnapshot, lowerQuality } from './lib/quality.js';
+import { SB_LABELS, DEFAULT_SB_CATEGORIES, sbCategories } from './lib/sb.js';
+import { uid, shuffled, sameTrack, smartShuffle } from './lib/shuffle.js';
+import { embedBridge, isEmbedEngine } from './lib/embed.js';
 
-// ---------- embed (YouTube IFrame) bridge ----------
-/** Filled in by the EmbedEngine component as the YouTube IFrame API boots. */
-export const embedBridge = {
-  player: null,     // YT.Player instance
-  ready: false,     // player is onReady
-  pendingId: null,  // video to cue once ready
-  wantsPlay: false, // the user pressed play while the API was still loading
-};
-
-export function isEmbedEngine(state) {
-  const engine = state?.settings?.engine || 'auto';
-  return engine === 'embed' || (engine === 'auto' && state?.streamFellBack === true);
-}
+// Re-exported so existing imports from './store.js' keep working.
+export { read, write, readString, writeString, readMigrated };
+export { streamSrc, qualityFromConnection, connectionSnapshot };
+export { SB_LABELS, DEFAULT_SB_CATEGORIES, sbCategories };
+export { embedBridge, isEmbedEngine };
 
 // ---------- singleton audio element ----------
 // Gapless uses TWO elements (A = primary/active, B = preload/next).
@@ -43,68 +39,6 @@ export function inactiveAudio() { return activeSlot === 'A' ? audioB : audio; }
 export function getActiveSlot() { return activeSlot; }
 // Module-level gapless state (not reactive — read via store state mirrors).
 let preloaded = null; // { forIndex, trackId, url, slot }
-
-/** Stream URL for a video id, honoring the user's YouTube client & audio quality. */
-export function streamSrc(id, qualityOverride) {
-  let client = 'auto';
-  let quality = 'high';
-  try {
-    const s = JSON.parse(localStorage.getItem('cl:settings') || '{}');
-    client = s.ytClient || 'auto';
-    quality = s.ytQuality || 'high';
-  } catch { /* keep defaults */ }
-  if (qualityOverride && ['high', 'medium', 'low'].includes(qualityOverride)) quality = qualityOverride;
-  const params = new URLSearchParams();
-  if (client !== 'auto') params.set('client', client);
-  if (quality !== 'high') params.set('quality', quality);
-  const qs = params.toString() ? `?${params}` : '';
-  return `/api/stream/${id}${qs}`;
-}
-
-/* ---------- network-adaptive quality ---------- */
-const Q_ORDER = { high: 3, medium: 2, low: 1 };
-const Q_NAME = { 3: 'high', 2: 'medium', 1: 'low' };
-const lowerQuality = (a, b) => Q_NAME[Math.min(Q_ORDER[a] || 3, Q_ORDER[b] || 3)];
-
-export function qualityFromConnection(conn, stallLevel = 0) {
-  if (!conn) {
-    if (stallLevel > 0) {
-      const lvl = Math.max(1, Math.min(3, Q_ORDER.high - stallLevel));
-      return { quality: Q_NAME[lvl], reason: 'stalls' };
-    }
-    return { quality: 'high', reason: 'auto' };
-  }
-  const eff = String(conn.effectiveType || '').toLowerCase();
-  const down = Number(conn.downlink);
-  const rtt = Number(conn.rtt);
-  const saveData = Boolean(conn.saveData);
-  if (saveData) return { quality: 'low', reason: 'data saver' };
-  if (eff === 'slow-2g' || eff === '2g') return { quality: 'low', reason: eff };
-  if (eff === '3g' || (Number.isFinite(down) && down < 1.5)) return { quality: 'low', reason: eff || `${down}Mbps` };
-  if (Number.isFinite(rtt) && rtt > 800) return { quality: 'medium', reason: `rtt ${rtt}ms` };
-  if (eff === '4g' && Number.isFinite(down) && down < 4) return { quality: 'medium', reason: `${down}Mbps` };
-  if ((Number.isFinite(down) && down < 4) || eff === '3g') return { quality: 'medium', reason: eff || `${down}Mbps` };
-  const base = 'high';
-  if (stallLevel > 0) {
-    const lvl = Math.max(1, Math.min(3, Q_ORDER[base] - stallLevel));
-    return { quality: Q_NAME[lvl], reason: 'stalls' };
-  }
-  return { quality: base, reason: eff || '4g' };
-}
-
-export function connectionSnapshot() {
-  try {
-    const c = navigator.connection || {};
-    return {
-      effectiveType: c.effectiveType || null,
-      downlink: Number.isFinite(Number(c.downlink)) ? Number(c.downlink) : null,
-      rtt: Number.isFinite(Number(c.rtt)) ? Number(c.rtt) : null,
-      saveData: Boolean(c.saveData),
-    };
-  } catch {
-    return { effectiveType: null, downlink: null, rtt: null, saveData: false };
-  }
-}
 
 let audioCtx = null;
 let analyserNode = null;
@@ -278,109 +212,6 @@ export function applyEqualizer(bass, mid, treble) {
   midFilter.gain.value = Math.max(-12, Math.min(12, mid));
   trebleFilter.gain.value = Math.max(-12, Math.min(12, treble));
 }
-
-// ---------- persistence helpers ----------
-const read = (key, fallback) => {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw == null ? fallback : JSON.parse(raw);
-  } catch {
-    return fallback;
-  }
-};
-const write = (key, value) => {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* full/blocked */ }
-};
-
-/** Read `cl:*` key, migrating the legacy `bc:*` key once (keeps user data). */
-const readMigrated = (key, fallback) => {
-  const v = read(key, undefined);
-  const legacyKey = 'bc:' + key.slice(3);
-  const legacy = read(legacyKey, undefined);
-  if (v === undefined) {
-    if (legacy !== undefined) {
-      write(key, legacy);
-      try { localStorage.removeItem(legacyKey); } catch { /* ignore */ }
-      return legacy;
-    }
-    return fallback;
-  }
-  if (legacy !== undefined) {
-    if (key === 'cl:history' && Array.isArray(v) && Array.isArray(legacy)) {
-      const seen = new Set();
-      const merged = [...v, ...legacy].filter((t) => {
-        if (!t?.id || seen.has(t.id)) return false;
-        seen.add(t.id);
-        return true;
-      }).slice(0, 80);
-      write(key, merged);
-    }
-    try { localStorage.removeItem(legacyKey); } catch { /* ignore */ }
-  }
-  return v;
-};
-
-const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-const shuffled = (arr) => {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
-const sameTrack = (a, b) => a?.id === b?.id;
-
-/** Fisher-Yates shuffle that avoids placing the same artist back-to-back when possible. */
-const smartShuffle = (arr, avoidArtist) => {
-  const a = arr.slice();
-  // Fisher-Yates
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  // If an artist repeats consecutively, try to swap with a later different-artist item
-  if (avoidArtist) {
-    for (let i = 1; i < a.length; i++) {
-      if (a[i].artist === a[i - 1].artist) {
-        for (let j = i + 1; j < a.length; j++) {
-          if (a[j].artist !== a[i].artist) {
-            [a[i], a[j]] = [a[j], a[i]];
-            break;
-          }
-        }
-      }
-    }
-  }
-  return a;
-};
-
-/** SponsorBlock: friendly labels for skipped categories + default config. */
-export const SB_LABELS = {
-  sponsor: 'Sponsor segment',
-  selfpromo: 'Self-promotion',
-  interaction: 'Subscribe reminder',
-  music_offtopic: 'Non-music section',
-  intro: 'Song intro',
-  outro: 'Song outro',
-  filler: 'Filler',
-  preview: 'Preview / recap',
-};
-const DEFAULT_SB_CATEGORIES = {
-  sponsor: true,
-  selfpromo: true,
-  interaction: true,
-  music_offtopic: true,
-  intro: false,
-  outro: false,
-  filler: false,
-  preview: false,
-};
-/** Active category list from a settings object (empty when disabled). */
-export const sbCategories = (s) =>
-  (s?.sb?.enabled === false ? [] : Object.entries(s?.sb?.categories || DEFAULT_SB_CATEGORIES)
-    .filter(([, on]) => on)
-    .map(([name]) => name));
 
 const storedSettings = readMigrated('cl:settings', {}) || {};
 
@@ -1246,7 +1077,7 @@ export const usePlayer = create((set, get) => ({
   },
 
   next(manual = true) {
-    const { queue, index, repeat, shuffle } = get();
+    const { queue, index, repeat } = get();
     if (!queue.length) return;
     if (get().together?.code && !get().together?.isHost && !get().togetherApplyingRemote) {
       get().toast('Listen Together', 'You are a guest — playback is controlled by the host.');
@@ -1281,7 +1112,6 @@ export const usePlayer = create((set, get) => ({
       return;
     }
     get().playIndex(index + 1);
-    void shuffle;
   },
 
   prev() {

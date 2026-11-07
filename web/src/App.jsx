@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback, Component } from 'react';
 import { Menu } from 'lucide-react';
-import usePlayer, { audio, audioB, streamSrc } from './store.js';
+import usePlayer, { audio, audioB, streamSrc, write } from './store.js';
 import HomeView from './components/HomeView.jsx';
 import SearchView from './components/SearchView.jsx';
 import CollectionView from './components/CollectionView.jsx';
@@ -170,7 +170,7 @@ export default function App() {
     const onBeforeUnload = () => {
       const s = usePlayer.getState();
       if (s.index >= 0) {
-        localStorage.setItem('cl:queue', JSON.stringify({ queue: s.queue, index: s.index, position: s.currentTime || 0 }));
+        write('cl:queue', { queue: s.queue, index: s.index, position: s.currentTime || 0 });
       }
     };
     const onVisibility = () => { if (document.visibilityState === 'hidden') onBeforeUnload(); };
@@ -204,7 +204,6 @@ export default function App() {
   // ---------- Listen Together polling (poll every 1.5s; host heartbeat 3s) ----------
   useEffect(() => {
     let cancelled = false;
-    const code = usePlayer.getState().together?.code;
     // subscribe to changes via interval check (cheap — poller reads store each tick)
     const pollId = setInterval(() => {
       if (cancelled) return;

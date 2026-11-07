@@ -131,8 +131,6 @@ export default function SettingsModal() {
   const gapless = settings.gapless || { enabled: false, preloadSeconds: 20 };
   const setGapless = usePlayer((s) => s.setGapless);
   const gaplessStatus = usePlayer((s) => s.gaplessStatus);
-  const preloadedTrackId = usePlayer((s) => s.preloadedTrackId);
-  void gaplessStatus; void preloadedTrackId;
   const spatial = settings.spatial || { enabled: false, width: 1.6 };
   const setSpatial = usePlayer((s) => s.setSpatial);
   const generateRadio = usePlayer((s) => s.generateRadio);
