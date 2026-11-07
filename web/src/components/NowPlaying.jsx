@@ -33,6 +33,9 @@ export default function NowPlaying() {
   const removeOfflineTrack = usePlayer((s) => s.removeOfflineTrack);
   const isDownloaded = usePlayer((s) => (track ? s.offlineIds.includes(track.id) : false));
   const isDownloading = usePlayer((s) => (track ? s.downloadingIds.includes(track.id) : false));
+  const abLoop = usePlayer((s) => s.abLoop);
+  const setABPoint = usePlayer((s) => s.setABPoint);
+  const clearABLoop = usePlayer((s) => s.clearABLoop);
   const toggleNowPlaying = usePlayer((s) => s.toggleNowPlaying);
   const lyricsOpen = usePlayer((s) => s.lyricsOpen);
   const toggleLyrics = usePlayer((s) => s.toggleLyrics);
@@ -166,6 +169,26 @@ export default function NowPlaying() {
             <span className="np-time">{formatTime(currentTime)}</span>
             <SeekBar value={currentTime} duration={duration || 0} onSeek={(t) => seekTo(t)} ariaLabel="Seek through track" />
             <span className="np-time">{formatTime(duration)}</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }} aria-label="AB loop controls">
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: 'var(--text-3)' }}>LOOP</span>
+            <button className={`pill${abLoop?.a != null ? ' active' : ''}`} onClick={() => setABPoint('a')} title="Set loop start (A) at current time" aria-label="Set loop point A">
+              A{abLoop?.a != null ? ` ${formatTime(abLoop.a)}` : ''}
+            </button>
+            <button className={`pill${abLoop?.b != null ? ' active' : ''}`} onClick={() => setABPoint('b')} title="Set loop end (B) at current time" aria-label="Set loop point B">
+              B{abLoop?.b != null ? ` ${formatTime(abLoop.b)}` : ''}
+            </button>
+            {(abLoop?.a != null || abLoop?.b != null) && (
+              <>
+                <span style={{ fontSize: 11.5, color: abLoop?.a != null && abLoop?.b != null ? 'var(--accent)' : 'var(--text-3)', fontWeight: 700 }}>
+                  {abLoop?.a != null && abLoop?.b != null ? 'Looping A↔B' : 'Set B to start looping'}
+                </span>
+                <button className="pill" onClick={clearABLoop} title="Clear loop points" aria-label="Clear loop">
+                  <X size={13} /> Clear
+                </button>
+              </>
+            )}
           </div>
 
           <div className="np-controls">

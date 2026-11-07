@@ -291,6 +291,7 @@ export const usePlayer = create((set, get) => ({
   repeat: 'off',           // off | all | one
   playbackRate: 1,
   sleepTimer: null,        // null | 'track' | epoch ms
+  abLoop: { a: null, b: null }, // AB loop points in seconds (current track only)
   shuffleBackup: null,
   streamFellBack: false,   // stream blocked → play via embedded player
   segments: [],            // SponsorBlock skip segments for the current track
@@ -513,6 +514,7 @@ export const usePlayer = create((set, get) => ({
       segments: [],
       segmentsFor: track.id,
       ignoreSegmentUuid: null,
+      abLoop: { a: null, b: null },
     });
     get()._recordHistory(track);
     void get()._fetchSegments(track);
@@ -800,6 +802,7 @@ export const usePlayer = create((set, get) => ({
       segments: [],
       segmentsFor: track.id,
       ignoreSegmentUuid: null,
+      abLoop: { a: null, b: null },
       preloadedIndex: -1,
       preloadedTrackId: null,
       gaplessStatus: 'ready',
@@ -1150,6 +1153,27 @@ export const usePlayer = create((set, get) => ({
     activeAudio().currentTime = clamped;
     set({ currentTime: clamped });
     get()._togetherPushState?.();
+  },
+
+  // ---------- AB loop (practice section) ----------
+  setABPoint(point) {
+    const t = Math.max(0, get().currentTime || 0);
+    const ab = get().abLoop || { a: null, b: null };
+    if (point === 'a') {
+      const next = { a: t, b: ab.b != null && ab.b > t ? ab.b : null };
+      set({ abLoop: next });
+      get().toast('Loop point A', formatTime(t));
+    } else {
+      let { a, b } = ab;
+      b = t;
+      if (a != null && b <= a) { [a, b] = [b, a]; }
+      if (a == null) { a = b; b = null; }
+      set({ abLoop: { a, b } });
+      get().toast(b != null ? 'Loop point B' : 'Loop point set', formatTime(b ?? t));
+    }
+  },
+  clearABLoop() {
+    set({ abLoop: { a: null, b: null } });
   },
 
   skipBy(delta) {
@@ -1856,6 +1880,12 @@ export const usePlayer = create((set, get) => ({
     const t = activeAudio().currentTime || 0;
     const prev = get().currentTime;
     if (Math.abs(t - prev) >= 0.2 || t === 0) set({ currentTime: t });
+    // AB loop: jump back to A once B is reached.
+    const ab = get().abLoop;
+    if (ab?.a != null && ab?.b != null && ab.b > ab.a && t >= ab.b) {
+      get().seekTo(ab.a);
+      return;
+    }
     get()._checkSkipSegments(t);
     get()._maybeStartFadeOut();
     get()._maybePreloadNext();
