@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Heart, Play, Shuffle, Music2, Pencil, Check, Trash2, X, ListMusic, Image, Copy,
-  ArrowDownAZ, Files, Merge, CheckSquare, Link2,
+  ArrowDownAZ, Files, Merge, CheckSquare, Link2, Download, Loader2,
 } from 'lucide-react';
 import usePlayer from '../store.js';
 import { formatTotalDuration, pluralize } from '../lib/format.js';
+import { detectGenre, GENRE_LABELS } from '../lib/genre.js';
 import TrackRow, { TrackListHeader } from './TrackRow.jsx';
 
 function HeroArt({ playlist }) {
@@ -55,8 +56,18 @@ export default function CollectionView({ playlistId }) {
   const dedupePlaylist = usePlayer((s) => s.dedupePlaylist);
   const mergePlaylist = usePlayer((s) => s.mergePlaylist);
   const removeTracksFromPlaylist = usePlayer((s) => s.removeTracksFromPlaylist);
+  const downloadTrack = usePlayer((s) => s.downloadTrack);
 
   const tracks = isLikedView ? likes : playlist?.tracks || [];
+  const genreCounts = useMemo(() => {
+    const counts = {};
+    for (const t of tracks) {
+      const g = detectGenre(t);
+      counts[g] = (counts[g] || 0) + 1;
+    }
+    return counts;
+  }, [tracks]);
+  const visibleTracks = genreFilter === 'all' ? tracks : tracks.filter((t) => detectGenre(t) === genreFilter);
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
@@ -66,6 +77,8 @@ export default function CollectionView({ playlistId }) {
   const [sortMode, setSortMode] = useState('az');
   const [mergeOpen, setMergeOpen] = useState(false);
   const [bulkMode, setBulkMode] = useState(false);
+  const [bulkDownloading, setBulkDownloading] = useState(false);
+  const [genreFilter, setGenreFilter] = useState('all');
   const [selected, setSelected] = useState(() => new Set());
   const nameRef = useRef(null);
   const coverRef = useRef(null);
@@ -75,6 +88,7 @@ export default function CollectionView({ playlistId }) {
     setDeleteArm(false);
     setCoverEditing(false);
     setBulkMode(false);
+    setGenreFilter('all');
     setSelected(new Set());
     setMergeOpen(false);
     setName(playlist?.name || '');
@@ -266,6 +280,22 @@ export default function CollectionView({ playlistId }) {
               >
                 <CheckSquare size={14} /> {bulkMode ? 'Done' : 'Select'}
               </button>
+              <button
+                className="pill"
+                onClick={async () => {
+                  setBulkDownloading(true);
+                  let ok = 0;
+                  for (const t of tracks) {
+                    if ((await downloadTrack(t)) === true) ok += 1;
+                  }
+                  setBulkDownloading(false);
+                  toast('Bulk download done', `${ok}/${tracks.length} tracks saved for offline`);
+                }}
+                disabled={bulkDownloading}
+                title="Download every track in this playlist for offline"
+              >
+                {bulkDownloading ? <Loader2 size={14} style={{ animation: 'spin .8s linear infinite' }} /> : <Download size={14} />} {bulkDownloading ? 'Downloading…' : 'Download all'}
+              </button>
             </div>
           )}
         </div>
@@ -301,9 +331,19 @@ export default function CollectionView({ playlistId }) {
               </button>
             </div>
           )}
+          {Object.keys(genreCounts).length > 1 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '8px 0 10px' }} aria-label="Filter by genre">
+              <button className={`pill${genreFilter === 'all' ? ' active' : ''}`} onClick={() => setGenreFilter('all')}>All ({tracks.length})</button>
+              {Object.entries(genreCounts).sort((a, b) => b[1] - a[1]).map(([g, count]) => (
+                <button key={g} className={`pill${genreFilter === g ? ' active' : ''}`} onClick={() => setGenreFilter(g)}>
+                  {GENRE_LABELS[g] || g} ({count})
+                </button>
+              ))}
+            </div>
+          )}
           <TrackListHeader />
           <div role="rowgroup">
-            {tracks.map((track, i) => {
+            {visibleTracks.map((track, i) => {
               const checked = selected.has(track.id);
               return (
                 <div key={`${track.id}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: bulkMode ? 10 : 0 }}>

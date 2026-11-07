@@ -15,6 +15,7 @@ function TrackRow({ track, index, contextList, playlistId, showArt = true }) {
   const togglePlay = usePlayer((s) => s.togglePlay);
   const toggleLike = usePlayer((s) => s.toggleLike);
   const openMenu = usePlayer((s) => s.openMenu);
+  const chapterCount = usePlayer((s) => (active && s.chaptersFor === track.id ? s.chapters.length : 0));
 
   const handlePlay = () => (active ? togglePlay() : playTrack(track, contextList));
 
@@ -54,6 +55,7 @@ function TrackRow({ track, index, contextList, playlistId, showArt = true }) {
           {track.artist || 'Unknown artist'}
           {track.kind === 'video' ? ' · Video' : ''}
           {track.isAddon && <span className="hq-badge">{shortQuality(track.audioQuality)}</span>}
+          {chapterCount > 1 && <span className="hq-badge" title={`${chapterCount} chapters`}>{chapterCount} CH</span>}
         </div>
       </div>
 

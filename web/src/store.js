@@ -35,6 +35,7 @@ export const audioB = new Audio();
 audioB.preload = 'auto';
 audioB.crossOrigin = 'anonymous';
 let activeSlot = 'A';
+let silenceSince = null;
 export function activeAudio() { return activeSlot === 'A' ? audio : audioB; }
 export function inactiveAudio() { return activeSlot === 'A' ? audioB : audio; }
 export function getActiveSlot() { return activeSlot; }
@@ -266,6 +267,7 @@ const persistedSettings = {
   autoplay: Boolean(storedSettings?.autoplay),
   fontScale: [0.9, 1, 1.15].includes(Number(storedSettings?.fontScale)) ? Number(storedSettings.fontScale) : 1,
   reduceMotion: storedSettings?.reduceMotion === true,
+  lang: ['en', 'id'].includes(String(storedSettings?.lang || 'en')) ? String(storedSettings.lang) : 'en',
   homeSections: {
     order: Array.isArray(storedSettings?.homeSections?.order)
       ? storedSettings.homeSections.order.filter((s) => typeof s === 'string')
@@ -273,6 +275,13 @@ const persistedSettings = {
     hidden: Array.isArray(storedSettings?.homeSections?.hidden)
       ? storedSettings.homeSections.hidden.filter((s) => typeof s === 'string')
       : [],
+  },
+  skipSilence: storedSettings?.skipSilence === true,
+  keybinds: {
+    playPause: [' ', 'k'],
+    next: ['n'],
+    prev: ['p'],
+    ...(storedSettings?.keybinds && typeof storedSettings.keybinds === 'object' ? storedSettings.keybinds : {}),
   },
 };
 const persistedFolders = Array.isArray(readMigrated('cl:folders', []))
@@ -549,7 +558,14 @@ export const usePlayer = create((set, get) => ({
     }
 
     el.src = url;
-    el.playbackRate = get().playbackRate;
+    // Restore per-track speed memory.
+    let rate = get().playbackRate || 1;
+    try {
+      const map = readMigrated('cl:rateByTrack', {}) || {};
+      if (Number.isFinite(map[track.id])) rate = Math.max(0.25, Math.min(4, map[track.id]));
+    } catch { /* ignore */ }
+    el.playbackRate = rate;
+    if (rate !== (get().playbackRate || 1)) set({ playbackRate: rate });
     el.volume = get()._targetVolume();
     getAnalyser();
     if (audioCtx?.state === 'suspended') audioCtx.resume().catch(() => {});
@@ -1286,6 +1302,15 @@ export const usePlayer = create((set, get) => ({
       try { embedBridge.player?.setPlaybackRate?.(rate); } catch { /* rate unsupported for this video */ }
     }
     set({ playbackRate: rate });
+    // Remember per-track speed (restored in _loadAndPlay).
+    const track = get().currentTrack();
+    if (track?.id) {
+      try {
+        const map = readMigrated('cl:rateByTrack', {}) || {};
+        map[track.id] = rate;
+        write('cl:rateByTrack', map);
+      } catch { /* best-effort */ }
+    }
   },
 
   // ---------- queue management ----------
@@ -1983,6 +2008,33 @@ export const usePlayer = create((set, get) => ({
     if (ab?.a != null && ab?.b != null && ab.b > ab.a && t >= ab.b) {
       get().seekTo(ab.a);
       return;
+    }
+    // Skip silence: seek forward past long quiet gaps.
+    if (get().settings?.skipSilence && get().isPlaying) {
+      try {
+        const analyser = getAnalyser();
+        if (analyser) {
+          const data = new Uint8Array(analyser.fftSize);
+          analyser.getByteTimeDomainData(data);
+          let sum = 0;
+          for (let i = 0; i < data.length; i++) {
+            const v = (data[i] - 128) / 128;
+            sum += v * v;
+          }
+          const rms = Math.sqrt(sum / data.length);
+          const now = Date.now();
+          if (rms < 0.012 && t > 5 && t < (get().duration || 0) - 3) {
+            silenceSince = silenceSince || now;
+            if (now - silenceSince > 2500) {
+              silenceSince = null;
+              get().seekTo(Math.min((get().duration || 0) - 1, t + 2));
+              return;
+            }
+          } else {
+            silenceSince = null;
+          }
+        }
+      } catch { /* analyser unavailable */ }
     }
     get()._checkSkipSegments(t);
     get()._maybeStartFadeOut();
