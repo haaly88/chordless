@@ -137,15 +137,15 @@ export default function StatsView() {
       <div className="stat-cards">
         <div className="stat-card">
           <div className="stat-icon red"><Headphones size={20} /></div>
-          <div><b>{stats.totalPlays}</b><span>Total plays</span></div>
+          <div><b>{stats.totalPlays}</b><span>{t(lang, 'stats.totalPlays')}</span></div>
         </div>
         <div className="stat-card">
           <div className="stat-icon amber"><Clock size={20} /></div>
-          <div><b>{hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`}</b><span>Time listening</span></div>
+          <div><b>{hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`}</b><span>{t(lang, 'stats.time')}</span></div>
         </div>
         <div className="stat-card">
           <div className="stat-icon green"><Users size={20} /></div>
-          <div><b>{stats.topArtists[0]?.[0] || '—'}</b><span>Top artist</span></div>
+          <div><b>{stats.topArtists[0]?.[0] || '—'}</b><span>{t(lang, 'stats.topArtist')}</span></div>
         </div>
       </div>
 

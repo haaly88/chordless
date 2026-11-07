@@ -61,6 +61,10 @@ const DICT = {
     'toast.libraryExported': 'Library exported',
     'toast.libraryImported': 'Library imported',
     'toast.importFailed': 'Import failed',
+    'search.emptyTitle': 'Search music',
+    'search.noMatches': 'No matches',
+    'search.recentShort': 'RECENT',
+    'np.shareTitle': 'Share card',
   },
   id: {
     'nav.home': 'Beranda',
@@ -118,6 +122,10 @@ const DICT = {
     'toast.libraryExported': 'Lib diekspor',
     'toast.libraryImported': 'Lib diimpor',
     'toast.importFailed': 'Impor gagal',
+    'search.emptyTitle': 'Cari musik',
+    'search.noMatches': 'Tidak ada hasil',
+    'search.recentShort': 'TERAKHIR',
+    'np.shareTitle': 'Bagikan kartu',
   },
 };
 

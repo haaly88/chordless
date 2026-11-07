@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import usePlayer from '../store.js';
 import { formatTime, shortQuality } from '../lib/format.js';
+import { t } from '../lib/i18n.js';
 import SeekBar from './SeekBar.jsx';
 import Visualizer from './Visualizer.jsx';
 import LyricsPanel from './LyricsPanel.jsx';
@@ -37,6 +38,7 @@ export default function NowPlaying() {
   const setABPoint = usePlayer((s) => s.setABPoint);
   const clearABLoop = usePlayer((s) => s.clearABLoop);
   const chapters = usePlayer((s) => s.chapters || []);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const toggleNowPlaying = usePlayer((s) => s.toggleNowPlaying);
   const lyricsOpen = usePlayer((s) => s.lyricsOpen);
   const toggleLyrics = usePlayer((s) => s.toggleLyrics);
@@ -378,7 +380,7 @@ export default function NowPlaying() {
         <div className="modal-backdrop" onClick={() => setShareOpen(false)} role="presentation" style={{ zIndex: 90 }}>
           <div className="modal" role="dialog" aria-modal="true" aria-label="Share Now Playing card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <h2 style={{ margin: 0 }}>Share card</h2>
+              <h2 style={{ margin: 0 }}>{t(lang, 'np.shareTitle')}</h2>
               <button className="icon-btn" onClick={() => setShareOpen(false)} aria-label="Close"><X size={20} /></button>
             </div>
             <div className="share-card-preview">
