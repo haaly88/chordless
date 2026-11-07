@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, X, Loader2, CloudOff, RotateCcw, Music2, Clapperboard, ListMusic, Flame, User, Disc, Clock, Mic } from 'lucide-react';
+import { Search, X, Loader2, CloudOff, RotateCcw, Music2, Clapperboard, ListMusic, Flame, User, Disc, Clock, Mic, Bookmark, BookmarkCheck } from 'lucide-react';
 import usePlayer from '../store.js';
 import { apiSearch, apiAddonSearch } from '../lib/api.js';
 import TrackRow, { TrackListHeader } from './TrackRow.jsx';
@@ -16,6 +16,10 @@ export default function SearchView() {
   const addSearchHistory = usePlayer((s) => s.addSearchHistory);
   const removeSearchHistory = usePlayer((s) => s.removeSearchHistory);
   const clearSearchHistory = usePlayer((s) => s.clearSearchHistory);
+  const savedSearchesRaw = usePlayer((s) => s.savedSearches);
+  const savedSearches = Array.isArray(savedSearchesRaw) ? savedSearchesRaw.filter((s) => s?.query) : [];
+  const saveSearch = usePlayer((s) => s.saveSearch);
+  const removeSavedSearch = usePlayer((s) => s.removeSavedSearch);
 
   const [filter, setFilter] = useState('all'); // all | song | video
   const [results, setResults] = useState(null);
@@ -189,6 +193,35 @@ export default function SearchView() {
       {/* suggestions when empty */}
       {!query.trim() && (
         <>
+          {savedSearches.length > 0 && (
+            <>
+              <div className="section-label" style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 4 }}>
+                <Bookmark size={12} style={{ color: 'var(--text-3)' }} />
+                SAVED SEARCHES
+              </div>
+              <div className="chips">
+                {savedSearches.map((s) => (
+                  <span key={s.id} className="chip" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      onClick={() => { setQuery(s.query); setFilter(s.filter || 'all'); }}
+                      style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer', padding: 0 }}
+                      title={`Search “${s.query}” (${s.filter || 'all'})`}
+                    >
+                      {s.query}{s.filter && s.filter !== 'all' ? ` · ${s.filter}` : ''}
+                    </button>
+                    <button
+                      onClick={() => removeSavedSearch(s.id)}
+                      aria-label="Remove saved search"
+                      title="Remove saved search"
+                      style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: 0, display: 'grid', placeItems: 'center' }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
           {searchHistory.length > 0 && (
             <>
               <div className="section-label" style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 4 }}>
@@ -241,6 +274,17 @@ export default function SearchView() {
               {f.icon}{f.label}
             </button>
           ))}
+          <button
+            className="pill"
+            onClick={() => saveSearch(query.trim(), filter)}
+            disabled={query.trim().length < 2}
+            title="Save this search with the current filter"
+            style={{ marginLeft: 'auto' }}
+          >
+            {savedSearches.some((s) => s.query.toLowerCase() === query.trim().toLowerCase() && (s.filter || 'all') === filter)
+              ? <><BookmarkCheck size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> Saved</>
+              : <><Bookmark size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> Save search</>}
+          </button>
         </div>
       )}
 

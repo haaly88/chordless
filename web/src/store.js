@@ -324,6 +324,9 @@ export const usePlayer = create((set, get) => ({
 
   // ---- search history (strings only — protects against corrupted storage) ----
   searchHistory: (Array.isArray(readMigrated('cl:searchHistory', [])) ? readMigrated('cl:searchHistory', []).filter((h) => typeof h === 'string') : []),
+  savedSearches: (Array.isArray(readMigrated('cl:savedSearches', []))
+    ? readMigrated('cl:savedSearches', []).filter((s) => s && typeof s.query === 'string' && typeof s.id === 'string')
+    : []),
 
   // ---- library ----
   liked: upgradePersisted(readMigrated('cl:liked', [])) || [],
@@ -1337,6 +1340,25 @@ export const usePlayer = create((set, get) => ({
     set({ searchHistory: [] });
     write('cl:searchHistory', []);
   },
+  saveSearch(query, filter = 'all') {
+    const q = String(query || '').trim();
+    if (!q || q.length < 2) return;
+    const clean = (Array.isArray(get().savedSearches) ? get().savedSearches : []).filter((s) => s?.query);
+    if (clean.some((s) => String(s.query).toLowerCase() === q.toLowerCase() && (s.filter || 'all') === filter)) {
+      get().toast('Already saved', q);
+      return;
+    }
+    const entry = { id: uid(), query: q, filter, createdAt: Date.now() };
+    const next = [entry, ...clean].slice(0, 30);
+    set({ savedSearches: next });
+    write('cl:savedSearches', next);
+    get().toast('Search saved', q);
+  },
+  removeSavedSearch(id) {
+    const clean = (Array.isArray(get().savedSearches) ? get().savedSearches : []).filter((s) => s?.id !== id);
+    set({ savedSearches: clean });
+    write('cl:savedSearches', clean);
+  },
 
   // ---------- mini player ----------
   toggleMiniPlayer() { set((s) => ({ miniPlayer: !s.miniPlayer })); },
@@ -1444,6 +1466,7 @@ export const usePlayer = create((set, get) => ({
       queue: { queue: s.queue, index: s.index, position: s.currentTime || 0 },
       settings: s.settings,
       searchHistory: s.searchHistory,
+      savedSearches: s.savedSearches,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1476,6 +1499,7 @@ export const usePlayer = create((set, get) => ({
         }
         if (payload.settings) updates.settings = { ...persistedSettings, ...payload.settings };
         if (Array.isArray(payload.searchHistory)) updates.searchHistory = payload.searchHistory.slice(0, 20);
+        if (Array.isArray(payload.savedSearches)) updates.savedSearches = payload.savedSearches.filter((s) => s?.query && s?.id).slice(0, 30);
 
         set(updates);
         if (updates.liked) write('cl:liked', updates.liked);
@@ -1484,6 +1508,7 @@ export const usePlayer = create((set, get) => ({
         if (updates.queue) write('cl:queue', { queue: updates.queue, index: updates.index, position: updates.restorePosition });
         if (updates.settings) write('cl:settings', updates.settings);
         if (updates.searchHistory) write('cl:searchHistory', updates.searchHistory);
+        if (updates.savedSearches) write('cl:savedSearches', updates.savedSearches);
 
         get().toast('Library imported', 'Backup restored successfully.');
       } catch (err) {
