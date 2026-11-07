@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Moon, Sun, Trash2, Palette, Info, Keyboard, Heart, ExternalLink, Plug, Check, Loader2, Flame, Download, Upload, Monitor, RotateCcw, ChevronDown, Search, MapPin } from 'lucide-react';
+import { X, Moon, Sun, Trash2, Palette, Info, Keyboard, Heart, ExternalLink, Plug, Check, Loader2, Flame, Download, Upload, Monitor, RotateCcw, ChevronDown, Search, MapPin, Copy } from 'lucide-react';
 import usePlayer from '../store.js';
 import { apiAddonTest } from '../lib/api.js';
 import { REGION_OPTIONS, resolveRegion } from '../lib/region.js';
@@ -138,6 +138,8 @@ export default function SettingsModal() {
   const equalizerBands = usePlayer((s) => s.equalizerBands);
   const setEqualizerPreset = usePlayer((s) => s.setEqualizerPreset);
   const setEqualizerBand = usePlayer((s) => s.setEqualizerBand);
+  const exportEQPreset = usePlayer((s) => s.exportEQPreset);
+  const importEQPreset = usePlayer((s) => s.importEQPreset);
   const crossfade = settings.crossfade || { enabled: false, duration: 5 };
   const setCrossfade = usePlayer((s) => s.setCrossfade);
   const gapless = settings.gapless || { enabled: false, preloadSeconds: 20 };
@@ -257,6 +259,44 @@ export default function SettingsModal() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* text size + motion */}
+        <div className="setting-row">
+          <div>
+            <b>Text size</b>
+            <small>Scale the whole interface. Compact saves space, Large is easier to read.</small>
+          </div>
+          <div className="segmented" role="radiogroup" aria-label="Text size" style={{ flexWrap: 'wrap' }}>
+            {[
+              [0.9, 'Compact'],
+              [1, 'Default'],
+              [1.15, 'Large'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                role="radio"
+                aria-checked={Number(settings.fontScale || 1) === value}
+                className={Number(settings.fontScale || 1) === value ? 'active' : ''}
+                onClick={() => updateSettings({ fontScale: value })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="setting-row">
+          <div>
+            <b>Reduce motion</b>
+            <small>Turn off animations and transitions across the app.</small>
+          </div>
+          <button
+            className={`switch${settings.reduceMotion ? ' on' : ''}`}
+            role="switch"
+            aria-checked={Boolean(settings.reduceMotion)}
+            aria-label="Reduce motion"
+            onClick={() => updateSettings({ reduceMotion: !settings.reduceMotion })}
+          />
         </div>
 
         {/* playback engine */}
@@ -503,7 +543,7 @@ export default function SettingsModal() {
             </button>
           </div>
         </div>
-        <div style={{ padding: '4px 4px 14px', display: 'flex', gap: 14, alignItems: 'center' }}>
+        <div style={{ padding: '4px 4px 14px', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           {['bass', 'mid', 'treble'].map((band) => (
             <div key={band} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 70 }}>
               <label style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)' }}>{band[0].toUpperCase()}</label>
@@ -518,6 +558,33 @@ export default function SettingsModal() {
               <span style={{ fontSize: 10, color: 'var(--text-2)' }}>{equalizerBands[band]} dB</span>
             </div>
           ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginLeft: 'auto' }}>
+            <button
+              className="pill"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(exportEQPreset());
+                  toast('EQ copied', 'Paste it in any Chordless Settings → EQ → Paste.');
+                } catch { toast('Copy failed', 'Clipboard unavailable in this browser.'); }
+              }}
+              title="Copy this EQ preset as JSON to share"
+            >
+              <Copy size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> Copy EQ
+            </button>
+            <button
+              className="pill"
+              onClick={async () => {
+                try {
+                  const text = await navigator.clipboard.readText();
+                  if (text) importEQPreset(text);
+                  else toast('Nothing to paste', 'Clipboard is empty.');
+                } catch { toast('Paste unavailable', 'Allow clipboard access or check browser permissions.'); }
+              }}
+              title="Apply an EQ preset from clipboard"
+            >
+              <Upload size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> Paste EQ
+            </button>
+          </div>
         </div>
 
         {/* crossfade */}

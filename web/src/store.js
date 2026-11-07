@@ -264,6 +264,8 @@ const persistedSettings = {
   balance: Math.max(-1, Math.min(1, Number(storedSettings?.balance) || 0)),
   region: String(storedSettings?.region || 'auto').toUpperCase() === 'AUTO' ? 'auto' : String(storedSettings?.region || 'auto').toUpperCase(),
   autoplay: Boolean(storedSettings?.autoplay),
+  fontScale: [0.9, 1, 1.15].includes(Number(storedSettings?.fontScale)) ? Number(storedSettings.fontScale) : 1,
+  reduceMotion: storedSettings?.reduceMotion === true,
 };
 const persistedFolders = Array.isArray(readMigrated('cl:folders', []))
   ? readMigrated('cl:folders', []).filter((f) => f?.id && f?.name).map((f) => ({ id: String(f.id), name: String(f.name).slice(0, 60), createdAt: f.createdAt || Date.now() }))
@@ -1400,6 +1402,25 @@ export const usePlayer = create((set, get) => ({
     set({ equalizerBands: bands, equalizerPreset: 'custom' });
     getAnalyser();
     applyEqualizer(bands.bass, bands.mid, bands.treble);
+  },
+  exportEQPreset() {
+    const b = get().equalizerBands || { bass: 0, mid: 0, treble: 0 };
+    return JSON.stringify({ bass: b.bass, mid: b.mid, treble: b.treble });
+  },
+  importEQPreset(text) {
+    try {
+      const data = JSON.parse(String(text || '').trim());
+      const clamp = (v) => Math.max(-12, Math.min(12, Math.round(Number(v) || 0)));
+      const bands = { bass: clamp(data.bass), mid: clamp(data.mid), treble: clamp(data.treble) };
+      set({ equalizerBands: bands, equalizerPreset: 'custom' });
+      getAnalyser();
+      applyEqualizer(bands.bass, bands.mid, bands.treble);
+      get().toast('EQ applied', `Bass ${bands.bass} · Mid ${bands.mid} · Treble ${bands.treble} dB`);
+      return true;
+    } catch {
+      get().toast('Invalid EQ preset', 'Could not parse that JSON.');
+      return false;
+    }
   },
 
   // ---------- spatial audio ----------

@@ -1408,6 +1408,10 @@ img { user-select: none; -webkit-user-drag: none; }
   .main { scroll-behavior: auto; }
 }
 
+/* In-app Reduce motion toggle (Settings → Appearance) */
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation-duration: .001s !important; transition-duration: .001s !important; }
+.reduce-motion .main { scroll-behavior: auto; }
+
 /* ============ home head v2 ============ */
 .home-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 2px 2px 14px; }
 .home-head-actions { display: flex; gap: 10px; align-items: center; flex: 0 0 auto; }

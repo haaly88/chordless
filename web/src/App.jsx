@@ -84,6 +84,21 @@ export default function App() {
     apply(theme);
   }, [theme]);
 
+  // ---------- text size + reduce motion ----------
+  const fontScale = usePlayer((s) => s.settings.fontScale || 1);
+  const reduceMotion = usePlayer((s) => Boolean(s.settings.reduceMotion));
+  useEffect(() => {
+    const root = document.documentElement;
+    // Chromium/Edge honor `zoom` on the root; Firefox falls back to font-size.
+    if ('zoom' in root.style) root.style.zoom = String(fontScale);
+    else root.style.fontSize = `${16 * fontScale}px`;
+    root.classList.toggle('reduce-motion', reduceMotion);
+    return () => {
+      if ('zoom' in root.style) root.style.zoom = '';
+      else root.style.fontSize = '';
+    };
+  }, [fontScale, reduceMotion]);
+
   // ---------- adaptive accent from artwork ----------
   useEffect(() => {
     const root = document.documentElement;
