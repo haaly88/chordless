@@ -48,7 +48,7 @@ function ForYouHero({ forYou, loading, onPlay, onShuffle, onRefresh }) {
   if (loading) {
     return (
       <section className="shelf" aria-label="For You">
-        <div style={{ borderRadius: 20, padding: 20, background: 'linear-gradient(150deg, color-mix(in srgb, var(--accent) 18%, #15151f), #111118)', border: '1px solid var(--stroke)', display: 'flex', gap: 18, alignItems: 'center' }}>
+        <div className="foryou-hero loading" style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
           <div className="skel" style={{ width: 132, height: 132, borderRadius: 16, flexShrink: 0 }} />
           <div style={{ flex: 1 }}><div className="skel" style={{ height: 22, width: '40%', marginBottom: 10 }} /><div className="skel" style={{ height: 13, width: '65%' }} /></div>
         </div>
@@ -58,14 +58,14 @@ function ForYouHero({ forYou, loading, onPlay, onShuffle, onRefresh }) {
   if (!forYou || !forYou.tracks?.length) {
     return (
       <section className="shelf" aria-label="For You">
-        <div style={{ borderRadius: 20, padding: 20, background: 'linear-gradient(150deg, color-mix(in srgb, var(--accent) 14%, #15151f), #111118)', border: '1px dashed var(--stroke-strong)', display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="foryou-hero empty" style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ width: 88, height: 88, borderRadius: 16, display: 'grid', placeItems: 'center', background: 'var(--hover-strong)', color: 'var(--accent)', flexShrink: 0 }}>
             <Sparkles size={36} strokeWidth={1.4} />
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
             <div className="hero-kicker">AI MIX · FOR YOU</div>
-            <div style={{ fontSize: 20, fontWeight: 800, margin: '2px 0 4px' }}>Your personal mix</div>
-            <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>Play a few songs and I’ll build a daily mix from your taste. It refreshes each day.</p>
+            <div className="foryou-title" style={{ fontSize: 20, fontWeight: 800, margin: '2px 0 4px' }}>Your personal mix</div>
+            <p className="foryou-reason" style={{ fontSize: 13, margin: 0 }}>Play a few songs and I’ll build a daily mix from your taste. It refreshes each day.</p>
           </div>
           <button className="btn primary" onClick={onRefresh}><Sparkles size={15} /> Build my mix</button>
         </div>
@@ -73,9 +73,10 @@ function ForYouHero({ forYou, loading, onPlay, onShuffle, onRefresh }) {
     );
   }
   const mins = forYou.tracks.reduce((s, t) => s + ((t.duration || 0) / 60), 0);
+  const minsLabel = mins > 0.5 ? ` · ${Math.round(mins)} min` : '';
   return (
     <section className="shelf" aria-label="For You">
-      <div style={{ borderRadius: 20, padding: 20, background: 'linear-gradient(150deg, color-mix(in srgb, var(--accent) 28%, #15151f), #111118)', border: '1px solid var(--stroke)', display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap', position: 'relative', overflow: 'hidden' }}>
+      <div className="foryou-hero">
         <div aria-hidden="true" style={{ position: 'absolute', right: -40, top: -40, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, color-mix(in srgb, var(--accent) 40%, transparent), transparent 70%)', filter: 'blur(10px)' }} />
         <div className="foryou-thumbs" aria-hidden="true" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, width: 132, flexShrink: 0, position: 'relative' }}>
           {thumbs.map((t, i) => (
@@ -86,8 +87,8 @@ function ForYouHero({ forYou, loading, onPlay, onShuffle, onRefresh }) {
         </div>
         <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
           <div className="hero-kicker">AI MIX · FOR YOU</div>
-          <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.02, margin: '2px 0 2px' }}>For You <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>· {forYou.tracks.length} tracks · {Math.round(mins)} min</span></div>
-          <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 10px', lineHeight: 1.5 }}>{forYou.reason || 'Based on your listening'}</p>
+          <div className="foryou-title" style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.02, margin: '2px 0 2px' }}>For You <span className="foryou-sub" style={{ fontSize: 13, fontWeight: 600 }}>· {forYou.tracks.length} tracks{minsLabel}</span></div>
+          <p className="foryou-reason" style={{ fontSize: 13, margin: '0 0 10px', lineHeight: 1.5 }}>{forYou.reason || 'Based on your listening'}</p>
           {topArtists.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
               {topArtists.slice(0, 4).map((a) => (
