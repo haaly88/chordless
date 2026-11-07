@@ -6,6 +6,7 @@ import {
 import usePlayer from '../store.js';
 import { formatTotalDuration, pluralize } from '../lib/format.js';
 import { detectGenre, GENRE_LABELS } from '../lib/genre.js';
+import { t } from '../lib/i18n.js';
 import TrackRow, { TrackListHeader } from './TrackRow.jsx';
 
 function HeroArt({ playlist }) {
@@ -52,6 +53,7 @@ export default function CollectionView({ playlistId }) {
   const setPlaylistFolder = usePlayer((s) => s.setPlaylistFolder);
   const setView = usePlayer((s) => s.setView);
   const toast = usePlayer((s) => s.toast);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const sortPlaylist = usePlayer((s) => s.sortPlaylist);
   const dedupePlaylist = usePlayer((s) => s.dedupePlaylist);
   const mergePlaylist = usePlayer((s) => s.mergePlaylist);
@@ -234,10 +236,10 @@ export default function CollectionView({ playlistId }) {
 
           <div className="hero-actions">
             <button className="btn primary" onClick={() => playTracks(tracks, 0)} disabled={!tracks.length}>
-              <Play size={17} fill="#fff" strokeWidth={0} /> Play
+              <Play size={17} fill="#fff" strokeWidth={0} /> {t(lang, 'btn.play')}
             </button>
             <button className="btn" onClick={() => playTracks(tracks, 0, { shuffle: true })} disabled={!tracks.length}>
-              <Shuffle size={16} /> Shuffle
+              <Shuffle size={16} /> {t(lang, 'btn.shuffle')}
             </button>
             {!isLikedView && (
               <button
@@ -246,7 +248,7 @@ export default function CollectionView({ playlistId }) {
                 onBlur={() => setDeleteArm(false)}
                 title={deleteArm ? 'Click again to delete' : 'Delete playlist'}
               >
-                <Trash2 size={16} /> {deleteArm ? 'Confirm delete' : 'Delete'}
+                <Trash2 size={16} /> {deleteArm ? 'Confirm delete' : t(lang, 'btn.delete')}
               </button>
             )}
           </div>

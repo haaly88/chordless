@@ -336,8 +336,8 @@ export default function LibraryView() {
               aria-label="Playlist JSON"
             />
             <div className="modal-actions" style={{ justifyContent: 'flex-end', gap: 8 }}>
-              <button className="btn" onClick={() => { setImportOpen(false); setImportJson(''); }}>Cancel</button>
-              <button className="btn primary" onClick={() => { importPlaylist(importJson); setImportOpen(false); setImportJson(''); }} disabled={!importJson.trim()}>Import</button>
+              <button className="btn" onClick={() => { setImportOpen(false); setImportJson(''); }}>{t(lang, 'btn.cancel')}</button>
+              <button className="btn primary" onClick={() => { importPlaylist(importJson); setImportOpen(false); setImportJson(''); }} disabled={!importJson.trim()}>{t(lang, 'btn.import')}</button>
             </div>
           </div>
         </div>
@@ -376,7 +376,7 @@ export default function LibraryView() {
               </div>
             )}
             <div className="modal-actions" style={{ justifyContent: 'flex-end', gap: 8 }}>
-              <button className="btn" onClick={() => setLinkOpen(false)}>Cancel</button>
+              <button className="btn" onClick={() => setLinkOpen(false)}>{t(lang, 'btn.cancel')}</button>
               {!linkPreview && (
                 <button className="btn primary" disabled={!linkUrl.trim() || linkBusy} onClick={doLinkPreview}>
                   {linkBusy ? <><Loader2 size={15} style={{ animation: 'spin .8s linear infinite' }} /> Fetching…</> : 'Preview'}
@@ -392,7 +392,7 @@ export default function LibraryView() {
                     setView({ name: 'playlist', id: p.id });
                   }}
                 >
-                  Create playlist
+                  {t(lang, 'btn.create')} playlist
                 </button>
               )}
             </div>
