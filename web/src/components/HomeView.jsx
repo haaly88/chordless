@@ -94,7 +94,7 @@ function ForYouHero({ forYou, loading, onPlay, onShuffle, onRefresh }) {
         <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
           <div className="hero-kicker">{t(lang, 'home.foryou.kicker')}</div>
           <div className="foryou-title" style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.02, margin: '2px 0 2px' }}>{t(lang, 'home.foryou.title')} <span className="foryou-sub" style={{ fontSize: 13, fontWeight: 600 }}>· {forYou.tracks.length} {t(lang, 'home.tracksSuffix')}{minsLabel}</span></div>
-          <p className="foryou-reason" style={{ fontSize: 13, margin: '0 0 10px', lineHeight: 1.5 }}>{forYou.reason || 'Based on your listening'}</p>
+          <p className="foryou-reason" style={{ fontSize: 13, margin: '0 0 10px', lineHeight: 1.5 }}>{lang === 'id' ? (forYou.reason || '').replace(/^Based on /i, 'Berdasarkan ') : (forYou.reason || 'Based on your listening')}</p>
           {topArtists.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
               {topArtists.slice(0, 4).map((a) => (
@@ -170,11 +170,12 @@ function Shelf({ title, icon, items, onPlayAll }) {
 /** Playlist cards from the home feed ("Trending community playlists"). */
 function PlaylistShelf({ playlists }) {
   const setView = usePlayer((s) => s.setView);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   if (!playlists?.length) return null;
   return (
     <section className="shelf">
       <div className="shelf-head">
-        <h2><Sparkles size={17} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />Trending community playlists</h2>
+        <h2><Sparkles size={17} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />{t(lang, 'home.community')}</h2>
       </div>
       <div className="shelf-row">
         {playlists.map((pl) => (
@@ -208,7 +209,7 @@ function ShortcutsRow({ onAddShortcut, pins, onTogglePin }) {
     { key: 'mix', label: t(lang, 'home.yourMix'), sub: t(lang, 'home.yourMixSub'), Icon: Shuffle, onClick: () => { if (!liked.length && !history.length) return; const pool = [...liked, ...history]; const seen = new Set(); const tracks = []; for (const t of pool) { if (!seen.has(t.id)) { seen.add(t.id); tracks.push(t); } } playTracks(tracks, 0, { shuffle: true }); } },
     { key: 'recent', label: t(lang, 'home.recent'), sub: `${Math.min(history.length, 99)} ${t(lang, 'home.recentSub')}`, Icon: History, onClick: () => playTracks(history.slice(0, 20), 0) },
     { key: 'liked', label: t(lang, 'home.shortcut.likedSongs'), sub: `${liked.length} ${t(lang, 'home.likedSub')}`, Icon: Heart, onClick: () => setView({ name: 'liked' }) },
-    { key: 'quickpicks', label: 'Quick picks', sub: 'Fresh from your mix', Icon: Sparkles, onClick: () => quickPicks.length && playTracks(quickPicks, 0, { shuffle: true }) },
+    { key: 'quickpicks', label: t(lang, 'home.quick'), sub: t(lang, 'home.quickSub'), Icon: Sparkles, onClick: () => quickPicks.length && playTracks(quickPicks, 0, { shuffle: true }) },
   ];
 
   return (
@@ -239,7 +240,7 @@ function ShortcutsRow({ onAddShortcut, pins, onTogglePin }) {
         ))}
         <button className="shortcut-card dashed" onClick={onAddShortcut}>
           <div className="shortcut-add-icon"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M9 3v12M3 9h12"/></svg></div>
-          <div><b>Add a shortcut</b><span>Pin a playlist for one-tap access</span></div>
+          <div><b>{t(lang, 'home.addShortcut')}</b><span>{t(lang, 'home.addShortcutSub')}</span></div>
         </button>
       </div>
     </section>
@@ -452,13 +453,13 @@ export default function HomeView() {
             if (key === 'shortcuts') return <ShortcutsRow key={key} onAddShortcut={() => setShortcutModal(true)} pins={pins} onTogglePin={togglePin} />;
             if (key === 'jump') {
               return recentShelf.length >= 2 ? (
-                <Shelf key={key} title="Jump back in" icon={<History size={18} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />}
+                <Shelf key={key} title={t(lang, 'home.jump')} icon={<History size={18} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />}
                   items={recentShelf} onPlayAll={() => playTracks(recentShelf, 0)} />
               ) : null;
             }
             if (key === 'recent') {
               return recentlyAdded.length >= 2 ? (
-                <Shelf key={key} title="Recently added" icon={<Clock size={18} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />}
+                <Shelf key={key} title={t(lang, 'home.recentAdded')} icon={<Clock size={18} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />}
                   items={recentlyAdded} onPlayAll={() => playTracks(recentlyAdded, 0)} />
               ) : null;
             }
@@ -466,7 +467,7 @@ export default function HomeView() {
             if (key === 'quickpicks') {
               return quickPicks.length > 0 ? (
                 <div key={key}>
-                  <div className="section-label" style={{ paddingLeft: 2 }}>QUICK PICKS</div>
+                  <div className="section-label" style={{ paddingLeft: 2 }}>{t(lang, 'home.quick').toUpperCase()}</div>
                   <div className="quick-grid">
                     {quickPicks.slice(0, 6).map((t) => <QuickTile key={t.id} track={t} contextList={quickPicks} />)}
                   </div>
@@ -478,7 +479,7 @@ export default function HomeView() {
 
           {!home && !error && visibleKeys.includes('feeds') && (
             <div className="shelf" aria-busy="true">
-              <div className="shelf-head"><h2>Loading your mix…</h2></div>
+              <div className="shelf-head"><h2>{t(lang, 'home.loading')}</h2></div>
               <div className="shelf-row">
                 {Array.from({ length: 6 }, (_, i) => (
                   <div key={i} style={{ width: 172 }}>
