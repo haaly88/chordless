@@ -1,26 +1,28 @@
-import { useEffect, useMemo, useState, useCallback, Component } from 'react';
+import { useEffect, useMemo, useState, useCallback, Component, lazy, Suspense } from 'react';
 import { Menu } from 'lucide-react';
 import usePlayer, { audio, audioB, streamSrc, write } from './store.js';
 import HomeView from './components/HomeView.jsx';
-import SearchView from './components/SearchView.jsx';
-import CollectionView from './components/CollectionView.jsx';
-import LibraryView from './components/LibraryView.jsx';
-import StatsView from './components/StatsView.jsx';
-import YtPlaylistView from './components/YtPlaylistView.jsx';
-import ArtistView from './components/ArtistView.jsx';
-import AlbumView from './components/AlbumView.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import PlayerBar from './components/PlayerBar.jsx';
-import NowPlaying from './components/NowPlaying.jsx';
-import KaraokeMode from './components/KaraokeMode.jsx';
-import ListenTogetherModal from './components/ListenTogetherModal.jsx';
-import QueuePanel from './components/QueuePanel.jsx';
 import EmbedEngine from './components/EmbedEngine.jsx';
 import ContextMenu from './components/ContextMenu.jsx';
 import Toasts from './components/Toasts.jsx';
-import SettingsModal from './components/SettingsModal.jsx';
 import { extractPalette } from './lib/palette.js';
 import { apiHealth, coverProxy, addonTrackUrl } from './lib/api.js';
+
+// Lazy views — split out of the initial bundle (Home/shell stay eager).
+const SearchView = lazy(() => import('./components/SearchView.jsx'));
+const CollectionView = lazy(() => import('./components/CollectionView.jsx'));
+const LibraryView = lazy(() => import('./components/LibraryView.jsx'));
+const StatsView = lazy(() => import('./components/StatsView.jsx'));
+const YtPlaylistView = lazy(() => import('./components/YtPlaylistView.jsx'));
+const ArtistView = lazy(() => import('./components/ArtistView.jsx'));
+const AlbumView = lazy(() => import('./components/AlbumView.jsx'));
+const NowPlaying = lazy(() => import('./components/NowPlaying.jsx'));
+const KaraokeMode = lazy(() => import('./components/KaraokeMode.jsx'));
+const ListenTogetherModal = lazy(() => import('./components/ListenTogetherModal.jsx'));
+const QueuePanel = lazy(() => import('./components/QueuePanel.jsx'));
+const SettingsModal = lazy(() => import('./components/SettingsModal.jsx'));
 
 class ViewErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -396,18 +398,24 @@ export default function App() {
       {navOpen && <div className="nav-overlay" onClick={closeNav} aria-hidden="true" />}
       <Sidebar open={navOpen} onClose={closeNav} />
       <main className="main" key={view?.name + (view?.id || '')}>
-        <ViewErrorBoundary>{mainView}</ViewErrorBoundary>
+        <ViewErrorBoundary>
+          <Suspense fallback={<div className="empty-state" aria-busy="true"><p>Loading…</p></div>}>{mainView}</Suspense>
+        </ViewErrorBoundary>
       </main>
 
       <EmbedEngine />
       <PlayerBar />
-      {nowPlayingOpen && <NowPlaying />}
-      {karaokeOpen && <KaraokeMode />}
-      {togetherOpen && <ListenTogetherModal />}
-      {queueOpen && <QueuePanel />}
+      <Suspense fallback={null}>
+        {nowPlayingOpen && <NowPlaying />}
+        {karaokeOpen && <KaraokeMode />}
+        {togetherOpen && <ListenTogetherModal />}
+        {queueOpen && <QueuePanel />}
+      </Suspense>
       <ContextMenu />
       <Toasts />
-      {settingsOpen && <SettingsModal />}
+      <Suspense fallback={null}>
+        {settingsOpen && <SettingsModal />}
+      </Suspense>
     </div>
   );
 }
