@@ -7,7 +7,7 @@
  * The old strategy (cache-first for everything, same version forever)
  * served stale JS indefinitely after deploys.
  */
-const CACHE_NAME = 'chordless-v5';
+const CACHE_NAME = 'chordless-v6';
 const ASSETS = [
   '/index.html',
   '/manifest.json',

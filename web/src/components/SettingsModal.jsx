@@ -33,6 +33,19 @@ function SettingsDropdown({ value, onChange, label }) {
     document.addEventListener('pointerdown', onDoc);
     document.addEventListener('keydown', onEsc);
     setTimeout(() => inputRef.current?.focus(), 30);
+    // Keep the menu inside the modal viewport: scroll the modal so the
+    // trigger sits near the top, leaving room for the ~300px menu below.
+    // (Menu is absolutely positioned inside the scrolling modal.)
+    requestAnimationFrame(() => {
+      const modal = wrapRef.current?.closest('.modal');
+      const row = wrapRef.current?.closest('.setting-row');
+      if (modal && row) {
+        const modalRect = modal.getBoundingClientRect();
+        const rowRect = row.getBoundingClientRect();
+        const delta = rowRect.top - modalRect.top - 16;
+        if (delta > 0) modal.scrollTop += delta;
+      }
+    });
     return () => { document.removeEventListener('pointerdown', onDoc); document.removeEventListener('keydown', onEsc); };
   }, [open]);
 
