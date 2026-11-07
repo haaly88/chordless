@@ -250,6 +250,23 @@ export default function HomeView() {
   const forYou = usePlayer((s) => s.forYou);
   const forYouLoading = usePlayer((s) => s.forYouLoading);
   const generateForYouMix = usePlayer((s) => s.generateForYouMix);
+  const homeSections = usePlayer((s) => s.settings.homeSections || {});
+
+  const HOME_SECTIONS = [
+    { key: 'foryou', label: 'For You' },
+    { key: 'shortcuts', label: 'Shortcuts' },
+    { key: 'jump', label: 'Jump back in' },
+    { key: 'recent', label: 'Recently added' },
+    { key: 'playlists', label: 'Community playlists' },
+    { key: 'quickpicks', label: 'Quick picks' },
+    { key: 'feeds', label: 'Home feeds & charts' },
+  ];
+  const orderedKeys = [
+    ...HOME_SECTIONS.map((s) => s.key).filter((k) => (homeSections.order || []).includes(k)),
+    ...HOME_SECTIONS.map((s) => s.key).filter((k) => !(homeSections.order || []).includes(k)),
+  ];
+  const hiddenKeys = new Set(homeSections.hidden || []);
+  const visibleKeys = orderedKeys.filter((k) => !hiddenKeys.has(k));
 
   useEffect(() => {
     if (!forYou && !forYouLoading && history.length >= 3) {
@@ -389,37 +406,47 @@ export default function HomeView() {
         )
       ) : (
         <>
-          <ForYouHero
-            forYou={forYou}
-            loading={forYouLoading}
-            onPlay={() => forYou?.tracks?.length && playTracks(forYou.tracks, 0)}
-            onShuffle={() => forYou?.tracks?.length && playTracks(forYou.tracks, 0, { shuffle: true })}
-            onRefresh={() => generateForYouMix()}
-          />
-          <ShortcutsRow onAddShortcut={() => setShortcutModal(true)} pins={pins} onTogglePin={togglePin} />
+          {visibleKeys.map((key) => {
+            if (key === 'foryou') {
+              return (
+                <ForYouHero
+                  key={key}
+                  forYou={forYou}
+                  loading={forYouLoading}
+                  onPlay={() => forYou?.tracks?.length && playTracks(forYou.tracks, 0)}
+                  onShuffle={() => forYou?.tracks?.length && playTracks(forYou.tracks, 0, { shuffle: true })}
+                  onRefresh={() => generateForYouMix()}
+                />
+              );
+            }
+            if (key === 'shortcuts') return <ShortcutsRow key={key} onAddShortcut={() => setShortcutModal(true)} pins={pins} onTogglePin={togglePin} />;
+            if (key === 'jump') {
+              return recentShelf.length >= 2 ? (
+                <Shelf key={key} title="Jump back in" icon={<History size={18} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />}
+                  items={recentShelf} onPlayAll={() => playTracks(recentShelf, 0)} />
+              ) : null;
+            }
+            if (key === 'recent') {
+              return recentlyAdded.length >= 2 ? (
+                <Shelf key={key} title="Recently added" icon={<Clock size={18} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />}
+                  items={recentlyAdded} onPlayAll={() => playTracks(recentlyAdded, 0)} />
+              ) : null;
+            }
+            if (key === 'playlists') return <PlaylistShelf key={key} playlists={home?.playlists} />;
+            if (key === 'quickpicks') {
+              return quickPicks.length > 0 ? (
+                <div key={key}>
+                  <div className="section-label" style={{ paddingLeft: 2 }}>QUICK PICKS</div>
+                  <div className="quick-grid">
+                    {quickPicks.slice(0, 6).map((t) => <QuickTile key={t.id} track={t} contextList={quickPicks} />)}
+                  </div>
+                </div>
+              ) : null;
+            }
+            return null;
+          })}
 
-          {recentShelf.length >= 2 && (
-            <Shelf title="Jump back in" icon={<History size={18} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />}
-                   items={recentShelf} onPlayAll={() => playTracks(recentShelf, 0)} />
-          )}
-
-          {recentlyAdded.length >= 2 && (
-            <Shelf title="Recently added" icon={<Clock size={18} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />}
-                   items={recentlyAdded} onPlayAll={() => playTracks(recentlyAdded, 0)} />
-          )}
-
-          <PlaylistShelf playlists={home?.playlists} />
-
-          {quickPicks.length > 0 && (
-            <>
-              <div className="section-label" style={{ paddingLeft: 2 }}>QUICK PICKS</div>
-              <div className="quick-grid">
-                {quickPicks.slice(0, 6).map((t) => <QuickTile key={t.id} track={t} contextList={quickPicks} />)}
-              </div>
-            </>
-          )}
-
-          {!home && !error && (
+          {!home && !error && visibleKeys.includes('feeds') && (
             <div className="shelf" aria-busy="true">
               <div className="shelf-head"><h2>Loading your mix…</h2></div>
               <div className="shelf-row">
@@ -443,17 +470,17 @@ export default function HomeView() {
               </button>
             </div>
           )}
-          {home?.shelves?.map((shelf) => (
+          {visibleKeys.includes('feeds') && home?.shelves?.map((shelf) => (
             <Shelf key={shelf.title} title={shelf.title} items={shelf.items}
                    icon={<Sparkles size={17} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />}
                    onPlayAll={() => playTracks(shelf.items, 0)} />
           ))}
-          {charts?.shelves?.map((shelf) => (
+          {visibleKeys.includes('feeds') && charts?.shelves?.map((shelf) => (
             <Shelf key={shelf.title} title={`${shelf.title} · ${region.label}`} items={shelf.items}
                    icon={<Flame size={17} style={{ verticalAlign: '-3px', marginRight: 8, color: 'var(--accent)' }} />}
                    onPlayAll={() => playTracks(shelf.items, 0)} />
           ))}
-          {home && home.shelves.length === 0 && !error && (
+          {visibleKeys.includes('feeds') && home && home.shelves.length === 0 && !error && (
             <div className="empty-state">
               <Sparkles />
               <h3>Home feed is empty</h3>

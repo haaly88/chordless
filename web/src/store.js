@@ -266,6 +266,14 @@ const persistedSettings = {
   autoplay: Boolean(storedSettings?.autoplay),
   fontScale: [0.9, 1, 1.15].includes(Number(storedSettings?.fontScale)) ? Number(storedSettings.fontScale) : 1,
   reduceMotion: storedSettings?.reduceMotion === true,
+  homeSections: {
+    order: Array.isArray(storedSettings?.homeSections?.order)
+      ? storedSettings.homeSections.order.filter((s) => typeof s === 'string')
+      : ['foryou', 'shortcuts', 'jump', 'recent', 'playlists', 'quickpicks', 'feeds'],
+    hidden: Array.isArray(storedSettings?.homeSections?.hidden)
+      ? storedSettings.homeSections.hidden.filter((s) => typeof s === 'string')
+      : [],
+  },
 };
 const persistedFolders = Array.isArray(readMigrated('cl:folders', []))
   ? readMigrated('cl:folders', []).filter((f) => f?.id && f?.name).map((f) => ({ id: String(f.id), name: String(f.name).slice(0, 60), createdAt: f.createdAt || Date.now() }))

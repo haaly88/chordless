@@ -299,6 +299,60 @@ export default function SettingsModal() {
           />
         </div>
 
+        {/* home sections (custom shelves) */}
+        <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+          <div>
+            <b>Home sections</b>
+            <small>Show, hide, and reorder what appears on the Home page.</small>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+            {[
+              { key: 'foryou', label: 'For You' },
+              { key: 'shortcuts', label: 'Shortcuts' },
+              { key: 'jump', label: 'Jump back in' },
+              { key: 'recent', label: 'Recently added' },
+              { key: 'playlists', label: 'Community playlists' },
+              { key: 'quickpicks', label: 'Quick picks' },
+              { key: 'feeds', label: 'Home feeds & charts' },
+            ].map((sec) => {
+              const rawOrder = settings.homeSections?.order || [];
+              const order = [
+                ...['foryou', 'shortcuts', 'jump', 'recent', 'playlists', 'quickpicks', 'feeds'].filter((k) => rawOrder.includes(k)),
+                ...['foryou', 'shortcuts', 'jump', 'recent', 'playlists', 'quickpicks', 'feeds'].filter((k) => !rawOrder.includes(k)),
+              ];
+              const idx = order.indexOf(sec.key);
+              const hidden = (settings.homeSections?.hidden || []).includes(sec.key);
+              const canUp = idx > 0;
+              const canDown = idx >= 0 && idx < order.length - 1;
+              const move = (delta) => {
+                const next = [...order];
+                const j = Math.max(0, Math.min(next.length - 1, idx + delta));
+                [next[idx], next[j]] = [next[j], next[idx]];
+                updateSettings({ homeSections: { ...settings.homeSections, order: next } });
+              };
+              return (
+                <div key={sec.key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', border: '1px solid var(--stroke)', borderRadius: 10 }}>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, opacity: hidden ? 0.5 : 1 }}>{sec.label}</span>
+                  <button className="icon-btn" onClick={() => move(-1)} disabled={!canUp} aria-label={`Move ${sec.label} up`} title="Move up">↑</button>
+                  <button className="icon-btn" onClick={() => move(1)} disabled={!canDown} aria-label={`Move ${sec.label} down`} title="Move down">↓</button>
+                  <button
+                    className={`switch${hidden ? '' : ' on'}`}
+                    role="switch"
+                    aria-checked={!hidden}
+                    aria-label={`Show ${sec.label}`}
+                    onClick={() => {
+                      const nextHidden = hidden
+                        ? (settings.homeSections?.hidden || []).filter((k) => k !== sec.key)
+                        : [...(settings.homeSections?.hidden || []), sec.key];
+                      updateSettings({ homeSections: { ...settings.homeSections, hidden: nextHidden } });
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {/* playback engine */}
         <div className="setting-row">
           <div>
