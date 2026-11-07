@@ -415,6 +415,8 @@ img { user-select: none; -webkit-user-drag: none; }
 .pill:disabled { opacity: .5; pointer-events: none; }
 
 /* custom dropdown (Settings region, etc.) */
+.settings-dd { z-index: 60; }
+.setting-row:has(> .settings-dd) { position: relative; }
 .settings-dd-trigger {
   display: flex; align-items: center; gap: 8px; width: 100%; height: 42px; padding: 0 12px;
   border-radius: 12px; border: 1px solid var(--stroke-strong);
@@ -432,12 +434,14 @@ img { user-select: none; -webkit-user-drag: none; }
 .settings-dd-chev { opacity: .65; flex: 0 0 auto; transition: transform .22s var(--ease); }
 .settings-dd-chev.open { transform: rotate(180deg); opacity: 1; color: var(--accent); }
 .settings-dd-menu {
-  position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 40;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--panel-strong) 97%, white 2%), var(--panel-strong));
+  position: absolute; right: 0; left: auto; top: calc(100% + 8px); z-index: 999;
+  width: max(280px, 100%); max-width: calc(100vw - 48px);
+  background: #1a1a22;
   border: 1px solid var(--stroke-strong); border-radius: 16px; padding: 6px;
-  backdrop-filter: blur(24px); box-shadow: 0 24px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.07), 0 0 0 1px rgba(255,255,255,.04);
-  animation: menu-in .16s var(--ease); min-width: 250px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.07);
+  animation: menu-in .16s var(--ease);
 }
+[data-theme='light'] .settings-dd-menu { background: #ffffff; box-shadow: 0 24px 60px rgba(20,20,40,.18), inset 0 1px 0 rgba(255,255,255,.9); }
 .settings-dd-search { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 4px; border: 1px solid var(--stroke); border-radius: 10px; background: var(--hover); color: var(--text-3); }
 .settings-dd-input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: var(--text); font-size: 13px; font-weight: 550; }
 .settings-dd-input::placeholder { color: var(--text-3); }
