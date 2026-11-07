@@ -1,0 +1,2039 @@
+/**
+ * Chordless — global player & library store (zustand).
+ * Owns the singleton <audio> element, the Web Audio analyser,
+ * queue/shuffle/repeat, sleep timer, likes, playlists, history,
+ * settings — all persisted to localStorage where appropriate.
+ */
+import { create } from 'zustand';
+import { apiSponsorBlock, apiAddonSearch, apiTranslate, apiSearch, apiTogetherCreate, apiTogetherJoin, apiTogetherState, apiTogetherPush, apiTogetherLeave } from './lib/api.js';
+import { upgradeTracks } from './lib/thumb.js';
+import { addonTrackUrl } from './lib/api.js';
+import { totalDuration, formatTotalDuration } from './lib/format.js';
+import { buildForYouMix } from './lib/ai-mix.js';
+
+// ---------- embed (YouTube IFrame) bridge ----------
+/** Filled in by the EmbedEngine component as the YouTube IFrame API boots. */
+export const embedBridge = {
+  player: null,     // YT.Player instance
+  ready: false,     // player is onReady
+  pendingId: null,  // video to cue once ready
+  wantsPlay: false, // the user pressed play while the API was still loading
+};
+
+export function isEmbedEngine(state) {
+  const engine = state?.settings?.engine || 'auto';
+  return engine === 'embed' || (engine === 'auto' && state?.streamFellBack === true);
+}
+
+// ---------- singleton audio element ----------
+// Gapless uses TWO elements (A = primary/active, B = preload/next).
+// `audio` stays exported as slot A for backwards compat; activeAudio()
+// returns whichever slot is currently audible. Both sources feed the SAME
+// Web Audio chain (EQ → normalize → balance → spatial → analyser), so EQ/
+// spatial/normalize/visualizer keep working after a swap.
+export const audio = new Audio();
+audio.preload = 'auto';
+audio.crossOrigin = 'anonymous';
+export const audioB = new Audio();
+audioB.preload = 'auto';
+audioB.crossOrigin = 'anonymous';
+let activeSlot = 'A';
+export function activeAudio() { return activeSlot === 'A' ? audio : audioB; }
+export function inactiveAudio() { return activeSlot === 'A' ? audioB : audio; }
+export function getActiveSlot() { return activeSlot; }
+// Module-level gapless state (not reactive — read via store state mirrors).
+let preloaded = null; // { forIndex, trackId, url, slot }
+
+/** Stream URL for a video id, honoring the user's YouTube client & audio quality. */
+export function streamSrc(id, qualityOverride) {
+  let client = 'auto';
+  let quality = 'high';
+  try {
+    const s = JSON.parse(localStorage.getItem('cl:settings') || '{}');
+    client = s.ytClient || 'auto';
+    quality = s.ytQuality || 'high';
+  } catch { /* keep defaults */ }
+  if (qualityOverride && ['high', 'medium', 'low'].includes(qualityOverride)) quality = qualityOverride;
+  const params = new URLSearchParams();
+  if (client !== 'auto') params.set('client', client);
+  if (quality !== 'high') params.set('quality', quality);
+  const qs = params.toString() ? `?${params}` : '';
+  return `/api/stream/${id}${qs}`;
+}
+
+/* ---------- network-adaptive quality ---------- */
+const Q_ORDER = { high: 3, medium: 2, low: 1 };
+const Q_NAME = { 3: 'high', 2: 'medium', 1: 'low' };
+const lowerQuality = (a, b) => Q_NAME[Math.min(Q_ORDER[a] || 3, Q_ORDER[b] || 3)];
+
+export function qualityFromConnection(conn, stallLevel = 0) {
+  if (!conn) {
+    if (stallLevel > 0) {
+      const lvl = Math.max(1, Math.min(3, Q_ORDER.high - stallLevel));
+      return { quality: Q_NAME[lvl], reason: 'stalls' };
+    }
+    return { quality: 'high', reason: 'auto' };
+  }
+  const eff = String(conn.effectiveType || '').toLowerCase();
+  const down = Number(conn.downlink);
+  const rtt = Number(conn.rtt);
+  const saveData = Boolean(conn.saveData);
+  if (saveData) return { quality: 'low', reason: 'data saver' };
+  if (eff === 'slow-2g' || eff === '2g') return { quality: 'low', reason: eff };
+  if (eff === '3g' || (Number.isFinite(down) && down < 1.5)) return { quality: 'low', reason: eff || `${down}Mbps` };
+  if (Number.isFinite(rtt) && rtt > 800) return { quality: 'medium', reason: `rtt ${rtt}ms` };
+  if (eff === '4g' && Number.isFinite(down) && down < 4) return { quality: 'medium', reason: `${down}Mbps` };
+  if ((Number.isFinite(down) && down < 4) || eff === '3g') return { quality: 'medium', reason: eff || `${down}Mbps` };
+  const base = 'high';
+  if (stallLevel > 0) {
+    const lvl = Math.max(1, Math.min(3, Q_ORDER[base] - stallLevel));
+    return { quality: Q_NAME[lvl], reason: 'stalls' };
+  }
+  return { quality: base, reason: eff || '4g' };
+}
+
+export function connectionSnapshot() {
+  try {
+    const c = navigator.connection || {};
+    return {
+      effectiveType: c.effectiveType || null,
+      downlink: Number.isFinite(Number(c.downlink)) ? Number(c.downlink) : null,
+      rtt: Number.isFinite(Number(c.rtt)) ? Number(c.rtt) : null,
+      saveData: Boolean(c.saveData),
+    };
+  } catch {
+    return { effectiveType: null, downlink: null, rtt: null, saveData: false };
+  }
+}
+
+let audioCtx = null;
+let analyserNode = null;
+let bassFilter = null;
+let midFilter = null;
+let trebleFilter = null;
+
+// Spatial (mid/side widening) — nodes created once, gains updated live.
+let spatialSideToL = null;
+let spatialSideToR = null;
+
+// Audio advanced: loudness normalizer + stereo balance.
+let normalizeGain = null;
+let normalizeComp = null;
+let balancePanner = null;
+
+export function applySpatial(enabled, width) {
+  if (!spatialSideToL || !spatialSideToR) return;
+  const w = enabled ? Math.max(1, Math.min(2.4, Number(width) || 1.6)) : 1;
+  // Smooth the change to avoid clicks.
+  const t = audioCtx?.currentTime || 0;
+  try {
+    spatialSideToL.gain.setTargetAtTime(w, t, 0.03);
+    spatialSideToR.gain.setTargetAtTime(-w, t, 0.03);
+  } catch { /* context closed */ }
+}
+
+export function applyNormalize(enabled) {
+  if (!normalizeGain || !normalizeComp) return;
+  const t = audioCtx?.currentTime || 0;
+  try {
+    if (enabled) {
+      normalizeGain.gain.setTargetAtTime(1.5, t, 0.05);
+      normalizeComp.threshold.setTargetAtTime(-20, t, 0.05);
+      normalizeComp.ratio.setTargetAtTime(4, t, 0.05);
+    } else {
+      normalizeGain.gain.setTargetAtTime(1, t, 0.05);
+      normalizeComp.threshold.setTargetAtTime(0, t, 0.05);
+      normalizeComp.ratio.setTargetAtTime(1, t, 0.05);
+    }
+  } catch { /* context closed */ }
+}
+
+export function applyBalance(pan) {
+  if (!balancePanner) return;
+  const p = Math.max(-1, Math.min(1, Number(pan) || 0));
+  try {
+    if (balancePanner.pan) balancePanner.pan.setTargetAtTime(p, audioCtx?.currentTime || 0, 0.03);
+    else balancePanner.setTargetAtTime(p, audioCtx?.currentTime || 0, 0.03);
+  } catch { /* context closed */ }
+}
+
+// ---------- crossfade (single-element fade transition) ----------
+// No async/await here by design — the previous implementation hit a TDZ
+// error from an async pattern. All timers are plain setInterval/setTimeout
+// declared at module scope so they can never be accessed before init.
+let fadeTimer = null;
+let fadingOut = false;
+let transitionToken = 0;
+let lastPreviewWarnedId = null;
+
+function clearFadeTimer() {
+  if (fadeTimer != null) {
+    clearInterval(fadeTimer);
+    fadeTimer = null;
+  }
+}
+
+function clamp01(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1, n));
+}
+
+export function getAnalyser() {
+  if (analyserNode) return analyserNode;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaElementSource(audio);
+    // Second slot for gapless preload — shares the same chain so a swap
+    // doesn't need a rebuild. created once; both elements then feed the EQ.
+    let sourceB = null;
+    try { sourceB = audioCtx.createMediaElementSource(audioB); } catch { sourceB = null; }
+
+    // 3-band EQ: bass (lowshelf), mid (peaking), treble (highshelf)
+    bassFilter = audioCtx.createBiquadFilter();
+    bassFilter.type = 'lowshelf';
+    bassFilter.frequency.value = 320;
+    bassFilter.gain.value = 0;
+
+    midFilter = audioCtx.createBiquadFilter();
+    midFilter.type = 'peaking';
+    midFilter.frequency.value = 1000;
+    midFilter.Q.value = 1;
+    midFilter.gain.value = 0;
+
+    trebleFilter = audioCtx.createBiquadFilter();
+    trebleFilter.type = 'highshelf';
+    trebleFilter.frequency.value = 3200;
+    trebleFilter.gain.value = 0;
+
+    source.connect(bassFilter);
+    if (sourceB) { try { sourceB.connect(bassFilter); } catch { /* already connected */ } }
+    bassFilter.connect(midFilter);
+    midFilter.connect(trebleFilter);
+
+    // Audio advanced chain: EQ -> normalize (gain+comp) -> balance (panner) -> spatial -> analyser
+    normalizeGain = audioCtx.createGain();
+    normalizeGain.gain.value = 1;
+    normalizeComp = audioCtx.createDynamicsCompressor();
+    normalizeComp.threshold.value = 0;
+    normalizeComp.knee.value = 18;
+    normalizeComp.ratio.value = 1;
+    normalizeComp.attack.value = 0.003;
+    normalizeComp.release.value = 0.24;
+    balancePanner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : audioCtx.createGain();
+    if (balancePanner.pan) balancePanner.pan.value = 0;
+
+    trebleFilter.connect(normalizeGain);
+    normalizeGain.connect(normalizeComp);
+    normalizeComp.connect(balancePanner);
+
+    analyserNode = audioCtx.createAnalyser();
+    analyserNode.fftSize = 256;
+    analyserNode.smoothingTimeConstant = 0.82;
+
+    // Spatial widening (mid/side): L'/R' = mid ± side*width.
+    // width=1 gives perfect stereo reconstruction; higher widens the image.
+    const splitter = audioCtx.createChannelSplitter(2);
+    const merger = audioCtx.createChannelMerger(2);
+    const g = (v) => { const n = audioCtx.createGain(); n.gain.value = v; return n; };
+    const midGainL = g(0.5), midGainR = g(0.5);
+    const sideGainL = g(0.5), sideGainR = g(-0.5);
+    const midSum = g(1), sideSum = g(1);
+    const midToL = g(1), midToR = g(1);
+    spatialSideToL = g(1); spatialSideToR = g(-1);
+    balancePanner.connect(splitter);
+    splitter.connect(midGainL, 0); splitter.connect(midGainR, 1);
+    splitter.connect(sideGainL, 0); splitter.connect(sideGainR, 1);
+    midGainL.connect(midSum); midGainR.connect(midSum);
+    sideGainL.connect(sideSum); sideGainR.connect(sideSum);
+    midSum.connect(midToL); midSum.connect(midToR);
+    sideSum.connect(spatialSideToL); sideSum.connect(spatialSideToR);
+    midToL.connect(merger, 0, 0); spatialSideToL.connect(merger, 0, 0);
+    midToR.connect(merger, 0, 1); spatialSideToR.connect(merger, 0, 1);
+    merger.connect(analyserNode);
+    analyserNode.connect(audioCtx.destination);
+    // Apply persisted spatial + audio-advanced settings immediately.
+    try {
+      const s = usePlayer.getState().settings;
+      applySpatial(Boolean(s?.spatial?.enabled), s?.spatial?.width || 1.6);
+      applyNormalize(Boolean(s?.normalize));
+      applyBalance(Number(s?.balance) || 0);
+    } catch { /* store not ready yet */ }
+  } catch (e) {
+    console.warn('[analyser] unavailable:', e);
+  }
+  return analyserNode;
+}
+
+const EQ_PRESETS = {
+  flat: { bass: 0, mid: 0, treble: 0 },
+  bass: { bass: 6, mid: 0, treble: -2 },
+  vocal: { bass: -2, mid: 4, treble: 0 },
+  classical: { bass: 0, mid: 2, treble: 2 },
+};
+
+export function applyEqualizer(bass, mid, treble) {
+  if (!bassFilter || !midFilter || !trebleFilter) return;
+  bassFilter.gain.value = Math.max(-12, Math.min(12, bass));
+  midFilter.gain.value = Math.max(-12, Math.min(12, mid));
+  trebleFilter.gain.value = Math.max(-12, Math.min(12, treble));
+}
+
+// ---------- persistence helpers ----------
+const read = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw == null ? fallback : JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+};
+const write = (key, value) => {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* full/blocked */ }
+};
+
+/** Read `cl:*` key, migrating the legacy `bc:*` key once (keeps user data). */
+const readMigrated = (key, fallback) => {
+  const v = read(key, undefined);
+  const legacyKey = 'bc:' + key.slice(3);
+  const legacy = read(legacyKey, undefined);
+  if (v === undefined) {
+    if (legacy !== undefined) {
+      write(key, legacy);
+      try { localStorage.removeItem(legacyKey); } catch { /* ignore */ }
+      return legacy;
+    }
+    return fallback;
+  }
+  if (legacy !== undefined) {
+    if (key === 'cl:history' && Array.isArray(v) && Array.isArray(legacy)) {
+      const seen = new Set();
+      const merged = [...v, ...legacy].filter((t) => {
+        if (!t?.id || seen.has(t.id)) return false;
+        seen.add(t.id);
+        return true;
+      }).slice(0, 80);
+      write(key, merged);
+    }
+    try { localStorage.removeItem(legacyKey); } catch { /* ignore */ }
+  }
+  return v;
+};
+
+const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+const shuffled = (arr) => {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+const sameTrack = (a, b) => a?.id === b?.id;
+
+/** Fisher-Yates shuffle that avoids placing the same artist back-to-back when possible. */
+const smartShuffle = (arr, avoidArtist) => {
+  const a = arr.slice();
+  // Fisher-Yates
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  // If an artist repeats consecutively, try to swap with a later different-artist item
+  if (avoidArtist) {
+    for (let i = 1; i < a.length; i++) {
+      if (a[i].artist === a[i - 1].artist) {
+        for (let j = i + 1; j < a.length; j++) {
+          if (a[j].artist !== a[i].artist) {
+            [a[i], a[j]] = [a[j], a[i]];
+            break;
+          }
+        }
+      }
+    }
+  }
+  return a;
+};
+
+/** SponsorBlock: friendly labels for skipped categories + default config. */
+export const SB_LABELS = {
+  sponsor: 'Sponsor segment',
+  selfpromo: 'Self-promotion',
+  interaction: 'Subscribe reminder',
+  music_offtopic: 'Non-music section',
+  intro: 'Song intro',
+  outro: 'Song outro',
+  filler: 'Filler',
+  preview: 'Preview / recap',
+};
+const DEFAULT_SB_CATEGORIES = {
+  sponsor: true,
+  selfpromo: true,
+  interaction: true,
+  music_offtopic: true,
+  intro: false,
+  outro: false,
+  filler: false,
+  preview: false,
+};
+/** Active category list from a settings object (empty when disabled). */
+export const sbCategories = (s) =>
+  (s?.sb?.enabled === false ? [] : Object.entries(s?.sb?.categories || DEFAULT_SB_CATEGORIES)
+    .filter(([, on]) => on)
+    .map(([name]) => name));
+
+const storedSettings = readMigrated('cl:settings', {}) || {};
+
+// Upgrade persisted artwork URLs to high-res (old saves may carry =w120 thumbnails)
+const upgradePersisted = (list) => (Array.isArray(list) ? upgradeTracks(list) : list);
+// Multi-addon: migrate legacy single addon into a list (primary = first enabled).
+const migratedAddons = (() => {
+  const list = Array.isArray(storedSettings?.addons)
+    ? storedSettings.addons.filter((a) => a?.url && a?.manifest?.id)
+    : (storedSettings?.addon?.manifest?.id ? [storedSettings.addon] : []);
+  return list.map((a) => ({
+    url: String(a.url || ''),
+    enabled: Boolean(a.enabled),
+    manifest: a.manifest || null,
+  }));
+})();
+const primaryAddon = migratedAddons.find((a) => a.enabled) || migratedAddons[0] || { url: '', enabled: false, manifest: null };
+const persistedSettings = {
+  theme: 'dark',
+  adaptive: true,
+  ytClient: 'auto',
+  engine: 'auto',
+  ...storedSettings,
+  addon: primaryAddon,
+  addons: migratedAddons,
+  sb: {
+    enabled: storedSettings?.sb?.enabled !== false,
+    categories: { ...DEFAULT_SB_CATEGORIES, ...(storedSettings?.sb?.categories || {}) },
+  },
+  crossfade: {
+    enabled: Boolean(storedSettings?.crossfade?.enabled),
+    duration: [3, 5, 8, 12].includes(Number(storedSettings?.crossfade?.duration))
+      ? Number(storedSettings.crossfade.duration)
+      : 5,
+  },
+  gapless: {
+    enabled: storedSettings?.gapless?.enabled === true,
+    preloadSeconds: [10, 20, 30].includes(Number(storedSettings?.gapless?.preloadSeconds))
+      ? Number(storedSettings.gapless.preloadSeconds)
+      : 20,
+  },
+  spatial: {
+    enabled: Boolean(storedSettings?.spatial?.enabled),
+    width: [1.2, 1.6, 2.0, 2.4].includes(Number(storedSettings?.spatial?.width)) ? Number(storedSettings.spatial.width) : 1.6,
+  },
+  ytQuality: ['high', 'medium', 'low'].includes(String(storedSettings?.ytQuality || 'high')) ? String(storedSettings.ytQuality) : 'high',
+  adaptiveQuality: storedSettings?.adaptiveQuality !== false,
+  normalize: Boolean(storedSettings?.normalize),
+  balance: Math.max(-1, Math.min(1, Number(storedSettings?.balance) || 0)),
+  region: String(storedSettings?.region || 'auto').toUpperCase() === 'AUTO' ? 'auto' : String(storedSettings?.region || 'auto').toUpperCase(),
+  autoplay: Boolean(storedSettings?.autoplay),
+};
+const persistedFolders = Array.isArray(readMigrated('cl:folders', []))
+  ? readMigrated('cl:folders', []).filter((f) => f?.id && f?.name).map((f) => ({ id: String(f.id), name: String(f.name).slice(0, 60), createdAt: f.createdAt || Date.now() }))
+  : [];
+const persistedQueueRaw = readMigrated('cl:queue', null);
+const persistedQueue = persistedQueueRaw
+  ? { ...persistedQueueRaw, queue: upgradeTracks(persistedQueueRaw.queue || []) }
+  : null;
+
+export const usePlayer = create((set, get) => ({
+  // ---- playback state ----
+  queue: persistedQueue?.queue?.length ? persistedQueue.queue : [],
+  index: Number.isInteger(persistedQueue?.index) ? persistedQueue.index : -1,
+  restorePosition: persistedQueue?.position || 0,
+  hasRestoredQueue: Boolean(persistedQueue?.queue?.length),
+  isPlaying: false,
+  isReady: false,          // audio element loaded metadata for current src
+  trackLoading: false,
+  streamError: null,
+  currentTime: 0,
+  duration: 0,
+  volume: readMigrated('cl:volume', 0.8) ?? 0.8,
+  muted: false,
+  shuffle: false,
+  repeat: 'off',           // off | all | one
+  playbackRate: 1,
+  sleepTimer: null,        // null | 'track' | epoch ms
+  shuffleBackup: null,
+  streamFellBack: false,   // stream blocked → play via embedded player
+  segments: [],            // SponsorBlock skip segments for the current track
+  segmentsFor: null,       // video id the segments belong to (null while loading)
+  ignoreSegmentUuid: null, // segment NOT to re-skip (set after Undo)
+
+  // ---------- equalizer ----------
+  equalizerPreset: 'flat',
+  equalizerBands: { bass: 0, mid: 0, treble: 0 },
+
+  // ---------- lyrics translation ----------
+  lyricsTranslation: false,
+  lyricsTargetLang: 'id',
+  translatedLyrics: null,   // { translated, target } cached per track
+
+  // ---- ui state ----
+  view: { name: 'home' },
+  nowPlayingOpen: false,
+  queueOpen: false,
+  lyricsOpen: false,
+  karaokeOpen: false,
+  karaokeFontSize: 'large',
+  lyricsOffset: 0,
+  settingsOpen: false,
+  togetherOpen: false,
+  shortcutsOpen: false,
+  menu: null,              // { x, y, track, contextList, playlistId }
+  searchQuery: '',
+  searchFocusTick: 0,      // increment to focus search input
+  miniPlayer: false,       // collapsed PlayerBar (mini mode)
+
+  // ---- search history (strings only — protects against corrupted storage) ----
+  searchHistory: (Array.isArray(readMigrated('cl:searchHistory', [])) ? readMigrated('cl:searchHistory', []).filter((h) => typeof h === 'string') : []),
+
+  // ---- library ----
+  liked: upgradePersisted(readMigrated('cl:liked', [])) || [],
+  playlists: (readMigrated('cl:playlists', []) || []).map((p) => ({ ...p, folderId: p.folderId || null, tracks: upgradeTracks(p.tracks || []) })),
+  folders: persistedFolders,
+  history: upgradePersisted(readMigrated('cl:history', [])) || [],
+  settings: persistedSettings,
+  accent: null,            // { accent, accentSoft } extracted from artwork (adaptive)
+  toasts: [],
+
+  // ---- For You AI Mix ----
+  forYou: (() => {
+    try {
+      const raw = readMigrated('cl:forYou', null);
+      if (raw && Array.isArray(raw.tracks) && raw.tracks.length) return { ...raw, tracks: upgradeTracks(raw.tracks) };
+    } catch { /* corrupted */ }
+    return null;
+  })(),
+  forYouLoading: false,
+
+  // ---- network-adaptive quality ----
+  networkInfo: { effectiveType: null, downlink: null, rtt: null, saveData: false, quality: 'high', reason: 'auto' },
+  effectiveYtQuality: String(persistedSettings.ytQuality || 'high'),
+  stallCount: 0,
+  lastStallAt: 0,
+  stallWindowStart: 0,
+
+  // ---- gapless preload (mirrors module `preloaded`) ----
+  preloadedIndex: -1,
+  preloadedTrackId: null,
+  gaplessStatus: 'off',
+
+  // ---- Listen Together ----
+  together: { code: null, memberId: null, name: '', isHost: false, members: [], remoteVersion: 0, lastSyncAt: 0 },
+  togetherApplyingRemote: false,
+
+  // ---------- toasts ----------
+  toast(title, sub, action) {
+    const id = uid();
+    // action: { label, onClick } — renders a tappable button inside the toast
+    set((s) => ({ toasts: [...s.toasts.slice(-2), { id, title, sub, action }] }));
+    setTimeout(() => usePlayer.getState().dismissToast(id), action ? 5200 : 4200);
+  },
+  dismissToast(id) {
+    set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
+  },
+
+  // ---------- navigation ----------
+  setView(view) { set({ view }); },
+  toggleNowPlaying(open) {
+    set((s) => ({ nowPlayingOpen: open ?? !s.nowPlayingOpen }));
+  },
+  toggleQueue(open) {
+    set((s) => ({ queueOpen: open ?? !s.queueOpen }));
+  },
+  toggleLyrics(open) {
+    set((s) => ({ lyricsOpen: open ?? !s.lyricsOpen }));
+  },
+  toggleKaraoke(open) {
+    set((s) => ({ karaokeOpen: open ?? !s.karaokeOpen }));
+  },
+  setKaraokeFontSize(sz) {
+    set({ karaokeFontSize: ['normal', 'large', 'xl'].includes(sz) ? sz : 'large' });
+  },
+  toggleTogether(open) {
+    set((s) => ({ togetherOpen: open ?? !s.togetherOpen }));
+  },
+  setLyricsOffset(v) { set({ lyricsOffset: Math.max(-10, Math.min(10, v)) }); },
+  setSettingsOpen(open) { set({ settingsOpen: open }); },
+  setShortcutsOpen(open) { set({ shortcutsOpen: open }); },
+  openMenu(menu) { set({ menu }); },
+  closeMenu() { if (get().menu) set({ menu: null }); },
+  requestSearchFocus() { set((s) => ({ searchFocusTick: s.searchFocusTick + 1 })); },
+  setSearchQuery(searchQuery) { set({ searchQuery }); },
+  searchFor(term) {
+    set({ view: { name: 'search' }, searchQuery: String(term || ''), searchFocusTick: usePlayer.getState().searchFocusTick + 1 });
+  },
+
+  // ---------- core playback ----------
+  currentTrack() {
+    const { queue, index } = get();
+    return index >= 0 && index < queue.length ? queue[index] : null;
+  },
+
+  playTrack(track, contextList) {
+    const list = Array.isArray(contextList) && contextList.length ? contextList : [track];
+    let index = list.findIndex((t) => sameTrack(t, track));
+    if (index < 0) index = 0;
+    set({ queue: list.slice(), index, shuffleBackup: null, shuffle: false });
+    get()._loadAndPlay(index, list);
+  },
+
+  playTracks(list, startIndex = 0, { shuffle = false } = {}) {
+    if (!list?.length) return;
+    if (shuffle) {
+      const first = list[startIndex] || list[0];
+      const rest = shuffled(list.filter((_, i) => i !== startIndex));
+      set({ queue: [first, ...rest], index: 0, shuffle: true, shuffleBackup: list.slice() });
+      get()._loadAndPlay(0, [first, ...rest]);
+    } else {
+      set({ queue: list.slice(), index: startIndex, shuffle: false, shuffleBackup: null });
+      get()._loadAndPlay(startIndex, list);
+    }
+  },
+
+  playIndex(i) {
+    const { queue } = get();
+    if (i < 0 || i >= queue.length) return;
+    set({ index: i });
+    get()._loadAndPlay(i, queue);
+  },
+
+  _resolveTrackUrl(track) {
+    if (!track) return { url: null, useAddon: false, orphan: false };
+    const enabledBases = new Set(get().enabledAddons().map((a) => a.manifest.base));
+    const useAddon = Boolean(track.isAddon && track.addonBase && enabledBases.has(track.addonBase));
+    const addonManifest = (get().settings.addons || []).find((a) => a.manifest?.base === track.addonBase)?.manifest || null;
+    const orphan = Boolean(track.isAddon && !useAddon);
+    const url = useAddon
+      ? addonTrackUrl(track.addonBase, track.id, track.audioQuality || addonManifest?.defaultQuality || 'LOSSLESS')
+      : streamSrc(track.id, get().effectiveYtQuality || get().settings?.ytQuality || 'high');
+    return { url, useAddon, orphan, addonManifest };
+  },
+
+  _loadAndPlay(index, list, { fromGapless = false } = {}) {
+    // Guests are driven by the host — ignore local playback requests.
+    if (get().together?.code && !get().together?.isHost && !get().togetherApplyingRemote) {
+      get().toast('Listen Together', 'You are a guest — playback is controlled by the host.');
+      return;
+    }
+    const track = list[index];
+    if (!track) return;
+
+    // Invalidate any pending fade transition and reset audio completely
+    transitionToken += 1;
+    const token = transitionToken;
+    fadingOut = false;
+    clearFadeTimer();
+    preloaded = null;
+    set({ preloadedIndex: -1, preloadedTrackId: null, gaplessStatus: get().settings?.gapless?.enabled && !isEmbedEngine(get()) ? 'idle' : 'off' });
+    const el = activeAudio();
+    el.pause();
+    el.removeAttribute('src');
+    el.currentTime = 0;
+
+    const { url, useAddon, orphan } = get()._resolveTrackUrl(track);
+
+    // Orphan addon track: saved in queue/history while an addon was on,
+    // but that addon is now disabled/removed. Its ID (Qobuz/Deezer) is not
+    // a valid YouTube ID — fail over to another enabled addon, then YouTube.
+    if (orphan) {
+      set({
+        isReady: false,
+        trackLoading: true,
+        streamError: null,
+        currentTime: 0,
+        duration: track.duration || 0,
+        lyricsOffset: 0,
+        segments: [],
+        segmentsFor: track.id,
+        ignoreSegmentUuid: null,
+      });
+      get()._recordHistory(track);
+      get()._failoverTrack(track, index, track._triedAddons || []);
+      return;
+    }
+
+    set({
+      isReady: false,
+      trackLoading: true,
+      streamError: null,
+      currentTime: 0,
+      duration: track.duration || 0,
+      lyricsOffset: 0,
+      segments: [],
+      segmentsFor: track.id,
+      ignoreSegmentUuid: null,
+    });
+    get()._recordHistory(track);
+    void get()._fetchSegments(track);
+
+    if (!useAddon && isEmbedEngine(get())) {
+      // YouTube IFrame engine — plays straight through youtube.com, no proxy needed
+      embedBridge.pendingId = track.id;
+      embedBridge.loadedId = track.id;
+      embedBridge.wantsPlay = true;
+      if (embedBridge.ready && embedBridge.player) {
+        try { embedBridge.player.loadVideoById(track.id); } catch { /* cue on next ready */ }
+      }
+      set({ isPlaying: false });
+      write('cl:queue', { queue: get().queue, index, position: 0 });
+      get()._togetherPushState?.();
+      return;
+    }
+
+    el.src = url;
+    el.playbackRate = get().playbackRate;
+    el.volume = get()._targetVolume();
+    getAnalyser();
+    if (audioCtx?.state === 'suspended') audioCtx.resume().catch(() => {});
+    const p = el.play();
+    if (p?.catch) p.catch(() => {
+      set({ isPlaying: false, trackLoading: false });
+      get().toast('Playback blocked', 'Press play to start the stream.');
+    });
+    set({ isPlaying: true });
+    write('cl:queue', { queue: get().queue, index, position: 0 });
+    get()._fadeInIfEnabled();
+    get()._togetherPushState?.();
+  },
+
+  // ---------- For You AI Mix ----------
+  async generateForYouMix({ fetchDiscovery = true } = {}) {
+    if (get().forYouLoading) return get().forYou;
+    const { history, liked, playlists } = get();
+    set({ forYouLoading: true });
+    const built = buildForYouMix({ history, liked, playlists, limit: 20, now: Date.now() });
+    let tracks = built.tracks.slice();
+    let reason = built.reason || 'Based on your listening';
+    if (fetchDiscovery && built.topArtists?.length && tracks.length) {
+      try {
+        const region = get()._regionForSearch?.() || {};
+        const q = built.topArtists[0];
+        const res = await apiSearch(q, { limit: 12, gl: region.gl, hl: region.hl });
+        const existing = new Set(tracks.map((t) => t.id));
+        const fresh = (res?.results || [])
+          .filter((t) => t?.id && !existing.has(t.id) && t.kind !== 'artist' && t.kind !== 'album')
+          .slice(0, 4);
+        if (fresh.length) {
+          tracks = [...tracks, ...fresh].slice(0, 20);
+          reason = `${reason} · +${fresh.length} fresh from ${q}`;
+        }
+      } catch { /* discovery is best-effort */ }
+    }
+    const forYou = { tracks, topArtists: built.topArtists || [], reason, stats: built.stats || {}, generatedAt: Date.now() };
+    set({ forYou, forYouLoading: false });
+    try { write('cl:forYou', forYou); } catch { /* storage full */ }
+    return forYou;
+  },
+
+  // ---------- network-adaptive quality ----------
+  _recomputeEffectiveQuality(reason = 'auto') {
+    const manual = get().settings?.ytQuality || 'high';
+    const net = get().networkInfo?.quality || 'high';
+    const effective = get().settings?.adaptiveQuality === false ? manual : lowerQuality(manual, net);
+    if (get().effectiveYtQuality !== effective) {
+      set({ effectiveYtQuality: effective });
+      if (reason === 'stalls') get().toast('Network slow', `Lowered quality to ${effective} for smoother playback (next track).`);
+    }
+    return effective;
+  },
+  refreshNetworkInfo(reason = 'auto') {
+    const nowMs = Date.now();
+    if ((get().stallWindowStart || 0) && nowMs - get().stallWindowStart > 60000) {
+      set({ stallCount: 0, stallWindowStart: 0 });
+    }
+    const snap = connectionSnapshot();
+    const conn = typeof navigator !== 'undefined' ? navigator.connection : null;
+    const stallLevel = Math.min(2, Math.floor((get().stallCount || 0) / 2));
+    const { quality, reason: why } = qualityFromConnection(conn, stallLevel);
+    set({ networkInfo: { ...snap, quality, reason: why } });
+    get()._recomputeEffectiveQuality(reason);
+  },
+  initNetworkAdaptive() {
+    get().refreshNetworkInfo();
+    try {
+      const conn = navigator.connection;
+      if (conn && 'addEventListener' in conn) {
+        const onChange = () => get().refreshNetworkInfo('connection');
+        conn.addEventListener('change', onChange);
+        // best-effort RTT probe against our own backend
+        fetch(`/api/health?probe=${Date.now()}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => {});
+      }
+    } catch { /* Network Information API unavailable */ }
+    // Probe interval: every 60s re-check (cheap, keeps rtt/downlink fresh)
+    get()._networkProbeTimer && clearInterval(get()._networkProbeTimer);
+    const t = setInterval(() => get().refreshNetworkInfo('timer'), 60000);
+    set({ _networkProbeTimer: t });
+  },
+  _noteStall() {
+    if (!get().isPlaying) return;
+    const now = Date.now();
+    const last = get().lastStallAt || 0;
+    if (now - last < 2000) return;
+    let count = get().stallCount || 0;
+    let windowStart = get().stallWindowStart || now;
+    if (now - windowStart > 30000) { count = 0; windowStart = now; }
+    count += 1;
+    set({ stallCount: count, lastStallAt: now, stallWindowStart: windowStart });
+    if (count >= 2 && get().settings?.adaptiveQuality !== false) {
+      get().refreshNetworkInfo('stalls');
+    }
+  },
+  setAdaptiveQuality(enabled) {
+    get().updateSettings({ adaptiveQuality: Boolean(enabled) });
+    get().refreshNetworkInfo('toggle');
+  },
+
+  // ---------- crossfade (fade transition, Stream engine only) ----------
+  // Single-element fade: fade out near the end of the track, fade in on
+  // the next one. No overlap and no async/await — plain intervals only.
+  _crossfadeConfig() {
+    const cf = get().settings?.crossfade || {};
+    const gapless = get().settings?.gapless || {};
+    const duration = [3, 5, 8, 12].includes(Number(cf.duration)) ? Number(cf.duration) : 5;
+    // Gapless replaces crossfade (instant swap, no fade) — never both.
+    const gaplessOn = Boolean(gapless.enabled) && !isEmbedEngine(get());
+    return { enabled: Boolean(cf.enabled) && !gaplessOn && !isEmbedEngine(get()), duration, gaplessOn };
+  },
+
+  _targetVolume() {
+    const s = get();
+    return s.muted ? 0 : clamp01(s.volume ?? 0.8);
+  },
+
+  _fadeTo(target, ms) {
+    clearFadeTimer();
+    const to = clamp01(target);
+    const from = activeAudio().volume;
+    const total = Math.max(0, Number(ms) || 0);
+    if (total <= 0 || Math.abs(to - from) < 0.001) {
+      activeAudio().volume = to;
+      return;
+    }
+    const start = Date.now();
+    const stepMs = 40;
+    fadeTimer = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const k = Math.min(1, elapsed / total);
+      activeAudio().volume = from + (to - from) * k;
+      if (k >= 1) clearFadeTimer();
+    }, stepMs);
+  },
+
+  _fadeInIfEnabled() {
+    const cf = get()._crossfadeConfig();
+    if (!cf.enabled) {
+      // No fade: restore normal volume immediately
+      clearFadeTimer();
+      fadingOut = false;
+      activeAudio().volume = get()._targetVolume();
+      return;
+    }
+    fadingOut = false;
+    activeAudio().volume = 0;
+    get()._fadeTo(get()._targetVolume(), cf.duration * 1000);
+  },
+
+  _maybeStartFadeOut() {
+    const cf = get()._crossfadeConfig();
+    if (!cf.enabled || fadingOut || !get().isPlaying) return;
+    const d = activeAudio().duration;
+    if (!Number.isFinite(d) || d <= 0) return;
+    const t = activeAudio().currentTime || 0;
+    const remaining = d - t;
+    if (cf.duration <= 0 || remaining <= 0 || remaining > cf.duration) return;
+    fadingOut = true;
+    const fadeMs = Math.max(200, Math.min(cf.duration * 1000, remaining * 1000));
+    get()._fadeTo(0, fadeMs);
+  },
+
+  setCrossfade(patch) {
+    const prev = get().settings?.crossfade || { enabled: false, duration: 5 };
+    const next = { ...prev, ...patch };
+    if (![3, 5, 8, 12].includes(Number(next.duration))) next.duration = 5;
+    get().updateSettings({ crossfade: next });
+    // If crossfade is turned off mid-fade, restore volume immediately.
+    if (!next.enabled) {
+      clearFadeTimer();
+      fadingOut = false;
+      activeAudio().volume = get()._targetVolume();
+    }
+  },
+
+  // ---------- gapless + preload (Stream engine only) ----------
+  _gaplessConfig() {
+    const g = get().settings?.gapless || {};
+    const preloadSeconds = [10, 20, 30].includes(Number(g.preloadSeconds)) ? Number(g.preloadSeconds) : 20;
+    const enabled = Boolean(g.enabled) && !isEmbedEngine(get());
+    return { enabled, preloadSeconds };
+  },
+  setGapless(patch) {
+    const prev = get().settings?.gapless || { enabled: false, preloadSeconds: 20 };
+    const next = { ...prev, ...patch };
+    if (![10, 20, 30].includes(Number(next.preloadSeconds))) next.preloadSeconds = 20;
+    get().updateSettings({ gapless: next });
+    if (!next.enabled) {
+      preloaded = null;
+      try { inactiveAudio().pause(); inactiveAudio().removeAttribute('src'); } catch { /* ignore */ }
+      set({ preloadedIndex: -1, preloadedTrackId: null, gaplessStatus: 'off' });
+    } else {
+      // Gapless replaces crossfade — turn crossfade off to avoid double fades.
+      if (get().settings?.crossfade?.enabled) {
+        const cf = { ...(get().settings.crossfade || {}), enabled: false };
+        get().updateSettings({ crossfade: cf });
+        clearFadeTimer();
+        fadingOut = false;
+        activeAudio().volume = get()._targetVolume();
+      }
+      set({ gaplessStatus: 'idle' });
+    }
+  },
+  _nextIndexForGapless() {
+    const { queue, index, repeat } = get();
+    if (!queue.length || index < 0) return null;
+    if (repeat === 'one') return null;
+    if (index < queue.length - 1) return index + 1;
+    if (repeat === 'all') return 0;
+    return null; // end + autoplay/radio is dynamic — cannot preload
+  },
+  _maybePreloadNext() {
+    const cfg = get()._gaplessConfig();
+    if (!cfg.enabled) { if (get().gaplessStatus !== 'off') set({ gaplessStatus: 'off' }); return; }
+    if (!get().isPlaying) return;
+    const nextIndex = get()._nextIndexForGapless();
+    if (nextIndex == null) return;
+    if (preloaded && preloaded.forIndex === nextIndex) return;
+    const el = activeAudio();
+    const d = el.duration;
+    if (!Number.isFinite(d) || d <= 0) return;
+    const remaining = d - (el.currentTime || 0);
+    if (remaining > cfg.preloadSeconds) return;
+    const track = get().queue[nextIndex];
+    if (!track) return;
+    const { url, orphan } = get()._resolveTrackUrl(track);
+    if (orphan || !url) return;
+    const nxt = inactiveAudio();
+    nxt.src = url;
+    nxt.preload = 'auto';
+    nxt.playbackRate = get().playbackRate || 1;
+    nxt.volume = 0; // preloads silently; volume restored on promote
+    nxt.load();
+    preloaded = { forIndex: nextIndex, trackId: track.id, url, slot: getActiveSlot() === 'A' ? 'B' : 'A' };
+    set({ preloadedIndex: nextIndex, preloadedTrackId: track.id, gaplessStatus: 'preloading' });
+  },
+  _promotePreload() {
+    if (!preloaded) return false;
+    const { forIndex, trackId } = preloaded;
+    const { queue, index } = get();
+    if (forIndex !== index + 1) return false;
+    const track = queue[forIndex];
+    if (!track || track.id !== trackId) return false;
+    const nextEl = inactiveAudio();
+    // Swap which element is active, then play the preloaded bytes.
+    // activeSlot is module-level; promote then re-read activeAudio().
+    // eslint-disable-next-line no-assign-after-explicit-operations
+    activeSlot = preloaded.slot;
+    const el = activeAudio();
+    el.volume = get()._targetVolume();
+    el.playbackRate = get().playbackRate || 1;
+    const p = el.play();
+    if (p?.catch) p.catch(() => { /* will surface via handleError */ });
+    preloaded = null;
+    set({
+      index: forIndex,
+      isPlaying: true,
+      isReady: false,
+      trackLoading: false,
+      currentTime: 0,
+      duration: track.duration || 0,
+      lyricsOffset: 0,
+      segments: [],
+      segmentsFor: track.id,
+      ignoreSegmentUuid: null,
+      preloadedIndex: -1,
+      preloadedTrackId: null,
+      gaplessStatus: 'ready',
+    });
+    get()._recordHistory(track);
+    void get()._fetchSegments(track);
+    write('cl:queue', { queue: get().queue, index: forIndex, position: 0 });
+    get()._togetherPushState?.();
+    // old element is now inactive — clear it for the following preload
+    try { inactiveAudio().pause(); inactiveAudio().removeAttribute('src'); inactiveAudio().currentTime = 0; } catch { /* ignore */ }
+    return true;
+  },
+
+  // ---------- Listen Together (host-authoritative sync) ----------
+  async createTogetherRoom(name) {
+    const clean = String(name || 'Host').trim().slice(0, 40) || 'Host';
+    try {
+      const res = await apiTogetherCreate(clean);
+      set({ together: { code: res.code, memberId: res.memberId, name: clean, isHost: true, members: res.room?.members || [], remoteVersion: res.room?.state?.version || 0, lastSyncAt: Date.now() } });
+      get().toast('Room created', `Share code ${res.code} — others join with the same code.`);
+      get()._togetherPushState();
+      return res;
+    } catch (e) {
+      get().toast('Could not create room', e.message || 'Check the backend connection.');
+      return null;
+    }
+  },
+  async joinTogetherRoom(code, name) {
+    const cleanName = String(name || 'Guest').trim().slice(0, 40) || 'Guest';
+    const cleanCode = String(code || '').trim().toUpperCase();
+    if (!cleanCode) { get().toast('Missing code', 'Enter the 5-letter room code.'); return null; }
+    try {
+      const res = await apiTogetherJoin(cleanCode, cleanName);
+      set({ together: { code: res.code, memberId: res.memberId, name: cleanName, isHost: false, members: res.room?.members || [], remoteVersion: res.room?.state?.version || 0, lastSyncAt: Date.now() } });
+      get().toast('Joined room', `Room ${res.code} — following the host.`);
+      get()._togetherPollOnce();
+      return res;
+    } catch (e) {
+      get().toast('Could not join room', e.message || 'Check the code and try again.');
+      return null;
+    }
+  },
+  async leaveTogetherRoom() {
+    const { together } = get();
+    if (!together?.code) return;
+    try { await apiTogetherLeave(together.code, together.memberId); } catch { /* best-effort */ }
+    set({ together: { code: null, memberId: null, name: '', isHost: false, members: [], remoteVersion: 0, lastSyncAt: 0 } });
+    get().toast('Left room', 'Back to solo listening.');
+  },
+  _togetherPushState() {
+    const { together } = get();
+    if (!together?.code || !together?.isHost) return;
+    const s = get();
+    const state = {
+      track: s.currentTrack() || null,
+      queue: s.queue || [],
+      index: s.index,
+      isPlaying: s.isPlaying,
+      currentTime: s.currentTime || 0,
+    };
+    apiTogetherPush(together.code, together.memberId, state)
+      .then((room) => {
+        if (room?.members) set((prev) => ({ together: { ...prev.together, members: room.members, remoteVersion: room.state?.version ?? prev.together.remoteVersion, lastSyncAt: Date.now() } }));
+      })
+      .catch(() => { /* host push is best-effort; next heartbeat retries */ });
+  },
+  async _togetherPollOnce() {
+    const { together } = get();
+    if (!together?.code) return;
+    try {
+      const room = await apiTogetherState(together.code, together.memberId);
+      const remote = room.state || {};
+      const version = remote.version || 0;
+      const wasHost = together.isHost;
+      const isHostNow = room.hostId === together.memberId;
+      const members = room.members || [];
+      if (version !== together.remoteVersion || !wasHost && isHostNow) {
+        set((prev) => ({ together: { ...prev.together, members, isHost: isHostNow, remoteVersion: version, lastSyncAt: Date.now() } }));
+        if (!isHostNow && !get().togetherApplyingRemote) {
+          const track = remote.track;
+          const queue = Array.isArray(remote.queue) ? remote.queue : [];
+          const index = Number.isInteger(remote.index) ? remote.index : -1;
+          const current = get().currentTrack();
+          if (track && queue.length && (current?.id !== track.id || get().index !== index)) {
+            set({ togetherApplyingRemote: true });
+            set({ queue: queue.slice(), index, shuffleBackup: null, shuffle: false });
+            get()._loadAndPlay(index, queue.slice());
+            set({ togetherApplyingRemote: false });
+          } else if (track && current?.id === track.id) {
+            // Same song: correct play/pause drift only.
+            if (Boolean(remote.isPlaying) !== get().isPlaying) {
+              set({ togetherApplyingRemote: true });
+              if (remote.isPlaying) {
+                const el = activeAudio();
+                if (!el.src) get()._loadAndPlay(get().index, get().queue);
+                else { el.play().catch(() => {}); set({ isPlaying: true }); }
+              } else {
+                activeAudio().pause();
+                set({ isPlaying: false });
+              }
+              set({ togetherApplyingRemote: false });
+            }
+          }
+        } else {
+          set((prev) => ({ together: { ...prev.together, members, isHost: isHostNow } }));
+        }
+      } else if (members.length !== together.members.length) {
+        set((prev) => ({ together: { ...prev.together, members, lastSyncAt: Date.now() } }));
+      }
+      // Drift correction for guests already on the right track.
+      if (!get().together?.isHost && remote.track && get().currentTrack()?.id === remote.track.id && remote.isPlaying) {
+        const anchor = remote.updatedAt || Date.now();
+        const hostTime = (remote.currentTime || 0) + (Date.now() - anchor) / 1000;
+        const local = get().currentTime || 0;
+        if (Math.abs(hostTime - local) > 1.5 && hostTime >= 0) {
+          set({ togetherApplyingRemote: true });
+          try { activeAudio().currentTime = hostTime; set({ currentTime: hostTime }); } catch { /* ignore */ }
+          set({ togetherApplyingRemote: false });
+        }
+      }
+    } catch (e) {
+      if (e.message && e.message.includes('404')) {
+        set({ together: { code: null, memberId: null, name: '', isHost: false, members: [], remoteVersion: 0, lastSyncAt: 0 } });
+        get().toast('Room closed', 'The host left — back to solo listening.');
+      }
+    }
+  },
+
+  // ---------- SponsorBlock ----------
+  async _fetchSegments(track) {
+    const cats = sbCategories(get().settings);
+    if (!cats.length || track.isAddon) {
+      if (get().segmentsFor === track.id) set({ segments: [] });
+      return;
+    }
+    try {
+      const data = await apiSponsorBlock(track.id, cats);
+      if (get().segmentsFor !== track.id) return; // user moved on - discard
+      set({ segments: Array.isArray(data?.segments) ? data.segments : [] });
+    } catch {
+      if (get().segmentsFor === track.id) set({ segments: [] });
+    }
+  },
+
+  _checkSkipSegments(t) {
+    const { segments, ignoreSegmentUuid, settings } = get();
+    if (settings?.sb?.enabled === false || !segments?.length || !Number.isFinite(t)) return;
+    const seg = segments.find((s) => t >= s.start && t < s.end - 0.05);
+    if (!seg) return;
+    if (ignoreSegmentUuid && seg.uuid && ignoreSegmentUuid === seg.uuid) return;
+    get().seekTo(seg.end);
+    const label = SB_LABELS[seg.category] || 'Segment';
+    get().toast('Skipped', label, { label: 'Undo', onClick: () => get().undoSbSkip(seg.uuid, seg.start) });
+  },
+
+  undoSbSkip(uuid, start) {
+    set({ ignoreSegmentUuid: uuid || null });
+    get().seekTo(Math.max(0, (start || 0) - 0.05));
+  },
+
+  togglePlay() {
+    const { queue, index, isPlaying } = get();
+    if (!queue.length || index < 0) {
+      // nothing loaded — play something from home is the caller's concern
+      return;
+    }
+    if (get().together?.code && !get().together?.isHost && !get().togetherApplyingRemote) {
+      get().toast('Listen Together', 'You are a guest — playback is controlled by the host.');
+      return;
+    }
+    if (isEmbedEngine(get())) {
+      const s = get();
+      const p = embedBridge.player;
+      const current = s.queue[s.index];
+      if (s.isPlaying) {
+        try { p?.pauseVideo(); } catch { /* player not ready */ }
+        set({ isPlaying: false });
+        get()._togetherPushState?.();
+        return;
+      }
+      if (!current) return;
+      if (!embedBridge.ready || embedBridge.loadedId !== current.id) {
+        s._loadAndPlay(s.index, s.queue);
+        set({ isPlaying: true });
+        return;
+      }
+      try { p?.playVideo(); } catch { return; }
+      set({ isPlaying: true });
+      get()._togetherPushState?.();
+      return;
+    }
+    if (isPlaying) { clearFadeTimer(); activeAudio().pause(); set({ isPlaying: false }); }
+    else {
+      getAnalyser();
+      if (audioCtx?.state === 'suspended') audioCtx.resume().catch(() => {});
+      if (!activeAudio().src) get()._loadAndPlay(index, queue);
+      else {
+        // If we paused mid fade-out, fade back in instead of staying quiet.
+        const cf = get()._crossfadeConfig();
+        const needFade = cf.enabled && fadingOut;
+        if (needFade) {
+          fadingOut = false;
+          get()._fadeTo(get()._targetVolume(), cf.duration * 1000);
+        } else if (cf.enabled) {
+          clearFadeTimer();
+          activeAudio().volume = get()._targetVolume();
+        }
+        activeAudio().play().catch(() => {});
+      }
+      set({ isPlaying: true });
+    }
+    get()._togetherPushState?.();
+  },
+
+  // ---------- autoplay / radio ----------
+  // When the queue ends naturally, fetch similar tracks (same artist first,
+  // then title) and keep playing instead of stopping.
+  generateRadio(fromTrack) {
+    const track = fromTrack || get().currentTrack();
+    if (!track) return;
+    const token = transitionToken;
+    set({ trackLoading: true });
+    const queries = [
+      track.artist && track.artist !== 'Unknown artist' ? track.artist : '',
+      `${track.title} ${track.artist || ''}`.trim(),
+      track.title,
+    ].filter(Boolean);
+    const seen = new Set(get().queue.map((t) => t.id));
+    const collect = (results) => {
+      const picked = [];
+      for (const t of (results || [])) {
+        if (!t?.id || seen.has(t.id)) continue;
+        if (t.kind && t.kind !== 'song') continue;
+        seen.add(t.id);
+        picked.push(t);
+        if (picked.length >= 10) break;
+      }
+      return picked;
+    };
+    const run = (i) => {
+      if (token !== transitionToken) return;
+      if (i >= queries.length) {
+        set({ trackLoading: false });
+        return;
+      }
+      const region = get()._regionForSearch?.() || {};
+      apiSearch(queries[i], { limit: 20, gl: region.gl, hl: region.hl })
+        .then((res) => {
+          if (token !== transitionToken) return;
+          const picked = collect(res?.results || []);
+          if (picked.length >= 5 || i === queries.length - 1) {
+            if (picked.length) {
+              const newQueue = [...get().queue, ...picked];
+              const newIndex = get().index + 1;
+              set({ queue: newQueue });
+              get().toast('Radio on', `Continuing with ${picked.length} similar tracks.`);
+              get().playIndex(newIndex);
+            } else {
+              set({ trackLoading: false });
+              get().toast('Radio ended', 'No more similar tracks found.');
+            }
+          } else {
+            run(i + 1);
+          }
+        })
+        .catch(() => { if (token === transitionToken) run(i + 1); });
+    };
+    run(0);
+  },
+
+  // Resolve current region for search (used by radio + failover).
+  _regionForSearch() {
+    try {
+      const override = get().settings?.region || 'auto';
+      // Inline (no import to keep store dependency-light): reuse persisted logic.
+      if (override && override !== 'auto') {
+        const HL_BY_GL = { ID: 'id', MY: 'ms', SG: 'en', TH: 'th', VN: 'vi', PH: 'fil', JP: 'ja', KR: 'ko', CN: 'zh', HK: 'zh', TW: 'zh', IN: 'en', AE: 'ar', AU: 'en', NZ: 'en', GB: 'en', US: 'en', CA: 'en', FR: 'fr', DE: 'de', ES: 'es', IT: 'it', NL: 'nl', BR: 'pt', MX: 'es', AR: 'es', EG: 'ar', NG: 'en', ZA: 'en' };
+        return { gl: String(override).toUpperCase(), hl: HL_BY_GL[String(override).toUpperCase()] || 'en' };
+      }
+      const lang = String(navigator.language || 'en-US');
+      const parts = lang.split('-');
+      const gl = (parts[1] || 'ID').toUpperCase();
+      const hl = (parts[0] || 'en').toLowerCase();
+      return { gl: /^[A-Z]{2}$/.test(gl) ? gl : 'ID', hl: /^[a-z]{2}$/.test(hl) ? hl : 'en' };
+    } catch {
+      return { gl: 'ID', hl: 'id' };
+    }
+  },
+
+  next(manual = true) {
+    const { queue, index, repeat, shuffle } = get();
+    if (!queue.length) return;
+    if (get().together?.code && !get().together?.isHost && !get().togetherApplyingRemote) {
+      get().toast('Listen Together', 'You are a guest — playback is controlled by the host.');
+      return;
+    }
+    if (repeat === 'one' && !manual) {
+      if (isEmbedEngine(get())) {
+        try { embedBridge.player?.seekTo(0, true); embedBridge.player?.playVideo(); } catch { /* noop */ }
+        set({ currentTime: 0, isPlaying: true });
+        return;
+      }
+      // Crossfade fade-out already brought volume to ~0 — fade back in.
+      const cf = get()._crossfadeConfig();
+      activeAudio().currentTime = 0;
+      activeAudio().play().catch(() => {});
+      if (cf.enabled) get()._fadeTo(get()._targetVolume(), cf.duration * 1000);
+      else { clearFadeTimer(); activeAudio().volume = get()._targetVolume(); }
+      fadingOut = false;
+      return;
+    }
+    const atEnd = index >= queue.length - 1;
+    if (atEnd) {
+      if (repeat === 'all') { get().playIndex(0); return; }
+      if (manual) { get().playIndex(0); return; }
+      // Autoplay/Radio: keep going with similar tracks instead of stopping.
+      if (get().settings?.autoplay) { get().generateRadio(queue[index]); return; }
+      if (isEmbedEngine(get())) { try { embedBridge.player?.pauseVideo(); } catch { /* noop */ } }
+      else activeAudio().pause();
+      clearFadeTimer();
+      activeAudio().volume = get()._targetVolume();
+      set({ isPlaying: false, currentTime: 0 });
+      return;
+    }
+    get().playIndex(index + 1);
+    void shuffle;
+  },
+
+  prev() {
+    const { index, currentTime } = get();
+    if (currentTime > 3) { get().seekTo(0); return; }
+    if (index > 0) get().playIndex(index - 1);
+    else get().seekTo(0);
+  },
+
+  seekTo(t) {
+    if (get().together?.code && !get().together?.isHost && !get().togetherApplyingRemote) {
+      get().toast('Listen Together', 'You are a guest — playback is controlled by the host.');
+      return;
+    }
+    const d = get().duration || activeAudio().duration || 0;
+    const clamped = Math.max(0, Math.min(d || 0, t));
+    if (isEmbedEngine(get())) {
+      try { embedBridge.player?.seekTo(clamped, true); } catch { /* player not ready */ }
+      set({ currentTime: clamped });
+      get()._togetherPushState?.();
+      return;
+    }
+    activeAudio().currentTime = clamped;
+    set({ currentTime: clamped });
+    get()._togetherPushState?.();
+  },
+
+  skipBy(delta) {
+    usePlayer.getState().seekTo((usePlayer.getState().currentTime || 0) + delta);
+  },
+
+  setVolume(v) {
+    // User interaction wins over any running fade.
+    clearFadeTimer();
+    fadingOut = false;
+    const volume = Math.max(0, Math.min(1, v));
+    activeAudio().volume = volume;
+    inactiveAudio().volume = volume;
+    if (isEmbedEngine(get())) {
+      try {
+        if (volume === 0) embedBridge.player?.setVolume(0);
+        else embedBridge.player?.setVolume(Math.round(volume * 100));
+      } catch { /* player not ready */ }
+    }
+    if (volume > 0) { activeAudio().muted = false; inactiveAudio().muted = false; }
+    set({ volume, muted: volume === 0 ? get().muted : false });
+    write('cl:volume', volume);
+  },
+
+  toggleMute() {
+    clearFadeTimer();
+    fadingOut = false;
+    // Mute state is separate from fade volume; restore base volume on unmute.
+    const muted = !get().muted;
+    activeAudio().muted = muted;
+    inactiveAudio().muted = muted;
+    if (!muted) { activeAudio().volume = clamp01(get().volume ?? 0.8); inactiveAudio().volume = clamp01(get().volume ?? 0.8); }
+    if (isEmbedEngine(get())) {
+      try {
+        if (muted) embedBridge.player?.setVolume(0);
+        else embedBridge.player?.setVolume(Math.round(get().volume * 100));
+      } catch { /* player not ready */ }
+    }
+    set({ muted });
+  },
+
+  toggleShuffle() {
+    const { shuffle, queue, index, shuffleBackup } = get();
+    if (!queue.length) { set({ shuffle: !shuffle }); return; }
+    const current = queue[index];
+    if (!shuffle) {
+      const rest = smartShuffle(queue.filter((_, i) => i !== index), current?.artist);
+      set({ shuffle: true, shuffleBackup: queue.slice(), queue: [current, ...rest], index: 0 });
+    } else {
+      const backup = shuffleBackup || queue;
+      const newIndex = Math.max(0, backup.findIndex((t) => sameTrack(t, current)));
+      set({ shuffle: false, shuffleBackup: null, queue: backup.slice(), index: newIndex });
+    }
+  },
+
+  cycleRepeat() {
+    const order = ['off', 'all', 'one'];
+    const nextRepeat = order[(order.indexOf(get().repeat) + 1) % order.length];
+    set({ repeat: nextRepeat });
+  },
+
+  setPlaybackRate(rate) {
+    activeAudio().playbackRate = rate;
+    inactiveAudio().playbackRate = rate;
+    if (isEmbedEngine(get())) {
+      try { embedBridge.player?.setPlaybackRate?.(rate); } catch { /* rate unsupported for this video */ }
+    }
+    set({ playbackRate: rate });
+  },
+
+  // ---------- queue management ----------
+  addToQueue(track) {
+    if (get().together?.code && !get().together?.isHost && !get().togetherApplyingRemote) {
+      get().toast('Listen Together', 'You are a guest — queue is controlled by the host.');
+      return;
+    }
+    set((s) => ({ queue: [...s.queue, track] }));
+    usePlayer.getState().toast('Added to queue', track.title);
+    get()._persistQueue();
+    get()._togetherPushState?.();
+    preloaded = null;
+  },
+
+  playNextInQueue(track) {
+    if (get().together?.code && !get().together?.isHost && !get().togetherApplyingRemote) {
+      get().toast('Listen Together', 'You are a guest — queue is controlled by the host.');
+      return;
+    }
+    set((s) => {
+      const at = s.index + 1;
+      const queue = s.queue.slice();
+      queue.splice(at, 0, track);
+      return { queue };
+    });
+    usePlayer.getState().toast('Will play next', track.title);
+    get()._persistQueue();
+    get()._togetherPushState?.();
+    preloaded = null;
+  },
+
+  removeFromQueue(i) {
+    const { queue, index } = get();
+    if (i < 0 || i >= queue.length) return;
+    const removed = queue[i];
+    const nextQueue = queue.filter((_, idx) => idx !== i);
+    let nextIndex = index;
+    if (i < index) nextIndex = index - 1;
+    else if (i === index) {
+      // removed the playing track → play whatever now sits at i
+      if (nextQueue.length === 0) {
+        clearFadeTimer();
+        activeAudio().pause();
+        activeAudio().volume = get()._targetVolume();
+        set({ queue: [], index: -1, isPlaying: false, currentTime: 0, duration: 0 });
+        get()._persistQueue();
+        return;
+      }
+      nextIndex = Math.min(i, nextQueue.length - 1);
+      set({ queue: nextQueue, index: nextIndex });
+      get()._loadAndPlay(nextIndex, nextQueue);
+      return;
+    }
+    set({ queue: nextQueue, index: nextIndex });
+    get().toast('Removed from queue', removed?.title);
+    get()._persistQueue();
+  },
+
+  reorderQueue(from, to) {
+    const { queue, index } = get();
+    if (from === to || from < 0 || from >= queue.length || to < 0 || to >= queue.length) return;
+    const nextQueue = queue.slice();
+    const [moved] = nextQueue.splice(from, 1);
+    nextQueue.splice(to, 0, moved);
+    let nextIndex = index;
+    if (index === from) nextIndex = to;
+    else if (index > from && index <= to) nextIndex = index - 1;
+    else if (index < from && index >= to) nextIndex = index + 1;
+    set({ queue: nextQueue, index: nextIndex });
+    get()._persistQueue();
+  },
+
+  clearQueue() {
+    clearFadeTimer();
+    activeAudio().pause();
+    activeAudio().volume = get()._targetVolume();
+    set({ queue: [], index: -1, isPlaying: false, currentTime: 0, duration: 0 });
+    get()._persistQueue();
+  },
+
+  saveQueueAsPlaylist() {
+    const { queue } = get();
+    if (!queue.length) return null;
+    const name = `Queue — ${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+    const playlist = get().createPlaylist(name, queue);
+    get().toast('Playlist created', `Saved ${queue.length} tracks as “${name}”`);
+    return playlist;
+  },
+
+  _persistQueue() {
+    write('cl:queue', { queue: get().queue, index: get().index, position: get().currentTime || 0 });
+  },
+
+  // ---------- queue duration ----------
+  queueDuration() {
+    return totalDuration(get().queue);
+  },
+  queueDurationFormatted() {
+    return formatTotalDuration(get().queue);
+  },
+
+  // ---------- search history ----------
+  addSearchHistory(query) {
+    const q = String(query || '').trim();
+    if (!q || q.length < 2) return;
+    const clean = (Array.isArray(get().searchHistory) ? get().searchHistory : []).filter((h) => typeof h === 'string');
+    const next = [q, ...clean.filter((h) => String(h).toLowerCase() !== q.toLowerCase())].slice(0, 20);
+    set({ searchHistory: next });
+    write('cl:searchHistory', next);
+  },
+  removeSearchHistory(query) {
+    const q = String(query || '').trim().toLowerCase();
+    const clean = (Array.isArray(get().searchHistory) ? get().searchHistory : []).filter((h) => typeof h === 'string');
+    const next = clean.filter((h) => String(h).toLowerCase() !== q);
+    set({ searchHistory: next });
+    write('cl:searchHistory', next);
+  },
+  clearSearchHistory() {
+    set({ searchHistory: [] });
+    write('cl:searchHistory', []);
+  },
+
+  // ---------- mini player ----------
+  toggleMiniPlayer() { set((s) => ({ miniPlayer: !s.miniPlayer })); },
+  setMiniPlayer(open) { set({ miniPlayer: open }); },
+
+  // ---------- equalizer ----------
+  setEqualizerPreset(preset) {
+    const bands = EQ_PRESETS[preset] || EQ_PRESETS.flat;
+    set({ equalizerPreset: preset, equalizerBands: bands });
+    getAnalyser();
+    applyEqualizer(bands.bass, bands.mid, bands.treble);
+  },
+  setEqualizerBand(band, value) {
+    const bands = { ...get().equalizerBands, [band]: value };
+    set({ equalizerBands: bands, equalizerPreset: 'custom' });
+    getAnalyser();
+    applyEqualizer(bands.bass, bands.mid, bands.treble);
+  },
+
+  // ---------- spatial audio ----------
+  setSpatial(patch) {
+    const prev = get().settings?.spatial || { enabled: false, width: 1.6 };
+    const next = { ...prev, ...patch };
+    if (![1.2, 1.6, 2.0, 2.4].includes(Number(next.width))) next.width = 1.6;
+    get().updateSettings({ spatial: next });
+    getAnalyser();
+    applySpatial(next.enabled, next.width);
+  },
+
+  // ---------- audio advanced ----------
+  setYtQuality(quality) {
+    const q = ['high', 'medium', 'low'].includes(quality) ? quality : 'high';
+    get().updateSettings({ ytQuality: q });
+    get()._recomputeEffectiveQuality('manual');
+  },
+  setNormalize(enabled) {
+    get().updateSettings({ normalize: Boolean(enabled) });
+    getAnalyser();
+    applyNormalize(Boolean(enabled));
+  },
+  setBalance(pan) {
+    const p = Math.max(-1, Math.min(1, Number(pan) || 0));
+    get().updateSettings({ balance: p });
+    getAnalyser();
+    applyBalance(p);
+  },
+
+  // ---------- playlist share / import ----------
+  sharePlaylist(playlistId) {
+    const playlist = get().playlists.find((p) => p.id === playlistId);
+    if (!playlist) return null;
+    const data = { name: playlist.name, tracks: playlist.tracks, createdAt: Date.now(), version: 1 };
+    const json = JSON.stringify(data, null, 2);
+    return navigator.clipboard.writeText(json).then(() => {
+      get().toast('Playlist copied', `“${playlist.name}” — paste to import elsewhere`);
+      return json;
+    });
+  },
+  importPlaylist(json) {
+    try {
+      const data = JSON.parse(json);
+      if (!data || !data.name || !Array.isArray(data.tracks)) throw new Error('Invalid playlist format');
+      const playlist = get().createPlaylist(data.name, data.tracks);
+      get().toast('Playlist imported', `“${data.name}” (${data.tracks.length} tracks)`);
+      return playlist;
+    } catch (err) {
+      get().toast('Import failed', err.message || 'Invalid playlist data');
+      return null;
+    }
+  },
+
+  // ---------- lyrics translation ----------
+  toggleLyricsTranslation() {
+    set((s) => ({ lyricsTranslation: !s.lyricsTranslation }));
+    if (!get().lyricsTranslation) set({ translatedLyrics: null });
+  },
+  setLyricsTargetLang(lang) {
+    set({ lyricsTargetLang: lang, translatedLyrics: null });
+  },
+  async translateLyrics(text) {
+    const { lyricsTargetLang } = get();
+    if (!text || !lyricsTargetLang) return null;
+    try {
+      const result = await apiTranslate(text, lyricsTargetLang);
+      set({ translatedLyrics: result });
+      return result.translated;
+    } catch {
+      set({ translatedLyrics: { translated: text, target: lyricsTargetLang } });
+      return text;
+    }
+  },
+  clearTranslatedLyrics() {
+    set({ translatedLyrics: null });
+  },
+
+  // ---------- export / import library ----------
+  exportLibrary() {
+    const s = get();
+    const payload = {
+      version: 1,
+      exportedAt: Date.now(),
+      liked: s.liked,
+      playlists: s.playlists,
+      history: s.history,
+      queue: { queue: s.queue, index: s.index, position: s.currentTime || 0 },
+      settings: s.settings,
+      searchHistory: s.searchHistory,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chordless-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    get().toast('Library exported', 'Backup saved as JSON file.');
+  },
+  importLibrary(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const payload = JSON.parse(e.target.result);
+        if (!payload || typeof payload !== 'object') throw new Error('Invalid backup file');
+
+        const s = get();
+        const updates = {};
+        if (Array.isArray(payload.liked)) updates.liked = payload.liked;
+        if (Array.isArray(payload.playlists)) updates.playlists = payload.playlists.map((p) => ({ ...p, tracks: upgradeTracks(p.tracks || []) }));
+        if (Array.isArray(payload.history)) updates.history = upgradePersisted(payload.history);
+        if (payload.queue && Array.isArray(payload.queue.queue)) {
+          updates.queue = payload.queue.queue.map((t) => ({ ...t, duration: t.duration || 0 }));
+          updates.index = Number.isInteger(payload.queue.index) ? payload.queue.index : -1;
+          updates.restorePosition = payload.queue.position || 0;
+          updates.hasRestoredQueue = Boolean(payload.queue.queue.length);
+        }
+        if (payload.settings) updates.settings = { ...persistedSettings, ...payload.settings };
+        if (Array.isArray(payload.searchHistory)) updates.searchHistory = payload.searchHistory.slice(0, 20);
+
+        set(updates);
+        if (updates.liked) write('cl:liked', updates.liked);
+        if (updates.playlists) write('cl:playlists', updates.playlists);
+        if (updates.history) write('cl:history', updates.history);
+        if (updates.queue) write('cl:queue', { queue: updates.queue, index: updates.index, position: updates.restorePosition });
+        if (updates.settings) write('cl:settings', updates.settings);
+        if (updates.searchHistory) write('cl:searchHistory', updates.searchHistory);
+
+        get().toast('Library imported', 'Backup restored successfully.');
+      } catch (err) {
+        get().toast('Import failed', err.message || 'Could not read backup file.');
+      }
+    };
+    reader.readAsText(file);
+  },
+
+  // ---------- likes ----------
+  toggleLike(track) {
+    if (!track?.id) return;
+    const exists = get().liked.some((t) => t.id === track.id);
+    const liked = exists ? get().liked.filter((t) => t.id !== track.id) : [{ ...track }, ...get().liked];
+    set({ liked });
+    write('cl:liked', liked);
+    get().toast(exists ? 'Removed from Liked Songs' : 'Added to Liked Songs', track.title);
+  },
+  isLiked(id) { return get().liked.some((t) => t.id === id); },
+
+  // ---------- playlists ----------
+  createPlaylist(name, tracks = []) {
+    const playlist = { id: uid(), name: (name || 'New Playlist').trim() || 'New Playlist', createdAt: Date.now(), tracks: tracks.map((t) => ({ ...t })) };
+    const playlists = [playlist, ...get().playlists];
+    set({ playlists });
+    write('cl:playlists', playlists);
+    return playlist;
+  },
+  deletePlaylist(id) {
+    const playlists = get().playlists.filter((p) => p.id !== id);
+    set({ playlists });
+    write('cl:playlists', playlists);
+    if (get().view?.name === 'playlist' && get().view?.id === id) set({ view: { name: 'home' } });
+    get().toast('Playlist deleted');
+  },
+  renamePlaylist(id, name) {
+    const clean = String(name || '').trim();
+    if (!clean) return;
+    const playlists = get().playlists.map((p) => (p.id === id ? { ...p, name: clean } : p));
+    set({ playlists });
+    write('cl:playlists', playlists);
+  },
+  updatePlaylistCover(id, coverUrl) {
+    const playlists = get().playlists.map((p) =>
+      p.id === id ? { ...p, coverUrl: coverUrl || undefined } : p,
+    );
+    set({ playlists });
+    write('cl:playlists', playlists);
+  },
+  addToPlaylist(playlistId, track) {
+    if (!track?.id) return;
+    const target = get().playlists.find((p) => p.id === playlistId);
+    const already = target?.tracks.some((t) => t.id === track.id);
+    const playlists = get().playlists.map((p) =>
+      p.id === playlistId && !already ? { ...p, tracks: [...p.tracks, { ...track }] } : p,
+    );
+    set({ playlists });
+    write('cl:playlists', playlists);
+    get().toast(already ? 'Already in playlist' : `Added to “${target?.name || 'playlist'}”`, track.title);
+  },
+  removeFromPlaylist(playlistId, trackId) {
+    const playlists = get().playlists.map((p) =>
+      p.id === playlistId ? { ...p, tracks: p.tracks.filter((t) => t.id !== trackId) } : p,
+    );
+    set({ playlists });
+    write('cl:playlists', playlists);
+  },
+
+  // ---------- playlist folders ----------
+  createFolder(name) {
+    const clean = String(name || '').trim().slice(0, 60);
+    if (!clean) return null;
+    const folder = { id: uid(), name: clean, createdAt: Date.now() };
+    const folders = [...get().folders, folder];
+    set({ folders });
+    write('cl:folders', folders);
+    get().toast('Folder created', folder.name);
+    return folder;
+  },
+  renameFolder(id, name) {
+    const clean = String(name || '').trim().slice(0, 60);
+    if (!clean) return;
+    const folders = get().folders.map((f) => (f.id === id ? { ...f, name: clean } : f));
+    set({ folders });
+    write('cl:folders', folders);
+  },
+  deleteFolder(id) {
+    const folders = get().folders.filter((f) => f.id !== id);
+    const playlists = get().playlists.map((p) => (p.folderId === id ? { ...p, folderId: null } : p));
+    set({ folders, playlists });
+    write('cl:folders', folders);
+    write('cl:playlists', playlists);
+    get().toast('Folder deleted');
+  },
+  setPlaylistFolder(playlistId, folderId) {
+    const playlists = get().playlists.map((p) => (p.id === playlistId ? { ...p, folderId: folderId || null } : p));
+    set({ playlists });
+    write('cl:playlists', playlists);
+  },
+
+  // ---------- history ----------
+  _recordHistory(track) {
+    if (!track?.id) return;
+    const prev = get().history.find((t) => t.id === track.id);
+    const entry = { ...track, playedAt: Date.now(), playCount: (prev?.playCount || 0) + 1 };
+    const history = [entry, ...get().history.filter((t) => t.id !== track.id)].slice(0, 80);
+    set({ history });
+    write('cl:history', history);
+  },
+  clearHistory() {
+    set({ history: [] });
+    write('cl:history', []);
+    get().toast('History cleared');
+  },
+
+  // ---------- sleep timer ----------
+  setSleepTimer(value) {
+    // value: null | 'track' | number (minutes)
+    if (value == null) { set({ sleepTimer: null }); return; }
+    if (value === 'track') { set({ sleepTimer: 'track' }); get().toast('Sleep timer', 'Playback will stop after this track.'); return; }
+    const endsAt = Date.now() + value * 60 * 1000;
+    set({ sleepTimer: endsAt });
+    get().toast('Sleep timer', `Playback will stop in ${value} minutes.`);
+  },
+  sleepTimerTick() {
+    const { sleepTimer, isPlaying } = get();
+    if (typeof sleepTimer === 'number' && Date.now() >= sleepTimer) {
+      clearFadeTimer();
+      activeAudio().pause();
+      activeAudio().volume = get()._targetVolume();
+      set({ isPlaying: false, sleepTimer: null });
+      get().toast('Sleep timer', 'Good night. Playback stopped.');
+    }
+  },
+
+  // ---------- settings / theming ----------
+  updateSettings(patch) {
+    const settings = { ...get().settings, ...patch };
+    // Keep legacy single-addon field in sync with the multi-addon list.
+    if (patch.addons) {
+      const addons = Array.isArray(patch.addons) ? patch.addons : [];
+      settings.addons = addons;
+      settings.addon = addons.find((a) => a.enabled) || addons[0] || { url: '', enabled: false, manifest: null };
+    }
+    set({ settings });
+    write('cl:settings', settings);
+    if (patch.theme) document.documentElement.dataset.theme = settings.theme;
+  },
+  setAccent(accent) { set({ accent }); },
+
+  // ---------- multi-addon (priority list + failover) ----------
+  enabledAddons() {
+    return (get().settings.addons || []).filter((a) => a.enabled && a.manifest?.base);
+  },
+  addAddon(entry) {
+    const addons = [...(get().settings.addons || []), entry];
+    get().updateSettings({ addons });
+    get().toast('Addon added', entry.manifest?.name || entry.url);
+  },
+  removeAddon(index) {
+    const addons = (get().settings.addons || []).filter((_, i) => i !== index);
+    get().updateSettings({ addons });
+    get().toast('Addon removed');
+  },
+  toggleAddon(index) {
+    const addons = (get().settings.addons || []).map((a, i) => (i === index ? { ...a, enabled: !a.enabled } : a));
+    get().updateSettings({ addons });
+  },
+  moveAddon(index, dir) {
+    const addons = (get().settings.addons || []).slice();
+    const target = index + dir;
+    if (target < 0 || target >= addons.length) return;
+    [addons[index], addons[target]] = [addons[target], addons[index]];
+    get().updateSettings({ addons });
+  },
+
+  // Try the next enabled addon for the same song; fall back to YouTube last.
+  // triedBases: Set/array of addon bases already attempted for this queue slot.
+  _failoverTrack(track, index, triedBases) {
+    const tried = new Set(triedBases || []);
+    if (track?.addonBase) tried.add(track.addonBase);
+    const candidates = get().enabledAddons().filter((a) => !tried.has(a.manifest.base));
+    const q = `${track.title} ${track.artist || ''}`.trim();
+    const token = transitionToken;
+    const tryYouTube = () => {
+      if (token !== transitionToken) return;
+      if (!q) {
+        set({ trackLoading: false, isPlaying: false, streamError: 'No playable source found for this track.' });
+        return;
+      }
+      apiSearch(q)
+        .then((res) => {
+          if (token !== transitionToken) return;
+          const results = res?.results || [];
+          const match = results.find((t) => t.kind === 'song') || results[0];
+          if (match) {
+            const newQueue = get().queue.slice();
+            if (index >= 0 && index < newQueue.length) newQueue[index] = match;
+            set({ queue: newQueue });
+            get().toast('Playing on YouTube', `"${track.title}" — no addon source worked.`);
+            get()._loadAndPlay(index, newQueue);
+          } else {
+            set({ trackLoading: false, isPlaying: false, streamError: 'No playable source found for this track.' });
+            get().toast('No playable source', `"${track.title}" — all addons + YouTube failed.`);
+          }
+        })
+        .catch(() => {
+          if (token !== transitionToken) return;
+          set({ trackLoading: false, isPlaying: false, streamError: 'No playable source found for this track.' });
+        });
+    };
+    if (!candidates.length || !q) { tryYouTube(); return; }
+    // Try candidates in priority order, sequentially.
+    let i = 0;
+    const tryNext = () => {
+      if (token !== transitionToken) return;
+      if (i >= candidates.length) { tryYouTube(); return; }
+      const addon = candidates[i++];
+      const base = addon.manifest.base;
+      apiAddonSearch(base, q, addon.manifest.defaultQuality || 'LOSSLESS')
+        .then((res) => {
+          if (token !== transitionToken) return;
+          if (res?.found === false || !res?.tracks?.length) { tryNext(); return; }
+          const list = res.tracks;
+          // Prefer exact title match, then first result.
+          const titleLower = String(track.title || '').toLowerCase().trim();
+          const match = list.find((t) => String(t.title || '').toLowerCase().trim() === titleLower) || list[0];
+          if (!match) { tryNext(); return; }
+          const followed = { ...match, isAddon: true, addonBase: base, _triedAddons: [...tried, base] };
+          const newQueue = get().queue.slice();
+          if (index >= 0 && index < newQueue.length) newQueue[index] = followed;
+          set({ queue: newQueue });
+          get().toast('Switched addon', `${addon.manifest.name} — "${track.title}"`);
+          get()._loadAndPlay(index, newQueue);
+        })
+        .catch(() => { if (token === transitionToken) tryNext(); });
+    };
+    tryNext();
+  },
+
+  // ---------- audio element events (wired once in App) ----------
+  handleTimeUpdate(e) {
+    if (e?.target && e.target !== activeAudio()) return;
+    const t = activeAudio().currentTime || 0;
+    const prev = get().currentTime;
+    if (Math.abs(t - prev) >= 0.2 || t === 0) set({ currentTime: t });
+    get()._checkSkipSegments(t);
+    get()._maybeStartFadeOut();
+    get()._maybePreloadNext();
+  },
+  handleDurationChange(e) {
+    if (e?.target && e.target !== activeAudio()) return;
+    const d = Number.isFinite(activeAudio().duration) ? activeAudio().duration : get().duration;
+    if (d) set({ duration: d });
+    // Preview detection: some public addons only serve ~30s previews even
+    // though search metadata says the full length (e.g. 242s). Warn once
+    // per track and offer the YouTube version as a full-length fallback.
+    const track = get().currentTrack();
+    if (track?.isAddon && track.duration > 0 && d > 0 && d < track.duration * 0.6 && lastPreviewWarnedId !== track.id) {
+      lastPreviewWarnedId = track.id;
+      get().toast(
+        'Addon preview only',
+        `"${track.title}" — this addon returned a ~${Math.round(d)}s preview, not the full ${Math.round(track.duration)}s track.`,
+        {
+          label: 'Play on YouTube',
+          onClick: () => {
+            const q = `${track.title} ${track.artist || ''}`.trim();
+            if (!q) return;
+            apiSearch(q)
+              .then((res) => {
+                const list = res?.results || [];
+                const match = list.find((t) => t.kind === 'song') || list[0];
+                if (match) get().playTrack(match, list);
+                else get().toast('Not found on YouTube', 'No matching track was found.');
+              })
+              .catch(() => get().toast('Search failed', 'Could not look up the YouTube version.'));
+          },
+        },
+      );
+    }
+  },
+  handleEnded(e) {
+    if (e?.target && e.target !== activeAudio()) return;
+    const { sleepTimer } = get();
+    if (sleepTimer === 'track') {
+      activeAudio().pause();
+      clearFadeTimer();
+      activeAudio().volume = get()._targetVolume();
+      set({ isPlaying: false, sleepTimer: null, currentTime: 0 });
+      get().toast('Sleep timer', 'Good night. Playback stopped.');
+      return;
+    }
+    // Gapless: promote the preloaded element instantly (no reload gap).
+    if (get()._promotePreload?.()) return;
+    get().next(false);
+  },
+  handleWaiting(e) {
+    if (e?.target && e.target !== activeAudio()) return;
+    set({ trackLoading: true });
+    get()._noteStall?.();
+  },
+  handlePlaying(e) {
+    if (e?.target && e.target !== activeAudio()) return;
+    set({ trackLoading: false, isReady: true, streamError: null });
+  },
+  handleError(e) {
+    // Inactive (preload) element failures are non-fatal.
+    if (e?.target && e.target !== activeAudio()) {
+      preloaded = null;
+      return;
+    }
+    clearFadeTimer();
+    fadingOut = false;
+    activeAudio().volume = get()._targetVolume();
+    const track = get().currentTrack();
+    const engine = get().settings.engine || 'auto';
+    // Addon tracks carry Qobuz/Deezer IDs, not YouTube IDs — the embedded
+    // YouTube player can never play them. Fail over to the next addon,
+    // then to YouTube, instead of showing a dead stream error.
+    if (track?.isAddon) {
+      const { index } = get();
+      get()._failoverTrack(track, index, track._triedAddons || []);
+      return;
+    }
+    if (engine === 'auto' && !get().streamFellBack) {
+      set({ streamFellBack: true, trackLoading: false, streamError: null });
+      get().toast('Switching audio engine', 'The stream is blocked right now — playing through the embedded player instead.');
+      // replay the same track through the embed engine
+      const { index, queue } = get();
+      get()._loadAndPlay(index, queue);
+      return;
+    }
+    set({ trackLoading: false, isPlaying: false, streamError: `Couldn't load “${track?.title || 'track'}”. The stream may be unavailable.` });
+    get().toast('Stream failed', 'The audio source could not be loaded. The provider may be rate-limiting — try again shortly, or switch the Stream source in Settings.');
+  },
+
+  // ---------- embed (YouTube IFrame) reporting — called by EmbedEngine ----------
+  _setEmbedState(playerState) {
+    // YT.PlayerState: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
+    switch (playerState) {
+      case 1:
+        set({ isPlaying: true, trackLoading: false, isReady: true, streamError: null });
+        break;
+      case 2:
+        set({ isPlaying: false });
+        break;
+      case 3:
+        set({ trackLoading: true });
+        break;
+      case 5:
+        set({ trackLoading: false });
+        break;
+      case 0: {
+        const { sleepTimer } = get();
+        if (sleepTimer === 'track') {
+          try { embedBridge.player?.pauseVideo(); } catch { /* noop */ }
+          set({ isPlaying: false, sleepTimer: null, currentTime: 0 });
+          get().toast('Sleep timer', 'Good night. Playback stopped.');
+          return;
+        }
+        set({ isPlaying: false, currentTime: 0 });
+        get().next(false);
+        return;
+      }
+      default:
+        break;
+    }
+  },
+
+  _setEmbedError(code) {
+    const messages = {
+      2: 'The video id looks invalid.',
+      5: 'The embedded player failed — try a different browser.',
+      100: 'This video was removed or made private.',
+      101: 'The owner of this video disabled embedding.',
+      150: 'The owner of this video disabled embedding.',
+    };
+    const msg = messages[code] || 'The provider refused to play this video.';
+    set({ streamError: msg, trackLoading: false, isPlaying: false });
+    get().toast('Can’t play this video', msg);
+  },
+
+  setEmbedTime(t, d) {
+    const patch = {};
+    if (Number.isFinite(t)) patch.currentTime = t;
+    if (Number.isFinite(d) && d > 0) patch.duration = d;
+    if (Object.keys(patch).length) set(patch);
+    if (Number.isFinite(t)) get()._checkSkipSegments(t);
+  },
+}));
+
+// keep module export for other components that need the element
+export default usePlayer;

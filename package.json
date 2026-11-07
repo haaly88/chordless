@@ -1,0 +1,22 @@
+{
+  "name": "chordless",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chordless - a YouTube Music client for the browser. Audio only, synced lyrics, no video.",
+  "type": "module",
+  "scripts": {
+    "dev:server": "node server/index.js",
+    "dev:web": "npm --prefix web run dev",
+    "dev": "concurrently -n server,web -c magenta,cyan \"npm:dev:server\" \"npm:dev:web\"",
+    "build": "npm --prefix web run build",
+    "start": "cross-env NODE_ENV=production node server/index.js",
+    "setup": "npm --prefix web install && pip install -U yt-dlp"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3"
+  }
+}
