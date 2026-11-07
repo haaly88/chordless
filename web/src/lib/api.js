@@ -72,6 +72,12 @@ export async function apiSponsorBlock(id, categories, { signal } = {}) {
   return json(await fetch(`/api/sponsorblock?${params}`, { signal }));
 }
 
+/** YouTube video chapters (click-to-seek). */
+export async function apiChapters(id, { signal } = {}) {
+  const params = new URLSearchParams({ id });
+  return json(await fetch(`/api/chapters?${params}`, { signal }));
+}
+
 /** Test a BitChord-compatible addon manifest URL. */
 export async function apiAddonTest(url, { signal } = {}) {
   return json(await fetch('/api/addon/test', {

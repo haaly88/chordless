@@ -8,6 +8,7 @@ import { isValidVideoId, streamAudio, ytDlpAvailable, pipeUpstream } from './str
 import { getManifest, searchAddon, resolveAddonStream, testAddon, normalizeBase } from './addon.js';
 import { getLyrics, translateLyrics } from './lyrics.js';
 import { importFromUrl } from './import.js';
+import { getChapters } from './chapters.js';
 import { createShare, getShare } from './share.js';
 import { coverImage } from './cover.js';
 import { createRoom, joinRoom, getRoom, pushState, leaveRoom } from './together.js';
@@ -152,6 +153,17 @@ app.post('/api/translate', async (req, res) => {
 });
 
 app.get('/api/cover', coverImage);
+
+app.get('/api/chapters', async (req, res) => {
+  const id = String(req.query.id || '');
+  if (!isValidVideoId(id)) return res.status(400).json({ error: 'Invalid video id' });
+  try {
+    res.json({ chapters: await getChapters(id) });
+  } catch (e) {
+    console.error('[chapters]', e.message);
+    res.json({ chapters: [] });
+  }
+});
 
 // ---------- Shared playlist links ----------
 app.post('/api/share', (req, res) => {

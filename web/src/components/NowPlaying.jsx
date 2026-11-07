@@ -36,6 +36,7 @@ export default function NowPlaying() {
   const abLoop = usePlayer((s) => s.abLoop);
   const setABPoint = usePlayer((s) => s.setABPoint);
   const clearABLoop = usePlayer((s) => s.clearABLoop);
+  const chapters = usePlayer((s) => s.chapters || []);
   const toggleNowPlaying = usePlayer((s) => s.toggleNowPlaying);
   const lyricsOpen = usePlayer((s) => s.lyricsOpen);
   const toggleLyrics = usePlayer((s) => s.toggleLyrics);
@@ -167,9 +168,28 @@ export default function NowPlaying() {
 
           <div className="np-progress">
             <span className="np-time">{formatTime(currentTime)}</span>
-            <SeekBar value={currentTime} duration={duration || 0} onSeek={(t) => seekTo(t)} ariaLabel="Seek through track" />
+            <SeekBar value={currentTime} duration={duration || 0} onSeek={(t) => seekTo(t)} ariaLabel="Seek through track" markers={chapters} />
             <span className="np-time">{formatTime(duration)}</span>
           </div>
+
+          {chapters.length > 1 && (
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }} aria-label="Chapters">
+              {chapters.map((c, i) => {
+                const active = currentTime >= c.start && (i + 1 >= chapters.length || currentTime < chapters[i + 1].start);
+                return (
+                  <button
+                    key={`${c.start}-${i}`}
+                    className={`pill${active ? ' active' : ''}`}
+                    onClick={() => seekTo(c.start)}
+                    title={`${formatTime(c.start)} — ${c.title}`}
+                    style={{ flexShrink: 0, fontSize: 11.5 }}
+                  >
+                    {formatTime(c.start)} {c.title}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }} aria-label="AB loop controls">
             <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: 'var(--text-3)' }}>LOOP</span>

@@ -2,9 +2,9 @@ import { useCallback, useRef, useState } from 'react';
 
 /**
  * Pointer-based seek bar (click / drag). Used by the player bar and
- * the fullscreen Now Playing view.
+ * the fullscreen Now Playing view. `markers` = chapters [{ start }].
  */
-export default function SeekBar({ value, duration, onSeek, ariaLabel = 'Seek' }) {
+export default function SeekBar({ value, duration, onSeek, ariaLabel = 'Seek', markers = [] }) {
   const trackRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const frac = duration > 0 ? Math.min(1, Math.max(0, value / duration)) : 0;
@@ -54,6 +54,9 @@ export default function SeekBar({ value, duration, onSeek, ariaLabel = 'Seek' })
       }}
     >
       <div className="seekbar-track">
+        {markers.map((m, i) => (
+          <span key={i} className="seekbar-marker" style={{ left: `${duration > 0 ? Math.min(100, (m.start / duration) * 100) : 0}%` }} aria-hidden="true" />
+        ))}
         <div className="seekbar-fill" style={{ width: `${frac * 100}%` }} />
         <div className="seekbar-knob" style={{ left: `${frac * 100}%` }} />
       </div>

@@ -5,7 +5,7 @@
  * settings — all persisted to localStorage where appropriate.
  */
 import { create } from 'zustand';
-import { apiSponsorBlock, apiAddonSearch, apiTranslate, apiSearch, addonTrackUrl, apiTogetherCreate, apiTogetherJoin, apiTogetherState, apiTogetherPush, apiTogetherLeave, apiShareCreate, apiShareGet } from './lib/api.js';
+import { apiSponsorBlock, apiChapters, apiAddonSearch, apiTranslate, apiSearch, addonTrackUrl, apiTogetherCreate, apiTogetherJoin, apiTogetherState, apiTogetherPush, apiTogetherLeave, apiShareCreate, apiShareGet } from './lib/api.js';
 import { upgradeTracks } from './lib/thumb.js';
 import { totalDuration, formatTotalDuration } from './lib/format.js';
 import { buildForYouMix } from './lib/ai-mix.js';
@@ -299,6 +299,8 @@ export const usePlayer = create((set, get) => ({
   segments: [],            // SponsorBlock skip segments for the current track
   segmentsFor: null,       // video id the segments belong to (null while loading)
   ignoreSegmentUuid: null, // segment NOT to re-skip (set after Undo)
+  chapters: [],            // YouTube chapters for the current track
+  chaptersFor: null,
 
   // ---------- equalizer ----------
   equalizerPreset: 'flat',
@@ -515,11 +517,14 @@ export const usePlayer = create((set, get) => ({
       lyricsOffset: 0,
       segments: [],
       segmentsFor: track.id,
+      chapters: [],
+      chaptersFor: track.id,
       ignoreSegmentUuid: null,
       abLoop: { a: null, b: null },
     });
     get()._recordHistory(track);
     void get()._fetchSegments(track);
+    void get()._fetchChapters(track);
 
     if (!offlineUrl && !useAddon && isEmbedEngine(get())) {
       // YouTube IFrame engine — plays straight through youtube.com, no proxy needed
@@ -803,6 +808,8 @@ export const usePlayer = create((set, get) => ({
       lyricsOffset: 0,
       segments: [],
       segmentsFor: track.id,
+      chapters: [],
+      chaptersFor: track.id,
       ignoreSegmentUuid: null,
       abLoop: { a: null, b: null },
       preloadedIndex: -1,
@@ -811,6 +818,7 @@ export const usePlayer = create((set, get) => ({
     });
     get()._recordHistory(track);
     void get()._fetchSegments(track);
+    void get()._fetchChapters(track);
     write('cl:queue', { queue: get().queue, index: forIndex, position: 0 });
     get()._togetherPushState?.();
     // old element is now inactive — clear it for the following preload
@@ -934,6 +942,19 @@ export const usePlayer = create((set, get) => ({
   },
 
   // ---------- SponsorBlock ----------
+  async _fetchChapters(track) {
+    if (!track?.id || track.isAddon) {
+      if (get().chaptersFor === track?.id) set({ chapters: [] });
+      return;
+    }
+    try {
+      const data = await apiChapters(track.id);
+      if (get().chaptersFor !== track.id && get().segmentsFor !== track.id) return; // user moved on
+      set({ chapters: Array.isArray(data?.chapters) ? data.chapters : [] });
+    } catch {
+      if (get().chaptersFor === track.id) set({ chapters: [] });
+    }
+  },
   async _fetchSegments(track) {
     const cats = sbCategories(get().settings);
     if (!cats.length || track.isAddon) {
