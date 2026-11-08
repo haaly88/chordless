@@ -4,9 +4,9 @@ import {
   ArrowDownAZ, Files, Merge, CheckSquare, Link2, Download, Loader2,
 } from 'lucide-react';
 import usePlayer from '../store.js';
-import { formatTotalDuration, pluralize } from '../lib/format.js';
+import { formatTotalDuration } from '../lib/format.js';
 import { detectGenre, GENRE_LABELS } from '../lib/genre.js';
-import { t } from '../lib/i18n.js';
+import { t, fmtCount } from '../lib/i18n.js';
 import TrackRow, { TrackListHeader } from './TrackRow.jsx';
 
 function HeroArt({ playlist }) {
@@ -106,14 +106,14 @@ export default function CollectionView({ playlistId }) {
     return (
       <div className="empty-state">
         <ListMusic />
-        <h3>Playlist not found</h3>
-        <p>It may have been deleted.</p>
-        <button className="btn primary" style={{ marginTop: 18 }} onClick={() => setView({ name: 'home' })}>Go home</button>
+        <h3>{t(lang, 'coll.notFound')}</h3>
+        <p>{t(lang, 'coll.notFoundSub')}</p>
+        <button className="btn primary" style={{ marginTop: 18 }} onClick={() => setView({ name: 'home' })}>{t(lang, 'common.goHome')}</button>
       </div>
     );
   }
 
-  const title = isLikedView ? 'Liked Songs' : playlist.name;
+  const title = isLikedView ? t(lang, 'home.shortcut.likedSongs') : playlist.name;
 
   const commitRename = () => {
     if (playlistId) renamePlaylist(playlistId, name);
@@ -194,7 +194,7 @@ export default function CollectionView({ playlistId }) {
                     className="field"
                     style={{ flex: 1, minWidth: 200, fontSize: 15, height: 44 }}
                     value={coverUrl}
-                    placeholder="Cover image URL… (empty = auto collage)"
+                    placeholder={t(lang, 'coll.coverPh')}
                     onChange={(e) => setCoverUrl(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') { commitCover(); }
@@ -207,9 +207,9 @@ export default function CollectionView({ playlistId }) {
                   <button
                     className="pill"
                     onClick={() => { updatePlaylistCover(playlistId, undefined); setCoverEditing(false); toast('Auto cover on', 'Artwork collage restored.'); }}
-                    title="Use automatic collage cover from track art"
+                    title={t(lang, 'coll.autoCoverTitle')}
                   >
-                    Use auto cover
+                    {t(lang, 'coll.autoCover')}
                   </button>
                 </div>
               )}
@@ -221,18 +221,18 @@ export default function CollectionView({ playlistId }) {
               <select
                 value={playlist?.folderId || ''}
                 onChange={(e) => setPlaylistFolder(playlistId, e.target.value || null)}
-                aria-label="Playlist folder"
+                aria-label={t(lang, 'coll.folderSelect')}
                 className="field"
                 style={{ width: 200, height: 38, fontSize: 12.5 }}
               >
-                <option value="">Unfiled</option>
+                <option value="">{t(lang, 'coll.unfiled')}</option>
                 {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
               </select>
-              <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>Folder</span>
+              <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{t(lang, 'coll.folder')}</span>
             </div>
           )}
 
-          <div className="hero-meta">{pluralize(tracks.length, 'track')}{tracks.length ? <> · {formatTotalDuration(tracks)}</> : null}</div>
+          <div className="hero-meta">{fmtCount(lang, tracks.length, tracks.length === 1 ? 'track' : 'tracks')}{tracks.length ? <> · {formatTotalDuration(tracks, lang)}</> : null}</div>
 
           <div className="hero-actions">
             <button className="btn primary" onClick={() => playTracks(tracks, 0)} disabled={!tracks.length}>
@@ -246,57 +246,57 @@ export default function CollectionView({ playlistId }) {
                 className={`btn danger${deleteArm ? ' armed' : ''}`}
                 onClick={() => (deleteArm ? deletePlaylist(playlistId) : setDeleteArm(true))}
                 onBlur={() => setDeleteArm(false)}
-                title={deleteArm ? 'Click again to delete' : 'Delete playlist'}
+                title={deleteArm ? t(lang, 'coll.confirmDelete') : t(lang, 'coll.deleteTitle')}
               >
-                <Trash2 size={16} /> {deleteArm ? 'Confirm delete' : t(lang, 'btn.delete')}
+                <Trash2 size={16} /> {deleteArm ? t(lang, 'coll.confirmDelete') : t(lang, 'btn.delete')}
               </button>
             )}
           </div>
           {!isLikedView && tracks.length > 1 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 12 }} aria-label="Playlist tools">
-              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: 'var(--text-3)' }}>TOOLS</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 12 }} aria-label={t(lang, 'coll.tools')}>
+              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: 'var(--text-3)' }}>{t(lang, 'coll.tools')}</span>
               <select
                 value={sortMode}
                 onChange={(e) => { setSortMode(e.target.value); sortPlaylist(playlistId, e.target.value); }}
-                aria-label="Sort playlist"
+                aria-label={t(lang, 'coll.sortSelect')}
                 className="pill"
                 style={{ cursor: 'pointer' }}
               >
-                <option value="az">Sort: A → Z</option>
-                <option value="za">Sort: Z → A</option>
-                <option value="artist">Sort: Artist</option>
-                <option value="duration-desc">Longest first</option>
-                <option value="duration-asc">Shortest first</option>
+                <option value="az">{t(lang, 'coll.sortAZ')}</option>
+                <option value="za">{t(lang, 'coll.sortZA')}</option>
+                <option value="artist">{t(lang, 'coll.sortArtist')}</option>
+                <option value="duration-desc">{t(lang, 'coll.sortLongest')}</option>
+                <option value="duration-asc">{t(lang, 'coll.sortShortest')}</option>
               </select>
-              <button className="pill" onClick={() => dedupePlaylist(playlistId)} title="Remove duplicate tracks">
-                <Files size={14} /> Dedupe
+              <button className="pill" onClick={() => dedupePlaylist(playlistId)} title={t(lang, 'coll.dedupeTitle')}>
+                <Files size={14} /> {t(lang, 'coll.dedupe')}
               </button>
-              <button className="pill" onClick={() => setMergeOpen(true)} title="Merge another playlist into this one">
-                <Merge size={14} /> Merge
+              <button className="pill" onClick={() => setMergeOpen(true)} title={t(lang, 'coll.mergeTitleHint')}>
+                <Merge size={14} /> {t(lang, 'coll.merge')}
               </button>
               <button
                 className={`pill${bulkMode ? ' active' : ''}`}
                 onClick={() => { setBulkMode((v) => !v); setSelected(new Set()); }}
                 aria-pressed={bulkMode}
-                title="Select tracks to remove in bulk"
+                title={t(lang, 'coll.selectHint')}
               >
-                <CheckSquare size={14} /> {bulkMode ? 'Done' : 'Select'}
+                <CheckSquare size={14} /> {bulkMode ? t(lang, 'coll.done') : t(lang, 'coll.select')}
               </button>
               <button
                 className="pill"
                 onClick={async () => {
                   setBulkDownloading(true);
                   let ok = 0;
-                  for (const t of tracks) {
-                    if ((await downloadTrack(t)) === true) ok += 1;
+                  for (const tr of tracks) {
+                    if ((await downloadTrack(tr)) === true) ok += 1;
                   }
                   setBulkDownloading(false);
-                  toast('Bulk download done', `${ok}/${tracks.length} tracks saved for offline`);
+                  toast('Bulk download done', t(lang, 'coll.bulkDoneSub').replace('{ok}', ok).replace('{total}', tracks.length));
                 }}
                 disabled={bulkDownloading}
-                title="Download every track in this playlist for offline"
+                title={t(lang, 'coll.downloadAllTitle')}
               >
-                {bulkDownloading ? <Loader2 size={14} style={{ animation: 'spin .8s linear infinite' }} /> : <Download size={14} />} {bulkDownloading ? 'Downloading…' : 'Download all'}
+                {bulkDownloading ? <Loader2 size={14} style={{ animation: 'spin .8s linear infinite' }} /> : <Download size={14} />} {bulkDownloading ? t(lang, 'coll.downloading') : t(lang, 'coll.downloadAll')}
               </button>
             </div>
           )}
@@ -309,8 +309,8 @@ export default function CollectionView({ playlistId }) {
           <h3>{isLikedView ? t(lang, 'coll.emptyLiked') : t(lang, 'coll.empty')}</h3>
           <p>
             {isLikedView
-              ? 'Tap the heart on any track — it will land here, synced across your queue instantly.'
-              : 'Right-click any track and choose “Add to playlist”, or use the ⋯ button next to a song.'}
+              ? t(lang, 'coll.emptyLikedHint')
+              : t(lang, 'coll.emptyHint')}
           </p>
           <button className="btn primary" style={{ marginTop: 18 }} onClick={() => setView({ name: 'search' })}>
             <Play size={16} fill="#fff" strokeWidth={0} /> {t(lang, 'coll.findMusic')}
@@ -320,16 +320,16 @@ export default function CollectionView({ playlistId }) {
         <>
           {bulkMode && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', padding: '10px 12px', marginBottom: 8, border: '1px solid var(--stroke)', borderRadius: 14, background: 'var(--glass)' }}>
-              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{selected.size} selected</span>
-              <button className="pill" onClick={() => setSelected(new Set(tracks.map((t) => t.id)))}>Select all</button>
-              <button className="pill" onClick={() => setSelected(new Set())}>Clear</button>
+              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{selected.size} {t(lang, 'coll.selected')}</span>
+              <button className="pill" onClick={() => setSelected(new Set(tracks.map((tr) => tr.id)))}>{t(lang, 'coll.selectAll')}</button>
+              <button className="pill" onClick={() => setSelected(new Set())}>{t(lang, 'btn.clear')}</button>
               <button
                 className="pill"
                 style={{ color: '#ff7a7a', borderColor: 'rgba(255,90,90,.4)' }}
                 onClick={() => { removeTracksFromPlaylist(playlistId, [...selected]); setSelected(new Set()); }}
                 disabled={!selected.size}
               >
-                <Trash2 size={14} /> Remove selected
+                <Trash2 size={14} /> {t(lang, 'coll.removeSelected')}
               </button>
             </div>
           )}
@@ -377,22 +377,22 @@ export default function CollectionView({ playlistId }) {
 
       {mergeOpen && (
         <div className="modal-backdrop" onClick={() => setMergeOpen(false)} role="presentation">
-          <div className="modal" role="dialog" aria-modal="true" aria-label="Merge playlist" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label={t(lang, 'coll.merge')} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <h2 style={{ margin: 0 }}>Merge into “{playlist?.name}”</h2>
-              <button className="icon-btn" onClick={() => setMergeOpen(false)} aria-label="Close"><X size={20} /></button>
+              <h2 style={{ margin: 0 }}>{t(lang, 'coll.mergeTitle').replace('{name}', playlist?.name || '')}</h2>
+              <button className="icon-btn" onClick={() => setMergeOpen(false)} aria-label={t(lang, 'btn.close')}><X size={20} /></button>
             </div>
-            <p>Pick a playlist to merge in. New tracks are appended (duplicates skipped).</p>
+            <p>{t(lang, 'coll.mergeDesc')}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 300, overflowY: 'auto' }}>
               {playlists.filter((p) => p.id !== playlistId).map((p) => (
                 <button key={p.id} className="ctx-item" onClick={() => { mergePlaylist(playlistId, p.id); setMergeOpen(false); }}>
                   <ListMusic size={16} />
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                  <span style={{ marginLeft: 'auto', color: 'var(--text-3)', fontSize: 11.5 }}>{p.tracks.length} tracks</span>
+                  <span style={{ marginLeft: 'auto', color: 'var(--text-3)', fontSize: 11.5 }}>{fmtCount(lang, p.tracks.length, p.tracks.length === 1 ? 'track' : 'tracks')}</span>
                 </button>
               ))}
               {playlists.filter((p) => p.id !== playlistId).length === 0 && (
-                <div className="ctx-empty">No other playlists to merge</div>
+                <div className="ctx-empty">{t(lang, 'coll.noOtherPlaylists')}</div>
               )}
             </div>
           </div>

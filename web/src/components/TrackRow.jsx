@@ -2,12 +2,14 @@ import { memo } from 'react';
 import { Heart, MoreHorizontal, Play, Pause } from 'lucide-react';
 import usePlayer from '../store.js';
 import { formatTime, shortQuality } from '../lib/format.js';
+import { t } from '../lib/i18n.js';
 
 /**
  * A single track row. Click to play; buttons for like/more; when it is the
  * active track it shows an animated equalizer instead of its index.
  */
 function TrackRow({ track, index, contextList, playlistId, showArt = true }) {
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const active = usePlayer((s) => s.index >= 0 && s.queue[s.index]?.id === track.id);
   const isPlaying = usePlayer((s) => s.isPlaying);
   const liked = usePlayer((s) => s.liked.some((t) => t.id === track.id));
@@ -52,8 +54,8 @@ function TrackRow({ track, index, contextList, playlistId, showArt = true }) {
       <div className="tr-main">
         <div className="tr-title">{track.title}</div>
         <div className="tr-artist">
-          {track.artist || 'Unknown artist'}
-          {track.kind === 'video' ? ' · Video' : ''}
+          {track.artist || t(lang, 'common.unknownArtist')}
+          {track.kind === 'video' ? ` · ${t(lang, 'search.videos')}` : ''}
           {track.isAddon && <span className="hq-badge">{shortQuality(track.audioQuality)}</span>}
           {chapterCount > 1 && <span className="hq-badge" title={`${chapterCount} chapters`}>{chapterCount} CH</span>}
         </div>
@@ -74,8 +76,8 @@ function TrackRow({ track, index, contextList, playlistId, showArt = true }) {
         <button
           className="icon-btn"
           onClick={(e) => openMenu({ x: e.clientX, y: e.clientY, track, contextList, playlistId })}
-          aria-label="More options"
-          title="More options"
+          aria-label={t(lang, 'player.more')}
+          title={t(lang, 'player.more')}
         >
           <MoreHorizontal size={18} />
         </button>

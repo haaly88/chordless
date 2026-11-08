@@ -144,22 +144,22 @@ export default function Sidebar({ open = false, onClose }) {
         <button className="nav-item" onClick={() => setSettingsOpen(true)}>
           <Settings aria-hidden="true" /><span className="txt">{t(lang, 'nav.settings')}</span>
         </button>
-        <button className="nav-item" onClick={() => setShortcutsOpen(true)} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">
-          <Keyboard aria-hidden="true" /><span className="txt">Shortcuts</span>
+        <button className="nav-item" onClick={() => setShortcutsOpen(true)} aria-label={t(lang, 'nav.shortcuts')} title={t(lang, 'nav.shortcuts')}>
+          <Keyboard aria-hidden="true" /><span className="txt">{t(lang, 'nav.shortcuts')}</span>
         </button>
       </nav>
 
       {/* new playlist pill */}
-      <button className="new-playlist-pill" onClick={() => setCreating((v) => !v)} aria-label="Create playlist">
+      <button className="new-playlist-pill" onClick={() => setCreating((v) => !v)} aria-label={t(lang, 'home.shortcut.newPlaylist')}>
         {creating ? <X size={17} /> : <Plus size={17} strokeWidth={2.4} />}
-        {creating ? 'Cancel' : t(lang, 'home.shortcut.newPlaylist')}
+        {creating ? t(lang, 'btn.cancel') : t(lang, 'home.shortcut.newPlaylist')}
       </button>
-      <button className="new-playlist-pill" style={{ height: 36, marginTop: -6 }} onClick={() => setFolderCreating((v) => !v)} aria-label="Create folder">
-        <Folder size={15} /> {folderCreating ? 'Cancel' : t(lang, 'home.shortcut.newFolder')}
+      <button className="new-playlist-pill" style={{ height: 36, marginTop: -6 }} onClick={() => setFolderCreating((v) => !v)} aria-label={t(lang, 'home.shortcut.newFolder')}>
+        <Folder size={15} /> {folderCreating ? t(lang, 'btn.cancel') : t(lang, 'home.shortcut.newFolder')}
       </button>
       {installAvailable && (
-        <button className="new-playlist-pill" style={{ height: 36, marginTop: -6 }} onClick={() => promptInstall()} aria-label="Install app">
-          <Download size={15} /> Install app
+        <button className="new-playlist-pill" style={{ height: 36, marginTop: -6 }} onClick={() => promptInstall()} aria-label={t(lang, 'sb.install')}>
+          <Download size={15} /> {t(lang, 'sb.install')}
         </button>
       )}
 
@@ -168,7 +168,7 @@ export default function Sidebar({ open = false, onClose }) {
           <input
             className="field"
             style={{ height: 38, fontSize: 13 }}
-            placeholder="Folder name…"
+            placeholder={t(lang, 'sb.folderNamePh')}
             value={folderName}
             maxLength={60}
             onChange={(e) => setFolderName(e.target.value)}
@@ -191,7 +191,7 @@ export default function Sidebar({ open = false, onClose }) {
             ref={inputRef}
             className="field"
             style={{ height: 38, fontSize: 13 }}
-            placeholder="Playlist name…"
+            placeholder={t(lang, 'sb.playlistNamePh')}
             value={name}
             maxLength={80}
             onChange={(e) => setName(e.target.value)}
@@ -236,9 +236,9 @@ export default function Sidebar({ open = false, onClose }) {
                 </button>
               ))}
               {isOpen && (
-                <button className="lib-item" style={{ paddingLeft: 22, opacity: .65 }} onClick={() => deleteFolder(f.id)} title="Delete folder (playlists become unfiled)">
+                <button className="lib-item" style={{ paddingLeft: 22, opacity: .65 }} onClick={() => deleteFolder(f.id)} title={t(lang, 'sb.deleteFolder')}>
                   <span style={{ width: 44, display: 'grid', placeItems: 'center', color: '#ff8a8a' }}><Trash2 size={16} /></span>
-                  <div className="lib-meta"><b>Delete folder</b></div>
+                  <div className="lib-meta"><b>{t(lang, 'sb.deleteFolder')}</b></div>
                 </button>
               )}
             </div>

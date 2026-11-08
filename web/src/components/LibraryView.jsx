@@ -5,7 +5,7 @@ import TrackRow, { TrackListHeader } from './TrackRow.jsx';
 import { apiImportLink } from '../lib/api.js';
 import { resolveRegion } from '../lib/region.js';
 import { listOfflineEntries, offlineBytes } from '../lib/offline.js';
-import { t } from '../lib/i18n.js';
+import { t, fmtCount } from '../lib/i18n.js';
 
 /** One place for everything you own: likes, playlists, history. */
 export default function LibraryView() {
@@ -48,9 +48,9 @@ export default function LibraryView() {
   };
 
   const quickTiles = [
-    { key: 'liked', title: 'Liked Songs', meta: `${liked.length} tracks`, Icon: Heart, className: 'liked', onClick: () => setView({ name: 'liked' }) },
-    { key: 'mix', title: 'Your mix', meta: 'Shuffled from likes & history', Icon: Shuffle, className: 'mix', onClick: playYourMix },
-    { key: 'stats', title: 'Your stats', meta: 'See your listening', Icon: Clock, className: 'stats', onClick: () => setView({ name: 'stats' }) },
+    { key: 'liked', title: t(lang, 'home.shortcut.likedSongs'), meta: fmtCount(lang, liked.length, liked.length === 1 ? 'track' : 'tracks'), Icon: Heart, className: 'liked', onClick: () => setView({ name: 'liked' }) },
+    { key: 'mix', title: t(lang, 'home.yourMix'), meta: t(lang, 'lib.mixMeta'), Icon: Shuffle, className: 'mix', onClick: playYourMix },
+    { key: 'stats', title: t(lang, 'stats.title'), meta: t(lang, 'lib.statsMeta'), Icon: Clock, className: 'stats', onClick: () => setView({ name: 'stats' }) },
   ];
 
   const smart = useMemo(() => {
@@ -59,12 +59,12 @@ export default function LibraryView() {
     const mostPlayed = [...history].sort((a, b) => (b.playCount || 1) - (a.playCount || 1)).slice(0, 30);
     const topRated = liked.slice(0, 30);
     return [
-      { key: 'for-you', name: 'For You', sub: forYou?.reason || 'AI mix — click to generate', Icon: Sparkles, tracks: forYouTracks },
-      { key: 'recent-added', name: 'Recently Added', sub: 'Newest first', Icon: History, tracks: recentlyAdded },
-      { key: 'most-played', name: 'Most Played', sub: 'By play count', Icon: TrendingUp, tracks: mostPlayed },
-      { key: 'top-rated', name: 'Top Rated', sub: 'Your liked songs', Icon: Star, tracks: topRated },
+      { key: 'for-you', name: t(lang, 'home.foryou.title'), sub: forYou?.reason || t(lang, 'lib.aiMixSub'), Icon: Sparkles, tracks: forYouTracks },
+      { key: 'recent-added', name: t(lang, 'home.recentAdded'), sub: t(lang, 'lib.newestFirst'), Icon: History, tracks: recentlyAdded },
+      { key: 'most-played', name: t(lang, 'lib.mostPlayed'), sub: t(lang, 'lib.byPlayCount'), Icon: TrendingUp, tracks: mostPlayed },
+      { key: 'top-rated', name: t(lang, 'lib.topRated'), sub: t(lang, 'lib.likedSub2'), Icon: Star, tracks: topRated },
     ];
-  }, [history, liked, forYou]);
+  }, [history, liked, forYou, lang]);
 
   const duplicates = useMemo(() => {
     const byTrack = new Map();
@@ -98,10 +98,10 @@ export default function LibraryView() {
     setLinkPreview(null);
     try {
       const result = await apiImportLink(url, { gl: region.gl, hl: region.hl });
-      if (!result?.tracks?.length) throw new Error('No playable tracks found in this link.');
+      if (!result?.tracks?.length) throw new Error(t(lang, 'lib.noPlayable'));
       setLinkPreview(result);
     } catch (e) {
-      setLinkError(e.message || 'Import failed. Check the link and try again.');
+      setLinkError(e.message || t(lang, 'lib.importFailedCheck'));
     } finally {
       setLinkBusy(false);
     }
@@ -134,7 +134,7 @@ export default function LibraryView() {
         <span className="pl-play"><Play size={17} fill="#fff" strokeWidth={0} /></span>
       </div>
       <b>{p.name}</b>
-      <span>{p.tracks.length} {p.tracks.length === 1 ? 'track' : 'tracks'}{folderOf(p) ? ` · ${folderOf(p).name}` : ''}</span>
+      <span>{fmtCount(lang, p.tracks.length, p.tracks.length === 1 ? 'track' : 'tracks')}{folderOf(p) ? ` · ${folderOf(p).name}` : ''}</span>
     </button>
     );
   };
@@ -155,7 +155,7 @@ export default function LibraryView() {
         <span className="pl-play"><Play size={17} fill="#fff" strokeWidth={0} /></span>
       </div>
       <b>{s.name}</b>
-      <span>{s.tracks.length} {s.tracks.length === 1 ? 'track' : 'tracks'} · {s.sub}</span>
+      <span>{fmtCount(lang, s.tracks.length, s.tracks.length === 1 ? 'track' : 'tracks')} · {s.sub}</span>
     </button>
   );
 
@@ -163,23 +163,23 @@ export default function LibraryView() {
   return (
     <div>
       <h1 className="view-title">
-        {t(lang, 'lib.title')}<span className="sub">{liked.length + playlists.length} SAVED ITEMS</span>
+        {t(lang, 'lib.title')}<span className="sub">{liked.length + playlists.length} {t(lang, 'lib.savedItems')}</span>
       </h1>
 
       {smartPreview && (
         <div className="collection-hero" style={{ marginBottom: 8 }}>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="hero-kicker">SMART PLAYLIST</div>
+            <div className="hero-kicker">{t(lang, 'lib.smartPlaylistKicker')}</div>
             <h1 className="hero-title">{smartPreview.name}</h1>
-            <div className="hero-meta">{smartPreview.tracks.length} tracks · {smartPreview.sub}</div>
+            <div className="hero-meta">{fmtCount(lang, smartPreview.tracks.length, smartPreview.tracks.length === 1 ? 'track' : 'tracks')} · {smartPreview.sub}</div>
             <div className="hero-actions">
               <button className="btn primary" onClick={() => playTracks(smartPreview.tracks, 0)} disabled={!smartPreview.tracks.length}>
-                <Play size={17} fill="#fff" strokeWidth={0} /> Play
+                <Play size={17} fill="#fff" strokeWidth={0} /> {t(lang, 'btn.play')}
               </button>
               <button className="btn" onClick={() => playTracks(smartPreview.tracks, 0, { shuffle: true })} disabled={!smartPreview.tracks.length}>
-                <Shuffle size={16} /> Shuffle
+                <Shuffle size={16} /> {t(lang, 'btn.shuffle')}
               </button>
-              <button className="btn" onClick={() => setSmartPreview(null)}>Back</button>
+              <button className="btn" onClick={() => setSmartPreview(null)}>{t(lang, 'common.back')}</button>
             </div>
           </div>
         </div>
@@ -196,7 +196,7 @@ export default function LibraryView() {
             </div>
           </>
         ) : (
-          <div className="empty-state"><Music2 /><h3>No tracks yet</h3><p>Play some songs and they will appear here.</p></div>
+          <div className="empty-state"><Music2 /><h3>{t(lang, 'lib.noTracks')}</h3><p>{t(lang, 'lib.noTracksHint')}</p></div>
         )
       ) : (
       <>
@@ -223,17 +223,17 @@ export default function LibraryView() {
       <div className="playlist-grid">
         <button className="playlist-card create" onClick={() => { const p = createPlaylist('New Playlist'); setView({ name: 'playlist', id: p.id }); }}>
           <div className="playlist-art-wrap create-art"><Plus size={36} strokeWidth={1.6} /></div>
-          <b>New Playlist</b>
-          <span>Create one</span>
+          <b>{t(lang, 'lib.newPlaylist')}</b>
+          <span>{t(lang, 'lib.createOne')}</span>
         </button>
         <button className="playlist-card create" onClick={() => setImportOpen(true)}>
           <div className="playlist-art-wrap create-art"><Upload size={34} strokeWidth={1.6} /></div>
-          <b>Import Playlist</b>
-          <span>Paste JSON</span>
+          <b>{t(lang, 'lib.importPlaylist')}</b>
+          <span>{t(lang, 'lib.pasteJson')}</span>
         </button>
         <button className="playlist-card create" onClick={() => { setLinkOpen(true); setLinkError(''); setLinkPreview(null); }}>
           <div className="playlist-art-wrap create-art"><Link2 size={34} strokeWidth={1.6} /></div>
-          <b>Import from link</b>
+          <b>{t(lang, 'lib.importFromLink')}</b>
           <span>YouTube · Deezer · Spotify</span>
         </button>
         {unfiled.map(renderPlaylistCard)}
@@ -245,7 +245,7 @@ export default function LibraryView() {
           <div className="playlist-grid">
             {playlists.filter((p) => p.folderId === f.id).map(renderPlaylistCard)}
             {playlists.filter((p) => p.folderId === f.id).length === 0 && (
-              <div style={{ fontSize: 12.5, color: 'var(--text-3)', padding: '10px 4px' }}>Empty folder — move a playlist here from its page.</div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-3)', padding: '10px 4px' }}>{t(lang, 'lib.emptyFolder')}</div>
             )}
           </div>
         </div>
@@ -255,7 +255,7 @@ export default function LibraryView() {
       {duplicates.length > 0 && (
         <>
           <div className="section-label" style={{ paddingLeft: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Files size={13} style={{ color: 'var(--accent)' }} /> DUPLICATES ACROSS PLAYLISTS ({duplicates.length})
+            <Files size={13} style={{ color: 'var(--accent)' }} /> {t(lang, 'lib.dupesAcross').replace('{n}', duplicates.length)}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
             {duplicates.map(({ track, playlists: pls }) => (
@@ -264,11 +264,11 @@ export default function LibraryView() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{track.title}</div>
                   <div style={{ fontSize: 11.5, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {track.artist} · in {pls.map((p) => p.name).join(', ')}
+                    {track.artist} · {t(lang, 'lib.inPlaylists').replace('{names}', pls.map((p) => p.name).join(', '))}
                   </div>
                 </div>
-                <button className="pill" onClick={() => removeDuplicateAcross(track.id, pls[0].id)} title={`Keep in “${pls[0].name}”, remove from ${pls.length - 1} other playlist(s)`}>
-                  Keep first only
+                <button className="pill" onClick={() => removeDuplicateAcross(track.id, pls[0].id)} title={t(lang, 'lib.keepFirstOnlyTitle').replace('{name}', pls[0].name).replace('{n}', pls.length - 1)}>
+                  {t(lang, 'lib.keepFirstOnly')}
                 </button>
               </div>
             ))}
@@ -282,13 +282,13 @@ export default function LibraryView() {
         {offlineEntries.length > 0 && (
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
             <span style={{ fontWeight: 600 }}>{offlineEntries.length} · {(offlineSize / 1048576).toFixed(1)} MB</span>
-            <button className="pill" onClick={clearOfflineDownloads} title="Remove all offline downloads"><Trash2 size={13} /> Clear</button>
+            <button className="pill" onClick={clearOfflineDownloads} title={t(lang, 'lib.removeDownload')}><Trash2 size={13} /> {t(lang, 'btn.clear')}</button>
           </span>
         )}
       </div>
       {offlineEntries.length === 0 ? (
         <div style={{ fontSize: 12.5, color: 'var(--text-3)', padding: '4px 4px 14px' }}>
-          Right-click any track → Download for offline, or use the download button in Now Playing. Downloaded songs play without internet.
+          {t(lang, 'lib.noOfflineHint')}
         </div>
       ) : (
         <div>
@@ -299,7 +299,7 @@ export default function LibraryView() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <TrackRow track={e.track} index={i} contextList={offlineEntries.map((x) => x.track)} />
                 </div>
-                <button className="icon-btn" onClick={() => removeOfflineTrack(e.id)} aria-label="Remove download" title="Remove download"><Trash2 size={16} /></button>
+                <button className="icon-btn" onClick={() => removeOfflineTrack(e.id)} aria-label={t(lang, 'lib.removeDownload')} title={t(lang, 'lib.removeDownload')}><Trash2 size={16} /></button>
               </div>
             ))}
           </div>
@@ -312,7 +312,7 @@ export default function LibraryView() {
         <div className="empty-state" style={{ paddingTop: 30 }}>
           <Clock />
           <h3>{t(lang, 'lib.nothing')}</h3>
-          <p>Play some songs and they’ll show up here.</p>
+          <p>{t(lang, 'lib.playRecentHint')}</p>
         </div>
       ) : (
         <>
@@ -333,10 +333,10 @@ export default function LibraryView() {
         <div className="modal-backdrop" onClick={() => setImportOpen(false)} role="presentation">
           <div className="modal" role="dialog" aria-modal="true" aria-label="Import playlist" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <h2 style={{ margin: 0 }}>Import Playlist</h2>
-              <button className="icon-btn" onClick={() => setImportOpen(false)} aria-label="Close"><X size={20} /></button>
+              <h2 style={{ margin: 0 }}>{t(lang, 'lib.importPlaylist')}</h2>
+              <button className="icon-btn" onClick={() => setImportOpen(false)} aria-label={t(lang, 'btn.close')}><X size={20} /></button>
             </div>
-            <p>Paste the playlist JSON you received (copied from another Chordless instance):</p>
+            <p>{t(lang, 'lib.importJsonDesc')}</p>
             <textarea
               className="field"
               style={{ height: 120, fontSize: 12, fontFamily: 'monospace', resize: 'vertical' }}
@@ -358,10 +358,10 @@ export default function LibraryView() {
         <div className="modal-backdrop" onClick={() => setLinkOpen(false)} role="presentation">
           <div className="modal" role="dialog" aria-modal="true" aria-label="Import from link" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <h2 style={{ margin: 0 }}>Import from link</h2>
-              <button className="icon-btn" onClick={() => setLinkOpen(false)} aria-label="Close"><X size={20} /></button>
+              <h2 style={{ margin: 0 }}>{t(lang, 'lib.importFromLink')}</h2>
+              <button className="icon-btn" onClick={() => setLinkOpen(false)} aria-label={t(lang, 'btn.close')}><X size={20} /></button>
             </div>
-            <p>Paste a YouTube Music, Deezer, or Spotify playlist/track link. Tracks resolve to playable YouTube audio.</p>
+            <p>{t(lang, 'lib.importLinkDesc')}</p>
             <input
               className="field"
               value={linkUrl}
@@ -373,7 +373,7 @@ export default function LibraryView() {
             {linkError && <p style={{ color: '#ff7a7a', fontSize: 12.5, margin: '10px 0 0' }}>{linkError}</p>}
             {linkPreview && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>{linkPreview.title} <span style={{ color: 'var(--text-3)', fontWeight: 600 }}>· {linkPreview.source} · {linkPreview.tracks.length} tracks</span></div>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>{linkPreview.title} <span style={{ color: 'var(--text-3)', fontWeight: 600 }}>· {linkPreview.source} · {fmtCount(lang, linkPreview.tracks.length, linkPreview.tracks.length === 1 ? 'track' : 'tracks')}</span></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8, maxHeight: 220, overflowY: 'auto' }}>
                   {linkPreview.tracks.slice(0, 10).map((t) => (
                     <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5 }}>

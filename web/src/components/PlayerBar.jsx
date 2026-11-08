@@ -5,18 +5,18 @@ import {
 } from 'lucide-react';
 import usePlayer from '../store.js';
 import { formatTime, formatTotalDuration } from '../lib/format.js';
-import { t } from '../lib/i18n.js';
+import { t, fmtCount } from '../lib/i18n.js';
 import { parseLrc, activeLineIndex } from '../lib/lrc.js';
 import SeekBar from './SeekBar.jsx';
 import Visualizer from './Visualizer.jsx';
 
 const SLEEP_OPTIONS = [
-  { label: 'Off', value: null },
-  { label: '15 minutes', value: 15 },
-  { label: '30 minutes', value: 30 },
-  { label: '45 minutes', value: 45 },
-  { label: '60 minutes', value: 60 },
-  { label: 'End of this track', value: 'track' },
+  { labelKey: 'player.sleepOff', value: null },
+  { labelKey: 'player.sleepMinutes', value: 15 },
+  { labelKey: 'player.sleepMinutes', value: 30 },
+  { labelKey: 'player.sleepMinutes', value: 45 },
+  { labelKey: 'player.sleepMinutes', value: 60 },
+  { labelKey: 'player.sleepTrack', value: 'track' },
 ];
 
 function VolumeControl() {
@@ -24,6 +24,7 @@ function VolumeControl() {
   const muted = usePlayer((s) => s.muted);
   const setVolume = usePlayer((s) => s.setVolume);
   const toggleMute = usePlayer((s) => s.toggleMute);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const trackRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const effective = muted ? 0 : volume;
@@ -39,7 +40,7 @@ function VolumeControl() {
 
   return (
     <div className="vol-slider">
-      <button className="icon-btn" onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'} title={muted ? 'Unmute' : 'Mute'}>
+      <button className="icon-btn" onClick={toggleMute} aria-label={muted ? t(lang, 'player.unmute') : t(lang, 'player.mute')} title={muted ? t(lang, 'player.unmute') : t(lang, 'player.mute')}>
         <Icon size={19} />
       </button>
       <div
@@ -47,7 +48,7 @@ function VolumeControl() {
         className="vol-track"
         role="slider"
         tabIndex={0}
-        aria-label="Volume"
+        aria-label={t(lang, 'player.volume')}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(effective * 100)}
@@ -77,6 +78,7 @@ function VolumeControl() {
 function SleepMenu() {
   const sleepTimer = usePlayer((s) => s.sleepTimer);
   const setSleepTimer = usePlayer((s) => s.setSleepTimer);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const [, forceTick] = useState(0);
@@ -100,15 +102,18 @@ function SleepMenu() {
   const currentValue = sleepTimer === 'track' ? 'track' : null;
   const remaining = typeof sleepTimer === 'number' ? Math.max(0, Math.ceil((sleepTimer - Date.now()) / 1000)) : null;
   const remainingLabel = remaining != null ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}` : null;
+  const optionLabel = (opt) => opt.labelKey === 'player.sleepMinutes'
+    ? t(lang, 'player.sleepMinutes').replace('{n}', opt.value)
+    : t(lang, opt.labelKey);
 
   return (
     <div className="pb-sleep-wrap" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }} ref={ref}>
       <button
         className={`icon-btn${active ? ' active' : ''}`}
         onClick={() => setOpen((v) => !v)}
-        aria-label="Sleep timer"
+        aria-label={t(lang, 'player.sleep')}
         aria-expanded={open}
-        title={active ? 'Sleep timer is set' : 'Sleep timer'}
+        title={t(lang, 'player.sleep')}
       >
         <Moon size={19} />
       </button>
@@ -116,19 +121,19 @@ function SleepMenu() {
         <button
           className="pill"
           onClick={() => setSleepTimer(null)}
-          title={`Sleep timer — ${remainingLabel} left. Click to cancel.`}
-          aria-label={`Sleep timer ${remainingLabel} left, click to cancel`}
+          title={`${t(lang, 'player.sleep')} — ${remainingLabel}`}
+          aria-label={`${t(lang, 'player.sleep')} ${remainingLabel}`}
           style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11.5, padding: '4px 10px' }}
         >
           {remainingLabel} ×
         </button>
       )}
       {open && (
-        <div className="menu-pop" role="menu" aria-label="Sleep timer options">
-          <div className="ctx-label">SLEEP TIMER</div>
+        <div className="menu-pop" role="menu" aria-label={t(lang, 'player.sleep')}>
+          <div className="ctx-label">{t(lang, 'player.sleep').toUpperCase()}</div>
           {SLEEP_OPTIONS.map((opt) => (
             <button
-              key={opt.label}
+              key={`${opt.labelKey}-${opt.value}`}
               className="ctx-item"
               role="menuitemradio"
               aria-checked={opt.value === currentValue || (opt.value === null && sleepTimer === null)}
@@ -137,7 +142,7 @@ function SleepMenu() {
               <span className="check-slot">
                 {(opt.value === currentValue || (opt.value === null && sleepTimer === null)) && <Check size={15} strokeWidth={3} />}
               </span>
-              {opt.label}
+              {optionLabel(opt)}
             </button>
           ))}
         </div>
@@ -246,7 +251,7 @@ export default function PlayerBar() {
               alt={`${track.title} artwork`}
               onClick={() => toggleNowPlaying(true)}
               referrerPolicy="no-referrer"
-              title="Open Now Playing"
+              title={t(lang, 'player.openNow')}
             />
             <div className="pb-meta">
               <div className="pb-title" ref={titleRef} onClick={() => toggleNowPlaying(true)} role="button" tabIndex={0}
@@ -257,7 +262,7 @@ export default function PlayerBar() {
                   </span>
                 ) : track.title}
               </div>
-              <div className="pb-artist">{track.artist || 'Unknown artist'}</div>
+              <div className="pb-artist">{track.artist || t(lang, 'common.unknownArtist')}</div>
             </div>
             {!miniPlayer && <Visualizer className="pb-mini-viz" bars={18} />}
             <button
@@ -272,22 +277,22 @@ export default function PlayerBar() {
             <button
               className="icon-btn pb-plus"
               onClick={() => addToQueue(track)}
-              aria-label="Add to queue"
-              title="Add to queue"
+              aria-label={t(lang, 'player.addQueue')}
+              title={t(lang, 'player.addQueue')}
             >
               <ListPlus size={19} />
             </button>
             <button
               className="icon-btn pb-more"
               onClick={(e) => openMenu({ x: e.clientX, y: e.clientY, track, contextList: undefined })}
-              aria-label="More options"
-              title="More options"
+              aria-label={t(lang, 'player.more')}
+              title={t(lang, 'player.more')}
             >
               <MoreVertical size={19} />
             </button>
           </>
         ) : (
-          <div className="pb-meta"><div className="pb-artist">Nothing playing — pick a song.</div></div>
+          <div className="pb-meta"><div className="pb-artist">{t(lang, 'np.nothingPlaying')}</div></div>
         )}
       </div>
 
@@ -333,16 +338,16 @@ export default function PlayerBar() {
           className={`icon-btn${lyricsOpen ? ' active' : ''}`}
           onClick={() => toggleLyrics()}
           aria-pressed={lyricsOpen}
-          aria-label="Toggle lyrics"
-          title="Lyrics (L)"
+          aria-label={t(lang, 'player.lyrics')}
+          title={t(lang, 'player.lyrics')}
         >
           <Mic size={19} />
         </button>
         <button
           className="icon-btn pb-karaoke-btn"
           onClick={() => toggleKaraoke(true)}
-          aria-label="Karaoke mode"
-          title="Karaoke mode (C)"
+          aria-label={t(lang, 'karaoke.title')}
+          title={t(lang, 'karaoke.title')}
         >
           <MessageSquare size={19} />
         </button>
@@ -363,8 +368,8 @@ export default function PlayerBar() {
             className={`icon-btn${queueOpen ? ' active' : ''}`}
             onClick={() => toggleQueue()}
             aria-pressed={queueOpen}
-            aria-label="Toggle queue"
-            title="Queue (Q)"
+            aria-label={t(lang, 'queue.title')}
+            title={t(lang, 'queue.title')}
           >
             <ListMusic size={20} />
             {queueLength > 0 && (
@@ -376,7 +381,7 @@ export default function PlayerBar() {
           <div className="pb-queue-info">
             <Clock size={13} style={{ verticalAlign: '-1px', marginRight: 6 }} />
             <span style={{ fontSize: 11.5, color: 'var(--text-2)', fontWeight: 600 }}>
-              {queueLength} {queueLength === 1 ? 'track' : 'tracks'} · {queueDurationFormatted}
+              {fmtCount(lang, queueLength, queueLength === 1 ? 'track' : 'tracks')} · {queueDurationFormatted}
             </span>
           </div>
         )}

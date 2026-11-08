@@ -335,7 +335,7 @@ export default function SearchView() {
             style={{ marginLeft: 'auto' }}
           >
             {savedSearches.some((s) => s.query.toLowerCase() === query.trim().toLowerCase() && (s.filter || 'all') === filter)
-              ? <><BookmarkCheck size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> Saved</>
+              ? <><BookmarkCheck size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> {t(lang, 'search.saved')}</>
               : <><Bookmark size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> {t(lang, 'search.saveSearch')}</>}
           </button>
         </div>
@@ -363,7 +363,7 @@ export default function SearchView() {
               </div>
               {addonResults.length > 6 && (
                 <div className="section-label" style={{ color: 'var(--text-3)', fontSize: 11, paddingLeft: 12, marginTop: 2 }}>
-                  {addonResults.length - 6} more lossless results not shown
+                  {t(lang, 'search.moreLossless').replace('{n}', addonResults.length - 6)}
                 </div>
               )}
             </>
@@ -374,10 +374,10 @@ export default function SearchView() {
       {error && (
         <div className="empty-state">
           <CloudOff />
-          <h3>Search failed</h3>
+          <h3>{t(lang, 'search.failed')}</h3>
           <p>{error}</p>
           <button className="btn primary" style={{ marginTop: 18 }} onClick={() => setRetryTick((n) => n + 1)}>
-            <RotateCcw size={16} /> Try again
+            <RotateCcw size={16} /> {t(lang, 'common.tryAgain')}
           </button>
         </div>
       )}
@@ -392,7 +392,7 @@ export default function SearchView() {
         <>
           {(filter === 'artist' || filter === 'album') && (
             <div className="section-label" style={{ paddingLeft: 2, marginTop: 8 }}>
-              {filter.charAt(0).toUpperCase() + filter.slice(1)}s
+              {t(lang, filter === 'artist' ? 'search.artists' : 'search.albums')}
             </div>
           )}
           <div role="rowgroup">
@@ -417,7 +417,7 @@ export default function SearchView() {
                     <div style={{ minWidth: 0 }}>
                       <div className="search-entity-title" title={track.title}>{track.title}</div>
                       <div className="search-entity-sub">
-                        {track.kind === 'album' ? (track.artist || 'Unknown artist') : 'Artist'}
+                        {track.kind === 'album' ? (track.artist || t(lang, 'common.unknownArtist')) : t(lang, 'search.artists')}
                       </div>
                     </div>
                   </div>

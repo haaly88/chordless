@@ -6,7 +6,7 @@ import {
 import usePlayer, { readMigrated, write } from '../store.js';
 import { apiHome, apiSearch, apiCharts } from '../lib/api.js';
 import { greeting, formatTime } from '../lib/format.js';
-import { t } from '../lib/i18n.js';
+import { t, fmtCount } from '../lib/i18n.js';
 import { resolveRegion } from '../lib/region.js';
 
 const MOOD_CHIPS = [
@@ -38,7 +38,7 @@ function QuickTile({ track, contextList }) {
         : <span className="qt-art" style={{ display: 'grid', placeItems: 'center', background: 'var(--hover-strong)' }}>♪</span>}
       <span style={{ minWidth: 0, paddingRight: 8 }}>
         <span className="qt-title" style={{ display: '-webkit-box' }}>{track.title}</span>
-        <span className="qt-sub" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{track.artist || 'Unknown artist'}</span>
+        <span className="qt-sub" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{track.artist || t(lang, 'common.unknownArtist')}</span>
       </span>
       <span className="qt-play" aria-hidden="true">
         {active && isPlaying ? <Pause size={18} fill="#fff" strokeWidth={0} style={{ marginLeft: 0 }} /> : <Play size={17} />}
@@ -167,7 +167,7 @@ function Shelf({ title, icon, items, onPlayAll }) {
               )}
             </span>
             <b>{track.title}</b>
-            <small>{isEntity ? (track.kind === 'artist' ? 'Artist' : 'Album') : (track.artist || 'Unknown artist')}{track.duration ? ` · ${formatTime(track.duration)}` : ''}</small>
+            <small>{isEntity ? (track.kind === 'artist' ? t(lang, 'search.artists') : t(lang, 'search.albums')) : (track.artist || t(lang, 'common.unknownArtist'))}{track.duration ? ` · ${formatTime(track.duration)}` : ''}</small>
           </button>
           );
         })}
@@ -406,9 +406,9 @@ export default function HomeView() {
           <button className="icon-btn home-refresh" onClick={() => setReloadTick((n) => n + 1)} aria-label="Refresh feed" title="Refresh feed">
             <RotateCcw size={18} />
           </button>
-          <button className="search-pill" onClick={() => { setView({ name: 'search' }); requestSearchFocus(); }} aria-label="Search — Ctrl K">
+          <button className="search-pill" onClick={() => { setView({ name: 'search' }); requestSearchFocus(); }} aria-label={t(lang, 'home.search')}>
             <Search size={17} />
-            <span>Search</span>
+            <span>{t(lang, 'home.search')}</span>
             <kbd>Ctrl+K</kbd>
           </button>
         </div>
@@ -502,10 +502,10 @@ export default function HomeView() {
           {error && (
             <div className="empty-state">
               <CloudOff />
-              <h3>Couldn’t load the home feed</h3>
-              <p>The source isn’t responding right now. Check your connection and try again.</p>
+              <h3>{t(lang, 'home.feedErrorTitle')}</h3>
+              <p>{t(lang, 'home.feedErrorSub')}</p>
               <button className="btn primary" style={{ marginTop: 18 }} onClick={() => { setHome(null); setError(null); setReloadTick((n) => n + 1); }}>
-                <RotateCcw size={16} /> Try again
+                <RotateCcw size={16} /> {t(lang, 'common.tryAgain')}
               </button>
             </div>
           )}
@@ -522,10 +522,10 @@ export default function HomeView() {
           {visibleKeys.includes('feeds') && home && home.shelves.length === 0 && !error && (
             <div className="empty-state">
               <Sparkles />
-              <h3>Home feed is empty</h3>
-              <p>The source isn’t returning shelves right now. Your history still works, or search for something.</p>
+              <h3>{t(lang, 'home.feedEmptyTitle')}</h3>
+              <p>{t(lang, 'home.feedEmptySub')}</p>
               <button className="btn primary" style={{ marginTop: 18 }} onClick={() => setReloadTick((n) => n + 1)}>
-                <RotateCcw size={16} /> Try again
+                <RotateCcw size={16} /> {t(lang, 'common.tryAgain')}
               </button>
             </div>
           )}
@@ -537,12 +537,12 @@ export default function HomeView() {
         <div className="modal-backdrop" onClick={() => setShortcutModal(false)} role="presentation">
           <div className="modal" role="dialog" aria-modal="true" aria-label="Pin a playlist" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <h2 style={{ margin: 0 }}>Add a shortcut</h2>
-              <button className="icon-btn" onClick={() => setShortcutModal(false)} aria-label="Close"><X size={19} /></button>
+              <h2 style={{ margin: 0 }}>{t(lang, 'home.addShortcutTitle')}</h2>
+              <button className="icon-btn" onClick={() => setShortcutModal(false)} aria-label={t(lang, 'btn.close')}><X size={19} /></button>
             </div>
-            <p>Pin a playlist for one-tap access from Home.</p>
+            <p>{t(lang, 'home.addShortcutDesc')}</p>
             {playlists.length === 0 ? (
-              <p style={{ color: 'var(--text-3)' }}>You don’t have playlists yet. Create one with + New Playlist in the sidebar.</p>
+              <p style={{ color: 'var(--text-3)' }}>{t(lang, 'home.noPlaylistsShort')}</p>
             ) : (
               <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {playlists.map((p) => {
@@ -551,7 +551,7 @@ export default function HomeView() {
                     <button key={p.id} className="ctx-item" style={{ fontSize: 13.5 }} onClick={() => { togglePin(p.id); setShortcutModal(false); }}>
                       <span className="check-slot">{pinned && <Check size={16} strokeWidth={3} />}</span>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                      <span style={{ marginLeft: 'auto', color: 'var(--text-3)', fontSize: 11.5 }}>{p.tracks.length} tracks</span>
+                      <span style={{ marginLeft: 'auto', color: 'var(--text-3)', fontSize: 11.5 }}>{fmtCount(lang, p.tracks.length, p.tracks.length === 1 ? 'track' : 'tracks')}</span>
                     </button>
                   );
                 })}

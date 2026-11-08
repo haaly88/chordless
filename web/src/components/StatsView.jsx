@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Clock, Headphones, Users, Flame, CalendarDays, Music2, TrendingUp, Gauge } from 'lucide-react';
 import usePlayer from '../store.js';
-import { pluralize } from '../lib/format.js';
+import { fmtCount } from '../lib/i18n.js';
 import { t } from '../lib/i18n.js';
 import { readPerf } from '../lib/perf.js';
 
@@ -102,17 +102,17 @@ export default function StatsView() {
     ctx.beginPath(); ctx.arc(900, 160, 340, 0, Math.PI * 2); ctx.fill();
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f59e0b'; ctx.font = '800 30px sans-serif';
-    ctx.fillText('MY LISTENING WEEK', 540, 130);
+    ctx.fillText(t(lang, 'stats.weekTitle'), 540, 130);
     ctx.fillStyle = '#ffffff'; ctx.font = '800 130px sans-serif';
     ctx.fillText(`${weekHours > 0 ? `${weekHours}h ${weekMinutes}m` : `${weekMinutes}m`}`, 540, 300);
     ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = '600 34px sans-serif';
-    ctx.fillText(`${stats.thisWeekPlays} plays · streak ${stats.streak} ${stats.streak === 1 ? 'day' : 'days'}`, 540, 400);
+    ctx.fillText(t(lang, 'stats.weekLine').replace('{n}', stats.thisWeekPlays).replace('{s}', stats.streak).replace('{unit}', t(lang, stats.streak === 1 ? 'stats.day' : 'stats.days')), 540, 400);
     ctx.fillStyle = '#ffffff'; ctx.font = '700 44px sans-serif';
-    ctx.fillText('TOP ARTIST', 540, 520);
+    ctx.fillText(t(lang, 'stats.topArtistLabel'), 540, 520);
     ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.font = '800 40px sans-serif';
     ctx.fillText((stats.topArtists[0]?.[0] || '—').slice(0, 28), 540, 590);
     ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = '600 30px sans-serif';
-    ctx.fillText(`Total ${stats.totalPlays} plays · peak hour ${peakLabel}`, 540, 700);
+    ctx.fillText(t(lang, 'stats.totalLine').replace('{n}', stats.totalPlays).replace('{h}', peakLabel), 540, 700);
     ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.font = '600 26px sans-serif';
     ctx.fillText('SHARED FROM CHORDLESS', 540, 960);
     canvas.toBlob((blob) => {
@@ -129,8 +129,8 @@ export default function StatsView() {
     return (
       <div className="empty-state">
         <Headphones />
-        <h3>No listening history yet</h3>
-        <p>Stats shows up here once you’ve played some tracks — plays, minutes, your top artists and top tracks.</p>
+        <h3>{t(lang, 'stats.emptyTitle')}</h3>
+        <p>{t(lang, 'stats.emptyText')}</p>
       </div>
     );
   }
@@ -162,19 +162,19 @@ export default function StatsView() {
       <div className="stat-cards" style={{ marginTop: 10 }}>
         <div className="stat-card">
           <div className="stat-icon red"><TrendingUp size={20} /></div>
-          <div><b>{stats.thisWeekPlays} plays · {weekHours > 0 ? `${weekHours}h ${weekMinutes}m` : `${weekMinutes}m`}</b><span>This week{weekDelta !== 0 ? ` (${weekDelta > 0 ? '+' : ''}${weekDelta} vs last)` : ''}</span></div>
+          <div><b>{fmtCount(lang, stats.thisWeekPlays, stats.thisWeekPlays === 1 ? 'play' : 'plays')} · {weekHours > 0 ? `${weekHours}h ${weekMinutes}m` : `${weekMinutes}m`}</b><span>{t(lang, 'stats.thisWeek')}{weekDelta !== 0 ? ` ${t(lang, 'stats.vsLast').replace('{d}', `${weekDelta > 0 ? '+' : ''}${weekDelta}`)}` : ''}</span></div>
         </div>
         <div className="stat-card">
           <div className="stat-icon amber"><CalendarDays size={20} /></div>
-          <div><b>{stats.streak} {stats.streak === 1 ? 'day' : 'days'}</b><span>Listening streak</span></div>
+          <div><b>{stats.streak} {t(lang, stats.streak === 1 ? 'stats.day' : 'stats.days')}</b><span>{t(lang, 'stats.streak')}</span></div>
         </div>
         <div className="stat-card">
           <div className="stat-icon green"><Flame size={20} /></div>
-          <div><b>{peakLabel}</b><span>Peak listening hour</span></div>
+          <div><b>{peakLabel}</b><span>{t(lang, 'stats.peakHour')}</span></div>
         </div>
         <div className="stat-card">
           <div className="stat-icon red"><Music2 size={20} /></div>
-          <div><b>{stats.uniqueArtists} artists · {stats.uniqueTracks} tracks</b><span>Unique in history</span></div>
+          <div><b>{stats.uniqueArtists} {t(lang, 'search.artists')} · {stats.uniqueTracks} {t(lang, 'search.songs')}</b><span>{t(lang, 'stats.unique')}</span></div>
         </div>
       </div>
 
@@ -196,10 +196,10 @@ export default function StatsView() {
 
       {/* 24-hour chart */}
       <div className="chart-card" style={{ marginTop: 10 }}>
-        <div className="section-label" style={{ padding: 0, marginBottom: 14 }}>{t(lang, 'stats.byHour')} · PEAK {peakLabel}</div>
+        <div className="section-label" style={{ padding: 0, marginBottom: 14 }}>{t(lang, 'stats.byHour')} · {t(lang, 'stats.peakSuffix')} {peakLabel}</div>
         <div className="chart-bars" style={{ gap: 4 }}>
           {stats.hours24.map((count, h) => (
-            <div key={h} className="chart-col" title={`${h}:00 — ${count} plays`}>
+            <div key={h} className="chart-col" title={`${h}:00 — ${fmtCount(lang, count, count === 1 ? 'play' : 'plays')}`}>
               <div className="chart-bar-wrap">
                 <div className="chart-bar" style={{ height: `${(count / stats.maxHour) * 100}%` }} />
               </div>
@@ -213,15 +213,15 @@ export default function StatsView() {
       {/* diagnostics */}
       <div className="chart-card" style={{ marginTop: 10 }}>
         <div className="section-label" style={{ padding: 0, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Gauge size={13} style={{ color: 'var(--accent)' }} /> DIAGNOSTICS
+          <Gauge size={13} style={{ color: 'var(--accent)' }} /> {t(lang, 'stats.diagnostics')}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8, fontSize: 12.5 }}>
           <div><b>{perf?.lcp != null ? `${perf.lcp}ms` : '—'}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>LCP</small></div>
           <div><b>{perf?.cls != null ? perf.cls : '—'}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>CLS</small></div>
           <div><b>{perf?.inp != null ? `${perf.inp}ms` : '—'}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>INP</small></div>
-          <div><b>{heapMB ? `${heapMB} MB` : '—'}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>JS heap</small></div>
-          <div><b>{conn}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>Connection</small></div>
-          <div><b>{perf ? `${perf.samples} samples` : 'Keep using the app'}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>Telemetry</small></div>
+          <div><b>{heapMB ? `${heapMB} MB` : '—'}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>{t(lang, 'stats.heap')}</small></div>
+          <div><b>{conn}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>{t(lang, 'stats.connection')}</small></div>
+          <div><b>{perf ? t(lang, 'stats.samples').replace('{n}', perf.samples) : t(lang, 'stats.keepUsing')}</b><small style={{ display: 'block', color: 'var(--text-3)' }}>{t(lang, 'stats.telemetry')}</small></div>
         </div>
       </div>
 
@@ -233,7 +233,7 @@ export default function StatsView() {
             <div key={artist} className="rank-row">
               <span className="rank-num">{i + 1}</span>
               <div className="rank-avatar">{artist.slice(0, 1).toUpperCase()}</div>
-              <div className="rank-meta"><b>{artist}</b><small>{pluralize(count, 'play')}</small></div>
+              <div className="rank-meta"><b>{artist}</b><small>{fmtCount(lang, count, count === 1 ? 'play' : 'plays')}</small></div>
             </div>
           ))}
         </section>
@@ -245,7 +245,7 @@ export default function StatsView() {
             <button key={track.id} className="rank-row as-button" onClick={() => playTrack(track, stats.topTracks.map((s) => s.track))}>
               <span className="rank-num">{i + 1}</span>
               <img className="rank-art" src={track.thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" />
-              <div className="rank-meta"><b>{track.title}</b><small>{track.artist || 'Unknown artist'} · {pluralize(count, 'play')}</small></div>
+              <div className="rank-meta"><b>{track.title}</b><small>{track.artist || t(lang, 'common.unknownArtist')} · {fmtCount(lang, count, count === 1 ? 'play' : 'plays')}</small></div>
             </button>
           ))}
         </section>

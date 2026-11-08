@@ -233,18 +233,18 @@ export default function SettingsModal() {
   };
 
   const shortcuts = [
-    ['Space / K', 'Play or pause'],
-    ['← / →', 'Seek 5 seconds'],
-    ['↑ / ↓', 'Volume up / down'],
-    ['N / P', 'Next / previous track'],
-    ['L', 'Toggle lyrics panel'],
-    ['Q', 'Toggle queue'],
-    ['F', 'Now Playing fullscreen'],
-    ['M', 'Mute / unmute'],
-    ['Ctrl / ⌘ + K', 'Focus search'],
-    ['Esc', 'Close panels & menus'],
-    ['Right-click', 'Track actions menu'],
-    ['Double-click', 'Play track / row'],
+    ['Space / K', 'kbd.playPause'],
+    ['← / →', 'kbd.seek'],
+    ['↑ / ↓', 'kbd.volume'],
+    ['N / P', 'kbd.nextPrev'],
+    ['L', 'kbd.lyrics'],
+    ['Q', 'kbd.queue'],
+    ['F', 'kbd.nowPlaying'],
+    ['M', 'kbd.mute'],
+    ['Ctrl / ⌘ + K', 'kbd.search'],
+    ['Esc', 'kbd.close'],
+    ['Right-click', 'kbd.rightClick'],
+    ['Double-click', 'kbd.doubleClick'],
   ];
 
   return (
@@ -260,7 +260,7 @@ export default function SettingsModal() {
         style={{ maxHeight: '88vh', overflowY: 'auto' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h2 style={{ margin: 0 }}>Settings</h2>
+          <h2 style={{ margin: 0 }}>{t(lang, 'settings.titleVisible')}</h2>
           <button className="icon-btn" onClick={() => setSettingsOpen(false)} aria-label="Close settings">
             <X size={20} />
           </button>
@@ -274,9 +274,9 @@ export default function SettingsModal() {
           </div>
           <div className="segmented" role="radiogroup" aria-label="Theme" style={{ flexWrap: 'wrap' }}>
             {[
-              ['dark', <><Moon size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />Dark</>],
-              ['light', <><Sun size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />Light</>],
-              ['system', <><Monitor size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />System</>],
+              ['dark', <><Moon size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{t(lang, 'settings.themeDark')}</>],
+              ['light', <><Sun size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{t(lang, 'settings.themeLight')}</>],
+              ['system', <><Monitor size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{t(lang, 'settings.themeSystem')}</>],
             ].map(([value, label]) => (
               <button
                 key={value}
@@ -341,8 +341,8 @@ export default function SettingsModal() {
         </div>
         <div className="setting-row">
           <div>
-            <b>UI scale</b>
-            <small>Scales the whole interface. Auto-adjusted for high-DPI displays (e.g. Windows 150%).</small>
+            <b>{t(lang, 'settings.uiScale')}</b>
+            <small>{t(lang, 'settings.uiScaleDesc')}</small>
           </div>
           <div className="segmented" role="radiogroup" aria-label="UI scale" style={{ flexWrap: 'wrap' }}>
             {[
@@ -379,8 +379,8 @@ export default function SettingsModal() {
         </div>
         <div className="setting-row">
           <div>
-            <b>Reduce blur</b>
-            <small>Removes backdrop blur, transparency and blurred artwork layers. Cooler GPU, flatter look.</small>
+            <b>{t(lang, 'settings.reduceBlur')}</b>
+            <small>{t(lang, 'settings.reduceBlurDesc')}</small>
           </div>
           <button
             className={`switch${settings.reduceBlur ? ' on' : ''}`}
@@ -631,23 +631,23 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.history')}</b>
-            <small>{historyCount} {historyCount === 1 ? 'entry' : 'entries'} stored locally, powering “Recently played”.</small>
+            <small>{historyCount === 1 ? t(lang, 'settings.historyEntry') : t(lang, 'settings.historyEntries').replace('{n}', historyCount)}</small>
           </div>
-          <button className="btn danger" onClick={clearHistory}><Trash2 size={15} /> Clear</button>
+          <button className="btn danger" onClick={clearHistory}><Trash2 size={15} /> {t(lang, 'btn.clear')}</button>
         </div>
 
         {/* export / import */}
         <div className="setting-row" style={{ alignItems: 'center' }}>
           <div>
-            <b>Backup &amp; restore</b>
+            <b>{t(lang, 'settings.backup')}</b>
             <small>{t(lang, 'settings.desc.export')}</small>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button className="btn" onClick={exportLibrary} style={{ padding: '8px 14px', fontSize: 12.5 }}>
-              <Download size={14} style={{ verticalAlign: '-1px', marginRight: 6 }} /> Export
+              <Download size={14} style={{ verticalAlign: '-1px', marginRight: 6 }} /> {t(lang, 'btn.export')}
             </button>
             <button className="btn" onClick={() => { importRef.current?.click(); }} style={{ padding: '8px 14px', fontSize: 12.5 }}>
-              <Upload size={14} style={{ verticalAlign: '-1px', marginRight: 6 }} /> Import
+              <Upload size={14} style={{ verticalAlign: '-1px', marginRight: 6 }} /> {t(lang, 'btn.import')}
             </button>
             <input
               ref={importRef}
@@ -671,10 +671,10 @@ export default function SettingsModal() {
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             {[
-              { id: 'flat', label: 'Flat' },
-              { id: 'bass', label: 'Bass Boost' },
-              { id: 'vocal', label: 'Vocal' },
-              { id: 'classical', label: 'Classical' },
+              { id: 'flat', label: t(lang, 'settings.eqFlat') },
+              { id: 'bass', label: t(lang, 'settings.eqBass') },
+              { id: 'vocal', label: t(lang, 'settings.eqVocal') },
+              { id: 'classical', label: t(lang, 'settings.eqClassical') },
             ].map((p) => (
               <button
                 key={p.id}
@@ -685,7 +685,7 @@ export default function SettingsModal() {
               </button>
             ))}
             <button className="pill" style={{ marginLeft: 'auto' }} onClick={() => setEqualizerPreset('custom')}>
-              Custom
+              {t(lang, 'settings.custom')}
             </button>
           </div>
         </div>
@@ -713,9 +713,9 @@ export default function SettingsModal() {
                   toast('EQ copied', 'Paste it in any Chordless Settings → EQ → Paste.');
                 } catch { toast('Copy failed', 'Clipboard unavailable in this browser.'); }
               }}
-              title="Copy this EQ preset as JSON to share"
+              title={t(lang, 'settings.eqCopyTitle')}
             >
-              <Copy size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> Copy EQ
+              <Copy size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> {t(lang, 'settings.copyEq')}
             </button>
             <button
               className="pill"
@@ -726,9 +726,9 @@ export default function SettingsModal() {
                   else toast('Nothing to paste', 'Clipboard is empty.');
                 } catch { toast('Paste unavailable', 'Allow clipboard access or check browser permissions.'); }
               }}
-              title="Apply an EQ preset from clipboard"
+              title={t(lang, 'settings.eqPasteTitle')}
             >
-              <Upload size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> Paste EQ
+              <Upload size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> {t(lang, 'settings.pasteEq')}
             </button>
           </div>
         </div>
@@ -748,7 +748,7 @@ export default function SettingsModal() {
           />
         </div>
         <div style={{ padding: '4px 4px 14px', display: crossfade.enabled ? 'block' : 'none' }}>
-          <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>FADE DURATION</div>
+          <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>{t(lang, 'settings.fadeDuration')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {[3, 5, 8, 12].map((d) => (
               <button
@@ -757,12 +757,12 @@ export default function SettingsModal() {
                 aria-pressed={Number(crossfade.duration) === d}
                 onClick={() => setCrossfade({ duration: d })}
               >
-                {d} sec
+                {t(lang, 'settings.sec').replace('{d}', d)}
               </button>
             ))}
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 8, lineHeight: 1.5 }}>
-            Tip: 5 sec is a good balance. Longer fades sound smoother on live recordings.
+            {t(lang, 'settings.crossfadeTip')}
           </div>
         </div>
 
@@ -781,7 +781,7 @@ export default function SettingsModal() {
           />
         </div>
         <div style={{ padding: '4px 4px 14px', display: gapless.enabled ? 'block' : 'none' }}>
-          <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>PRELOAD AHEAD</div>
+          <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>{t(lang, 'settings.preloadAhead')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {[10, 20, 30].map((d) => (
               <button
@@ -790,12 +790,12 @@ export default function SettingsModal() {
                 aria-pressed={Number(gapless.preloadSeconds) === d}
                 onClick={() => setGapless({ preloadSeconds: d })}
               >
-                {d} sec
+                {t(lang, 'settings.sec').replace('{d}', d)}
               </button>
             ))}
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 8, lineHeight: 1.5 }}>
-            {gaplessStatus === 'preloading' ? 'Preloading next track…' : gaplessStatus === 'ready' ? 'Next track ready — will start instantly.' : 'When the current track is this close to the end, the next song starts downloading in the background.'}
+            {gaplessStatus === 'preloading' ? t(lang, 'settings.preloading') : gaplessStatus === 'ready' ? t(lang, 'settings.ready') : t(lang, 'settings.preloadDesc')}
           </div>
         </div>
 
@@ -814,9 +814,9 @@ export default function SettingsModal() {
           />
         </div>
         <div style={{ padding: '4px 4px 14px', display: spatial.enabled ? 'block' : 'none' }}>
-          <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>STEREO WIDTH</div>
+          <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>{t(lang, 'settings.stereoWidth')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {[{ v: 1.2, l: 'Narrow 1.2×' }, { v: 1.6, l: 'Wide 1.6×' }, { v: 2.0, l: 'Wider 2.0×' }, { v: 2.4, l: 'Max 2.4×' }].map((o) => (
+            {[{ v: 1.2, l: t(lang, 'settings.widthNarrow') + ' 1.2×' }, { v: 1.6, l: t(lang, 'settings.widthWide') + ' 1.6×' }, { v: 2.0, l: t(lang, 'settings.widthWider') + ' 2.0×' }, { v: 2.4, l: t(lang, 'settings.widthMax') + ' 2.4×' }].map((o) => (
               <button
                 key={o.v}
                 className={`pill${Number(spatial.width) === o.v ? ' active' : ''}`}
@@ -828,7 +828,7 @@ export default function SettingsModal() {
             ))}
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 8, lineHeight: 1.5 }}>
-            Best with headphones. Higher values feel more spacious but can sound hollow on some recordings.
+            {t(lang, 'settings.spatialTip')}
           </div>
         </div>
 
@@ -849,7 +849,7 @@ export default function SettingsModal() {
         {settings.autoplay && (
           <div style={{ padding: '0 4px 14px' }}>
             <button className="btn" onClick={() => generateRadio()} style={{ padding: '8px 14px', fontSize: 12.5 }}>
-              Start radio now
+              {t(lang, 'settings.startRadio')}
             </button>
           </div>
         )}
@@ -862,12 +862,12 @@ export default function SettingsModal() {
           </div>
         </div>
         <div style={{ padding: '4px 4px 14px' }}>
-          <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>STREAM QUALITY (YOUTUBE)</div>
-          <div className="segmented" role="radiogroup" aria-label="Stream quality" style={{ flexWrap: 'wrap' }}>
+          <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>{t(lang, 'settings.streamQuality')}</div>
+          <div className="segmented" role="radiogroup" aria-label={t(lang, 'settings.streamQuality')} style={{ flexWrap: 'wrap' }}>
             {[
-              ['high', 'High'],
-              ['medium', 'Medium'],
-              ['low', 'Low'],
+              ['high', t(lang, 'settings.qHigh')],
+              ['medium', t(lang, 'settings.qMedium')],
+              ['low', t(lang, 'settings.qLow')],
             ].map(([value, label]) => (
               <button
                 key={value}
@@ -881,7 +881,7 @@ export default function SettingsModal() {
             ))}
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 8, lineHeight: 1.5 }}>
-            High = best available. Medium/Low save bandwidth on limited data. Addons always use their own quality.
+            {t(lang, 'settings.streamQualityDesc')}
           </div>
         </div>
         <div className="setting-row">
@@ -904,16 +904,16 @@ export default function SettingsModal() {
                 Auto · {effectiveYtQuality || 'high'}
               </span>
               <span style={{ color: 'var(--text-2)' }}>
-                {networkInfo?.effectiveType ? `${networkInfo.effectiveType}${networkInfo.downlink ? ` · ${networkInfo.downlink} Mbps` : ''}` : 'checking network…'}
+                {networkInfo?.effectiveType ? `${networkInfo.effectiveType}${networkInfo.downlink ? ` · ${networkInfo.downlink} Mbps` : ''}` : t(lang, 'settings.checking')}
                 {networkInfo?.rtt ? ` · ${networkInfo.rtt} ms` : ''}
               </span>
-              {stallCount > 0 && <span className="pill" style={{ cursor: 'default' }}>Stalls: {stallCount}</span>}
+              {stallCount > 0 && <span className="pill" style={{ cursor: 'default' }}>{t(lang, 'settings.stalls').replace('{n}', stallCount)}</span>}
               <button className="btn" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => refreshNetworkInfo('manual')}>
-                <RotateCcw size={13} /> Check now
+                <RotateCcw size={13} /> {t(lang, 'settings.checkNow')}
               </button>
             </div>
             <div style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 8, lineHeight: 1.5 }}>
-              {networkInfo?.reason === 'auto' ? 'Network looks fast — using your chosen quality.' : `Reason: ${networkInfo?.reason}. Effective quality = the lower of your manual choice and the network choice.`}
+              {networkInfo?.reason === 'auto' ? t(lang, 'settings.netFast') : t(lang, 'settings.netReason').replace('{r}', networkInfo?.reason || '—')}
             </div>
           </div>
         )}
@@ -931,7 +931,7 @@ export default function SettingsModal() {
           />
         </div>
         <div style={{ padding: '4px 4px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)', minWidth: 42 }}>BALANCE</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)', minWidth: 42 }}>{t(lang, 'settings.balance')}</span>
           <input
             type="range"
             min="-50"
@@ -942,7 +942,7 @@ export default function SettingsModal() {
             aria-label="Stereo balance"
           />
           <span style={{ fontSize: 11.5, color: 'var(--text-2)', minWidth: 64, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
-            {Number(settings.balance) === 0 ? 'Center' : Number(settings.balance) < 0 ? `L ${Math.round(-Number(settings.balance) * 50)}` : `R ${Math.round(Number(settings.balance) * 50)}`}
+            {Number(settings.balance) === 0 ? t(lang, 'settings.center') : Number(settings.balance) < 0 ? `L ${Math.round(-Number(settings.balance) * 50)}` : `R ${Math.round(Number(settings.balance) * 50)}`}
           </span>
         </div>
         <div className="setting-row">
@@ -966,20 +966,20 @@ export default function SettingsModal() {
             <small>{t(lang, 'settings.desc.keybinds')}</small>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-            {[['playPause', 'Play / Pause'], ['next', 'Next'], ['prev', 'Previous']].map(([id, label]) => {
+            {[['playPause', t(lang, 'kbd.playPause')], ['next', t(lang, 'player.next')], ['prev', t(lang, 'player.prev')]].map(([id, label]) => {
               const keys = (settings.keybinds?.[id] || []).join(' + ') || '—';
               return (
                 <button
                   key={id}
                   className={`pill${remapFor === id ? ' active' : ''}`}
                   onClick={() => setRemapFor(remapFor === id ? null : id)}
-                  title={`Remap ${label}`}
+                  title={t(lang, 'settings.remap').replace('{label}', label)}
                 >
                   {label}: <b>{keys}</b>
                 </button>
               );
             })}
-            {remapFor && <span style={{ fontSize: 12, color: 'var(--text-2)' }}>Press a key now… (Esc to cancel)</span>}
+            {remapFor && <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{t(lang, 'settings.pressKey')}</span>}
           </div>
         </div>
 
@@ -994,20 +994,20 @@ export default function SettingsModal() {
             onClick={() => (resetArm ? resetAll() : setResetArm(true))}
             onBlur={() => setResetArm(false)}
           >
-            <Trash2 size={15} /> {resetArm ? 'Really reset?' : 'Reset'}
+            <Trash2 size={15} /> {resetArm ? t(lang, 'settings.resetQ') : t(lang, 'settings.resetNow')}
           </button>
         </div>
 
         {/* shortcuts */}
         <div style={{ marginTop: 18 }}>
           <div className="section-label" style={{ paddingLeft: 4 }}>
-            <Keyboard size={13} style={{ verticalAlign: '-1px', marginRight: 6 }} />KEYBOARD SHORTCUTS
+            <Keyboard size={13} style={{ verticalAlign: '-1px', marginRight: 6 }} />{t(lang, 'settings.kbdTitle')}
           </div>
           <div className="sc-grid">
-            {shortcuts.map(([keys, action]) => (
+            {shortcuts.map(([keys, actionKey]) => (
               <div key={keys} style={{ display: 'contents' }}>
                 <span className="kbd">{keys}</span>
-                <span>{action}</span>
+                <span>{t(lang, actionKey)}</span>
               </div>
             ))}
           </div>

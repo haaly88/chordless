@@ -115,7 +115,7 @@ export default function NowPlaying() {
     let cancelled = false;
     setShareBusy(true);
     setShareUrl(null);
-    generateShareCard(track, currentTime, duration, lyricLine).then(({ url, blob }) => {
+    generateShareCard(track, currentTime, duration, lyricLine, t(lang, 'common.unknownArtist')).then(({ url, blob }) => {
       if (cancelled) { if (url) URL.revokeObjectURL(url); return; }
       setShareUrl(url);
       setShareBlob(blob);
@@ -133,13 +133,13 @@ export default function NowPlaying() {
           <ChevronDown size={26} />
         </button>
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: 'rgba(255,255,255,.6)', fontSize: 16, fontWeight: 600, padding: 24, textAlign: 'center' }}>
-          Nothing is playing yet. Pick a song and press play.
+          {t(lang, 'np.nothingPlaying')}
         </div>
       </div>
     );
   }
 
-  const repeatLabel = repeat === 'one' ? 'Repeat this track' : repeat === 'all' ? 'Repeat all' : 'Repeat off';
+  const repeatLabel = repeat === 'one' ? t(lang, 'np.repeatOne') : repeat === 'all' ? t(lang, 'np.repeatAll') : t(lang, 'np.repeatOff');
 
   return (
     <div className={`now-playing${isPlaying ? ' is-playing' : ''}`} role="dialog" aria-modal="true" aria-label={`Now playing: ${track.title}`}>
@@ -174,7 +174,7 @@ export default function NowPlaying() {
           </div>
           <div className="np-source">
             <span className="np-source-dot" />
-            <span>Playing from {engine === 'auto' ? 'Auto' : engine.charAt(0).toUpperCase() + engine.slice(1)}{!track.isAddon && adaptiveOn ? ` · Auto ${effectiveYtQuality || 'high'}` : ''}{gaplessStatus === 'preloading' ? ' · Preloading…' : gaplessStatus === 'ready' ? ' · Gapless ✓' : ''}</span>
+            <span>{t(lang, 'np.playingFrom')} {engine === 'auto' ? 'Auto' : engine.charAt(0).toUpperCase() + engine.slice(1)}{!track.isAddon && adaptiveOn ? ` · Auto ${effectiveYtQuality || 'high'}` : ''}{gaplessStatus === 'preloading' ? ' · Preloading…' : gaplessStatus === 'ready' ? ' · Gapless ✓' : ''}</span>
           </div>
         </div>
 
@@ -183,7 +183,7 @@ export default function NowPlaying() {
           <div className="np-header">
             <h1 className="np-title">{track.title}</h1>
             <div className="np-meta">
-              <span>{track.artist || 'Unknown artist'}</span>
+              <span>{track.artist || t(lang, 'common.unknownArtist')}</span>
               {track.isAddon && (
                 <span className="hq-badge hq-badge-np">{shortQuality(track.audioQuality)}</span>
               )}
@@ -238,7 +238,7 @@ export default function NowPlaying() {
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }} aria-label="AB loop controls">
-            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: 'var(--text-3)' }}>LOOP</span>
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: 'var(--text-3)' }}>{t(lang, 'np.loop')}</span>
             <button className={`pill${abLoop?.a != null ? ' active' : ''}`} onClick={() => setABPoint('a')} title="Set loop start (A) at current time" aria-label="Set loop point A">
               A{abLoop?.a != null ? ` ${formatTime(abLoop.a)}` : ''}
             </button>
@@ -248,7 +248,7 @@ export default function NowPlaying() {
             {(abLoop?.a != null || abLoop?.b != null) && (
               <>
                 <span style={{ fontSize: 11.5, color: abLoop?.a != null && abLoop?.b != null ? 'var(--accent)' : 'var(--text-3)', fontWeight: 700 }}>
-                  {abLoop?.a != null && abLoop?.b != null ? 'Looping A↔B' : 'Set B to start looping'}
+                  {abLoop?.a != null && abLoop?.b != null ? t(lang, 'np.loopingAB') : t(lang, 'np.setB')}
                 </span>
                 <button className="pill" onClick={clearABLoop} title="Clear loop points" aria-label="Clear loop">
                   <X size={13} /> Clear
@@ -326,8 +326,8 @@ export default function NowPlaying() {
                 {playbackRate}×
               </button>
               {speedOpen && (
-                <div className="menu-pop left" role="menu" aria-label="Playback speed" style={{ bottom: 'calc(100% + 10px)' }}>
-                  <div className="ctx-label">SPEED</div>
+                <div className="menu-pop left" role="menu" aria-label={t(lang, 'np.speed')} style={{ bottom: 'calc(100% + 10px)' }}>
+                  <div className="ctx-label">{t(lang, 'np.speed')}</div>
                   {SPEEDS.map((s) => (
                     <button
                       key={s}
@@ -337,7 +337,7 @@ export default function NowPlaying() {
                       onClick={() => { setPlaybackRate(s); setSpeedOpen(false); }}
                     >
                       <span className="check-slot">{s === playbackRate && <Check size={15} strokeWidth={3} />}</span>
-                      {s}×{s === 1 ? ' (normal)' : ''}
+                      {s}×{s === 1 ? ` (${t(lang, 'np.normal')})` : ''}
                     </button>
                   ))}
                 </div>
@@ -431,46 +431,46 @@ export default function NowPlaying() {
               {shareBusy ? (
                 <div style={{ aspectRatio: '1', display: 'grid', placeItems: 'center', color: 'var(--text-2)', gap: 10 }}>
                   <Loader2 size={30} style={{ animation: 'spin 1s linear infinite' }} />
-                  <span style={{ fontSize: 13 }}>Rendering card…</span>
+                  <span style={{ fontSize: 13 }}>{t(lang, 'np.rendering')}</span>
                 </div>
               ) : shareUrl ? (
                 <img src={shareUrl} alt={`Share card for ${track.title}`} />
               ) : (
                 <div style={{ aspectRatio: '1', display: 'grid', placeItems: 'center', color: 'var(--text-2)', fontSize: 13 }}>
-                  Could not render the card. Check connection and try again.
+                  {t(lang, 'np.renderFail')}
                 </div>
               )}
             </div>
             <div className="modal-actions" style={{ justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-              <button className="btn" onClick={() => setShareOpen(false)}>Close</button>
+              <button className="btn" onClick={() => setShareOpen(false)}>{t(lang, 'btn.close')}</button>
               <button
                 className="btn"
                 disabled={!shareBlob || shareBusy}
                 onClick={async () => {
                   if (!shareBlob) return;
-                  const file = new File([shareBlob], `${track.title} — ${track.artist || 'Unknown'}.png`, { type: 'image/png' });
+                  const file = new File([shareBlob], `${track.title} — ${track.artist || t(lang, 'common.unknownArtist')}.png`, { type: 'image/png' });
                   if (navigator.canShare?.({ files: [file] })) {
                     try { await navigator.share({ files: [file], title: track.title }); } catch { /* user cancelled */ }
                   } else {
                     try {
                       await navigator.clipboard.write([new ClipboardItem({ 'image/png': shareBlob })]);
-                      alert('Card copied — paste it anywhere.');
+                      alert(t(lang, 'np.cardCopied'));
                     } catch {
-                      alert('Sharing is not available in this browser. Use Download instead.');
+                      alert(t(lang, 'np.shareUnavailable'));
                     }
                   }
                 }}
               >
-                <Share2 size={15} /> Share / Copy
+                <Share2 size={15} /> {t(lang, 'np.shareCopy')}
               </button>
               <a
                 className={`btn primary${shareUrl ? '' : ' disabled'}`}
                 style={shareUrl ? undefined : { opacity: .5, pointerEvents: 'none' }}
                 href={shareUrl || '#'}
-                download={`${track.title} — ${track.artist || 'Unknown'}.png`}
+                download={`${track.title} — ${track.artist || t(lang, 'common.unknownArtist')}.png`}
                 onClick={(e) => { if (!shareUrl) e.preventDefault(); }}
               >
-                <Download size={15} /> Download PNG
+                <Download size={15} /> {t(lang, 'np.downloadPng')}
               </a>
             </div>
           </div>
@@ -551,7 +551,7 @@ function wrapLines(ctx, text, maxWidth, maxLines) {
   return lines;
 }
 
-async function generateShareCard(track, currentTime = 0, duration = 0, lyricLine = '') {
+async function generateShareCard(track, currentTime = 0, duration = 0, lyricLine = '', unknownArtist = 'Unknown artist') {
   const S = 1080;
   const canvas = document.createElement('canvas');
   canvas.width = S;
@@ -624,7 +624,7 @@ async function generateShareCard(track, currentTime = 0, duration = 0, lyricLine
   const artistY = titleY + titleLines.length * 68 + 6;
   ctx.fillStyle = 'rgba(255,255,255,.72)';
   ctx.font = '500 36px "Segoe UI", Inter, system-ui, sans-serif';
-  const artistLines = wrapLines(ctx, track.artist || 'Unknown artist', S - 220, 1);
+  const artistLines = wrapLines(ctx, track.artist || unknownArtist, S - 220, 1);
   artistLines.forEach((line) => ctx.fillText(line, S / 2, artistY));
 
   let cursorY = artistY + 52;

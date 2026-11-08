@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback, Component, lazy, Suspense } from 'react';
 import { Menu, ArrowUp } from 'lucide-react';
 import usePlayer, { audio, audioB, streamSrc, write, setPendingInstallPrompt } from './store.js';
+import { t } from './lib/i18n.js';
 import HomeView from './components/HomeView.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import PlayerBar from './components/PlayerBar.jsx';
@@ -249,6 +250,7 @@ export default function App() {
 
   // ---------- online/offline + PWA install prompt (init once) ----------
   const isOnline = usePlayer((s) => s.isOnline);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   useEffect(() => {
     try { usePlayer.getState().initNetworkAdaptive?.(); } catch { /* ignore */ }
     try { usePlayer.getState().refreshOffline?.(); } catch { /* ignore */ }
@@ -445,7 +447,7 @@ export default function App() {
       <Sidebar open={navOpen} onClose={closeNav} />
       {!isOnline && (
         <div role="status" style={{ position: 'fixed', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 99, background: 'var(--panel-strong)', border: '1px solid var(--stroke-strong)', color: 'var(--text)', padding: '8px 16px', borderRadius: 99, fontSize: 12.5, fontWeight: 700, boxShadow: '0 10px 30px rgba(0,0,0,.4)' }}>
-          You’re offline — playing downloads &amp; local library
+          {t(lang, 'app.offlineBanner')}
         </div>
       )}
       <main className="main" key={view?.name + (view?.id || '')} ref={mainRef}>

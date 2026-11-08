@@ -121,7 +121,7 @@ export default function ContextMenu() {
             }
           }}
         >
-          <ListOrdered size={17} /> {chapterBusy ? 'Chapters…' : t(lang, 'ctx.viewChapters')}
+          <ListOrdered size={17} /> {chapterBusy ? t(lang, 'ctx.downloading') : t(lang, 'ctx.viewChapters')}
         </button>
       )}
 
@@ -131,14 +131,14 @@ export default function ContextMenu() {
         if (downloading) {
           return (
             <button className="ctx-item" disabled aria-disabled="true">
-              <Loader2 size={17} style={{ animation: 'spin .8s linear infinite' }} /> Downloading…
+              <Loader2 size={17} style={{ animation: 'spin .8s linear infinite' }} /> {t(lang, 'ctx.downloading')}
             </button>
           );
         }
         if (downloaded) {
           return (
             <button className="ctx-item" role="menuitem" onClick={act(() => removeOfflineTrack(track.id))}>
-              <Check size={17} color="var(--accent)" /> Downloaded — remove
+              <Check size={17} color="var(--accent)" /> {t(lang, 'ctx.downloadedRemove')}
             </button>
           );
         }
@@ -169,7 +169,7 @@ export default function ContextMenu() {
             <button
               className="ctx-item"
               onClick={act(() => {
-                const p = createPlaylist(`New Playlist ${playlists.length + 1}`);
+                const p = createPlaylist(`${t(lang, 'lib.newPlaylist')} ${playlists.length + 1}`);
                 addToPlaylist(p.id, track);
                 setView({ name: 'playlist', id: p.id });
               })}

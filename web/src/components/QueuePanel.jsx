@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, GripVertical, ListMusic, Trash2, BookmarkPlus, Play, Search } from 'lucide-react';
 import usePlayer from '../store.js';
-import { formatTime, formatTotalDuration } from '../lib/format.js';
-import { t } from '../lib/i18n.js';
+import { formatTime } from '../lib/format.js';
+import { t, fmtCount } from '../lib/i18n.js';
 
 /**
  * Up-next queue — drag to reorder, remove individual tracks, clear the
@@ -45,13 +45,13 @@ export default function QueuePanel() {
       <div className="queue-head">
         <div>
           <h3>{t(lang, 'queue.title')}</h3>
-          <small>{filtering ? `${visible.length} of ${queue.length} tracks` : `${queue.length} ${queue.length === 1 ? 'track' : 'tracks'}`}{index >= 0 ? ` · ${upNextCount} to play` : ''} · {queue.length > 0 ? queueDurationFormatted : ''}</small>
+          <small>{filtering ? t(lang, 'queue.ofTracks').replace('{v}', visible.length).replace('{q}', queue.length) : fmtCount(lang, queue.length, queue.length === 1 ? 'track' : 'tracks')}{index >= 0 ? ` · ${t(lang, 'queue.toPlay').replace('{n}', upNextCount)}` : ''} · {queue.length > 0 ? queueDurationFormatted : ''}</small>
         </div>
         <div className="queue-actions">
-          <button className="icon-btn" onClick={clearQueue} title="Clear queue" aria-label="Clear queue" disabled={!queue.length}>
+          <button className="icon-btn" onClick={clearQueue} title={t(lang, 'queue.clear')} aria-label={t(lang, 'queue.clear')} disabled={!queue.length}>
             <Trash2 size={18} />
           </button>
-          <button className="icon-btn" onClick={() => toggleQueue(false)} title="Close queue (Q)" aria-label="Close queue">
+          <button className="icon-btn" onClick={() => toggleQueue(false)} title={t(lang, 'queue.close')} aria-label={t(lang, 'queue.close')}>
             <X size={20} />
           </button>
         </div>
@@ -64,13 +64,13 @@ export default function QueuePanel() {
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filter queue…"
-            aria-label="Filter queue"
+            placeholder={t(lang, 'queue.filter')}
+            aria-label={t(lang, 'queue.filter')}
             autoComplete="off"
             spellCheck="false"
           />
           {filter && (
-            <button className="icon-btn" onClick={() => setFilter('')} aria-label="Clear filter" title="Clear filter">
+            <button className="icon-btn" onClick={() => setFilter('')} aria-label={t(lang, 'btn.clear')} title={t(lang, 'btn.clear')}>
               <X size={15} />
             </button>
           )}
@@ -81,13 +81,13 @@ export default function QueuePanel() {
         <div className="empty-state" style={{ padding: '60px 16px' }}>
           <ListMusic />
           <h3>{t(lang, 'queue.empty')}</h3>
-          <p>Play a song and it will show up here. Right-click any track to add it to the queue.</p>
+          <p>{t(lang, 'queue.emptyHint')}</p>
         </div>
       ) : visible.length === 0 ? (
         <div className="empty-state" style={{ padding: '40px 16px' }}>
           <Search />
-          <h3>No matches</h3>
-          <p>No tracks match “{filter.trim()}”.</p>
+          <h3>{t(lang, 'queue.noMatches')}</h3>
+          <p>{t(lang, 'queue.noMatchesSub').replace('{q}', filter.trim())}</p>
         </div>
       ) : (
         <div className="queue-list" role="list" ref={listRef}>
@@ -132,9 +132,9 @@ export default function QueuePanel() {
                 <div className="qi-main" onClick={() => playIndex(i)} style={{ cursor: 'pointer' }} role="button" tabIndex={0}
                      onKeyDown={(e) => e.key === 'Enter' && playIndex(i)} aria-label={`Play ${track.title}`}>
                   <div className="qi-title">{track.title}</div>
-                  <div className="qi-artist">{track.artist || 'Unknown artist'}{track.duration ? ` · ${formatTime(track.duration)}` : ''}</div>
+                  <div className="qi-artist">{track.artist || t(lang, 'common.unknownArtist')}{track.duration ? ` · ${formatTime(track.duration)}` : ''}</div>
                 </div>
-                <button className="qi-remove" onClick={() => removeFromQueue(i)} aria-label="Remove from queue" title="Remove">
+                <button className="qi-remove" onClick={() => removeFromQueue(i)} aria-label={t(lang, 'btn.remove')} title={t(lang, 'btn.remove')}>
                   <X size={16} />
                 </button>
               </div>
@@ -144,11 +144,11 @@ export default function QueuePanel() {
       )}
 
       <div className="queue-foot">
-        <button className="btn" onClick={saveQueueAsPlaylist} disabled={!queue.length} title="Save the current queue as a new playlist">
-          <BookmarkPlus size={16} /> Save as playlist
+        <button className="btn" onClick={saveQueueAsPlaylist} disabled={!queue.length} title={t(lang, 'queue.saveAsPlaylist')}>
+          <BookmarkPlus size={16} /> {t(lang, 'queue.saveAsPlaylist')}
         </button>
-        <button className="btn" onClick={() => index >= 0 && playIndex(index)} disabled={index < 0} title="Replay current track">
-          <Play size={15} fill="currentColor" /> Replay
+        <button className="btn" onClick={() => index >= 0 && playIndex(index)} disabled={index < 0} title={t(lang, 'queue.replay')}>
+          <Play size={15} fill="currentColor" /> {t(lang, 'queue.replay')}
         </button>
       </div>
     </section>

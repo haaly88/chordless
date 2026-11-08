@@ -4,6 +4,7 @@ import usePlayer from '../store.js';
 import { apiLyrics } from '../lib/api.js';
 import { parseLrc, activeLineIndex } from '../lib/lrc.js';
 import { formatTime } from '../lib/format.js';
+import { t } from '../lib/i18n.js';
 
 const LANG_OPTIONS = [
   { code: 'id', label: 'Indonesian', flag: '🇮🇩' },
@@ -41,6 +42,7 @@ export default function LyricsPanel({ track }) {
   const translatedLyrics = usePlayer((s) => s.translatedLyrics);
   const translateLyrics = usePlayer((s) => s.translateLyrics);
   const clearTranslatedLyrics = usePlayer((s) => s.clearTranslatedLyrics);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
 
   const [state, setState] = useState({ status: 'idle', data: null, message: null });
   const [retryTick, setRetryTick] = useState(0);
@@ -151,7 +153,7 @@ export default function LyricsPanel({ track }) {
       return (
         <div className="lyrics-status">
           <span className="spinner" aria-hidden="true" />
-          Loading lyrics…
+          {t(lang, 'karaoke.loading')}
         </div>
       );
     }
@@ -159,10 +161,10 @@ export default function LyricsPanel({ track }) {
       return (
         <div className="lyrics-status">
           <AlertCircle size={28} aria-hidden="true" />
-          Couldn’t load lyrics
+          {t(lang, 'karaoke.loadError')}
           <small>{state.message}</small>
           <button className="btn" onClick={() => setRetryTick((n) => n + 1)}>
-            <RefreshCw size={15} /> Try again
+            <RefreshCw size={15} /> {t(lang, 'common.tryAgain')}
           </button>
         </div>
       );
@@ -171,8 +173,8 @@ export default function LyricsPanel({ track }) {
       return (
         <div className="lyrics-status">
           <Mic size={28} aria-hidden="true" />
-          No lyrics found
-          <small>LRCLIB doesn’t have this track yet. Check the spelling the artist uses, or try again later.</small>
+          {t(lang, 'karaoke.noLyrics')}
+          <small>{t(lang, 'lyrics.noLyricsSub')}</small>
         </div>
       );
     }
@@ -180,8 +182,8 @@ export default function LyricsPanel({ track }) {
       return (
         <div className="lyrics-status">
           <Music size={30} aria-hidden="true" />
-          Instrumental
-          <small>This track has no vocals — enjoy the silence between the notes.</small>
+          {t(lang, 'karaoke.instrumental')}
+          <small>{t(lang, 'lyrics.instrumentalSub')}</small>
         </div>
       );
     }
@@ -226,7 +228,7 @@ export default function LyricsPanel({ track }) {
             <div className="lyrics-plain-translation">{translatedLyrics.translated}</div>
           )}
           <div style={{ textAlign: 'center', color: 'rgba(255,255,255,.35)', fontSize: 10.5, letterSpacing: '.18em', padding: '16px 0 40px' }}>
-            PLAIN LYRICS · NOT SYNCED
+            {t(lang, 'karaoke.plainNote')}
           </div>
         </div>
       );
@@ -234,39 +236,39 @@ export default function LyricsPanel({ track }) {
     return (
       <div className="lyrics-status">
         <Mic size={28} aria-hidden="true" />
-        No lyrics available
+        {t(lang, 'lyrics.none')}
       </div>
     );
   };
 
   return (
-    <aside className="lyrics-panel" aria-label="Lyrics">
+    <aside className="lyrics-panel" aria-label={t(lang, 'player.lyrics')}>
       <div className="lyrics-head">
-        <h3><Mic size={13} /> LYRICS</h3>
+        <h3><Mic size={13} /> {t(lang, 'player.lyrics').toUpperCase()}</h3>
         <div className="lyrics-tools">
           {suspended && (
-            <button className="resume-pill" onClick={resumeAutoScroll} aria-label="Resume auto-scroll to current line" title="Resume following the current line">
-              <LocateFixed size={14} /> Jump to line
+            <button className="resume-pill" onClick={resumeAutoScroll} aria-label={t(lang, 'lyrics.jumpToLine')} title={t(lang, 'lyrics.jumpToLine')}>
+              <LocateFixed size={14} /> {t(lang, 'lyrics.jumpToLine')}
             </button>
           )}
-          <button className="icon-btn" onClick={() => setLyricsOffset(Math.round((offset - 0.5) * 10) / 10)} title="Lyrics earlier by 0.5s" aria-label="Shift lyrics earlier">
+          <button className="icon-btn" onClick={() => setLyricsOffset(Math.round((offset - 0.5) * 10) / 10)} title={t(lang, 'karaoke.earlier')} aria-label={t(lang, 'karaoke.earlier')}>
             <Minus size={15} />
           </button>
-          <span title="Lyrics sync offset" onDoubleClick={() => setLyricsOffset(0)} style={{ cursor: 'pointer' }} role="button" aria-label="Reset lyrics offset" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setLyricsOffset(0)}>
+          <span title={t(lang, 'karaoke.resetOffset')} onDoubleClick={() => setLyricsOffset(0)} style={{ cursor: 'pointer' }} role="button" aria-label={t(lang, 'karaoke.resetOffset')} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setLyricsOffset(0)}>
             {offset >= 0 ? `+${offset.toFixed(1)}` : offset.toFixed(1)}s
           </span>
-          <button className="icon-btn" onClick={() => setLyricsOffset(Math.round((offset + 0.5) * 10) / 10)} title="Lyrics later by 0.5s" aria-label="Shift lyrics later">
+          <button className="icon-btn" onClick={() => setLyricsOffset(Math.round((offset + 0.5) * 10) / 10)} title={t(lang, 'karaoke.later')} aria-label={t(lang, 'karaoke.later')}>
             <Plus size={15} />
           </button>
-          <button className="icon-btn" onClick={() => setLyricsOffset(0)} title="Reset sync offset" aria-label="Reset sync offset">
+          <button className="icon-btn" onClick={() => setLyricsOffset(0)} title={t(lang, 'karaoke.resetOffset')} aria-label={t(lang, 'karaoke.resetOffset')}>
             <RotateCcw size={14} />
           </button>
           <button
             className={`icon-btn${lyricsTranslation ? ' active' : ''}`}
             onClick={toggleLyricsTranslation}
             aria-pressed={lyricsTranslation}
-            aria-label="Toggle lyrics translation"
-            title="Translate lyrics"
+            aria-label={t(lang, 'karaoke.translate')}
+            title={t(lang, 'karaoke.translate')}
           >
             <Globe size={15} />
           </button>
@@ -282,8 +284,8 @@ export default function LyricsPanel({ track }) {
                 document.body.appendChild(a); a.click(); document.body.removeChild(a);
                 setTimeout(() => URL.revokeObjectURL(url), 2000);
               }}
-              title="Export lyrics as .lrc"
-              aria-label="Export lyrics as .lrc"
+              title={t(lang, 'lyrics.export')}
+              aria-label={t(lang, 'lyrics.export')}
             >
               <Download size={15} />
             </button>
@@ -295,15 +297,15 @@ export default function LyricsPanel({ track }) {
                 onClick={() => setLangOpen((v) => !v)}
                 aria-expanded={langOpen}
                 aria-haspopup="menu"
-                title="Translation language"
+                title={t(lang, 'karaoke.translate')}
               >
                 <span className="lang-flag">{currentLang.flag}</span>
                 <span className="lang-code">{currentLang.code.toUpperCase()}</span>
                 <ChevronDown size={13} className={langOpen ? 'lang-chev open' : 'lang-chev'} />
               </button>
               {langOpen && (
-                <div className="lang-menu" role="menu" aria-label="Translation language">
-                  <div className="ctx-label">TRANSLATE TO</div>
+                <div className="lang-menu" role="menu" aria-label={t(lang, 'karaoke.translate')}>
+                  <div className="ctx-label">{t(lang, 'karaoke.translateTo')}</div>
                   <div className="lang-list">
                     {LANG_OPTIONS.map((o) => (
                       <button

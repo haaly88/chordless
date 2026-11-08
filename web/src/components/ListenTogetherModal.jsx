@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Users, Copy, Check, LogOut, RefreshCw, Send, MessageCircle } from 'lucide-react';
 import usePlayer, { readString, writeString } from '../store.js';
+import { t } from '../lib/i18n.js';
 
 /**
  * Listen Together — create/join a room, see members, leave.
@@ -14,6 +15,7 @@ export default function ListenTogetherModal() {
   const leaveTogetherRoom = usePlayer((s) => s.leaveTogetherRoom);
   const _togetherPollOnce = usePlayer((s) => s._togetherPollOnce);
   const sendTogetherChat = usePlayer((s) => s.sendTogetherChat);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const queue = usePlayer((s) => (s.together?.code ? s.queue : []));
   const nowPlaying = usePlayer((s) => (s.together?.code ? s.currentTrack() : null));
   const messages = together?.messages || [];
@@ -67,61 +69,61 @@ export default function ListenTogetherModal() {
         {!inRoom ? (
           <>
             <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.55, margin: '0 0 14px' }}>
-              Listen to the same song at the same time as friends. The host controls playback — everyone follows. Works while you’re on the same Chordless server.
+              {t(lang, 'together.desc')}
             </p>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: 'var(--text-3)', marginBottom: 6 }}>YOUR NAME</label>
-            <input className="field" value={name} onChange={(e) => saveName(e.target.value)} placeholder="e.g. Rina" aria-label="Your name" maxLength={40} />
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: 'var(--text-3)', marginBottom: 6 }}>{t(lang, 'together.yourName')}</label>
+            <input className="field" value={name} onChange={(e) => saveName(e.target.value)} placeholder={t(lang, 'together.namePh')} aria-label={t(lang, 'together.yourName')} maxLength={40} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
               <button className="btn primary" onClick={onCreate} disabled={!name.trim() || busy} style={{ flex: 1 }}>
-                {busy ? 'Working…' : 'Create room'}
+                {busy ? t(lang, 'together.working') : t(lang, 'together.createRoom')}
               </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0 12px' }}>
               <span style={{ flex: 1, height: 1, background: 'var(--stroke-strong)' }} />
-              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>OR JOIN</span>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t(lang, 'together.orJoin')}</span>
               <span style={{ flex: 1, height: 1, background: 'var(--stroke-strong)' }} />
             </div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: 'var(--text-3)', marginBottom: 6 }}>ROOM CODE</label>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: 'var(--text-3)', marginBottom: 6 }}>{t(lang, 'together.roomCode')}</label>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
                 className="field"
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5))}
                 placeholder="ABCDE"
-                aria-label="Room code"
+                aria-label={t(lang, 'together.roomCode')}
                 maxLength={5}
                 style={{ flex: 1, textTransform: 'uppercase', letterSpacing: '.2em', textAlign: 'center', fontWeight: 800 }}
               />
               <button className="btn" onClick={onJoin} disabled={!name.trim() || code.trim().length < 5 || busy}>
-                Join
+                {t(lang, 'together.join')}
               </button>
             </div>
-            <p style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 12 }}>Max 12 people per room. Rooms close when the host leaves.</p>
+            <p style={{ fontSize: 11.5, color: 'var(--text-3)', marginTop: 12 }}>{t(lang, 'together.maxNote')}</p>
           </>
         ) : (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, border: '1px solid var(--stroke)', borderRadius: 14, background: 'var(--hover)', marginBottom: 12 }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 800, letterSpacing: '.1em' }}>ROOM CODE</div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 800, letterSpacing: '.1em' }}>{t(lang, 'together.roomCode')}</div>
                 <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '.3em' }}>{together.code}</div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-2)' }}>
-                  {together.isHost ? 'You are the host — you control playback.' : 'Following the host.'} · Synced {new Date(together.lastSyncAt || Date.now()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                  {together.isHost ? t(lang, 'together.hostYou') : t(lang, 'together.following')} · {new Date(together.lastSyncAt || Date.now()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                 </div>
               </div>
-              <button className="btn" onClick={copyCode} aria-label="Copy room code">
-                {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? 'Copied' : 'Copy'}
+              <button className="btn" onClick={copyCode} aria-label={t(lang, 'together.copy')}>
+                {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? t(lang, 'together.copied') : t(lang, 'together.copy')}
               </button>
             </div>
 
-             <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>IN THE ROOM ({(together.members || []).length})</div>
+             <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>{t(lang, 'together.inRoom').replace('{n}', (together.members || []).length)}</div>
             {nowPlaying && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--stroke)', borderRadius: 10, marginBottom: 8 }}>
                 {nowPlaying.thumbnail ? <img src={nowPlaying.thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" style={{ width: 30, height: 30, borderRadius: 6, objectFit: 'cover' }} /> : null}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 800, letterSpacing: '.08em' }}>{together.isHost ? 'NOW PLAYING (YOU)' : 'NOW PLAYING (HOST)'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 800, letterSpacing: '.08em' }}>{together.isHost ? t(lang, 'together.nowPlayingYou') : t(lang, 'together.nowPlayingHost')}</div>
                   <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nowPlaying.title} — {nowPlaying.artist}</div>
                 </div>
-                <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{queue.length} in queue</span>
+                <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{t(lang, 'together.inQueue').replace('{n}', queue.length)}</span>
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto', marginBottom: 12 }}>
@@ -131,7 +133,7 @@ export default function ListenTogetherModal() {
                     {String(m.name || '?')[0].toUpperCase()}
                   </span>
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13.5 }}>{m.name}{m.id === together.memberId ? ' (you)' : ''}</span>
+                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13.5 }}>{m.name}{m.id === together.memberId ? ` ${t(lang, 'together.youSuffix')}` : ''}</span>
                     {m.track?.title && <span style={{ display: 'block', fontSize: 11, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>▶ {m.track.title}</span>}
                   </span>
                   {m.isHost && <span className="pill active" style={{ cursor: 'default', fontSize: 10.5 }}>HOST</span>}
@@ -140,23 +142,23 @@ export default function ListenTogetherModal() {
             </div>
 
             <div className="modal-actions" style={{ justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginTop: 0 }}>
-              <button className="btn" onClick={() => _togetherPollOnce?.()} aria-label="Sync now">
-                <RefreshCw size={14} /> Sync now
+              <button className="btn" onClick={() => _togetherPollOnce?.()} aria-label={t(lang, 'together.syncNow')}>
+                <RefreshCw size={14} /> {t(lang, 'together.syncNow')}
               </button>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn" onClick={() => toggleTogether(false)}>Close</button>
+                <button className="btn" onClick={() => toggleTogether(false)}>{t(lang, 'btn.close')}</button>
                 <button className="btn danger" onClick={leaveTogetherRoom}>
-                  <LogOut size={14} /> Leave
+                  <LogOut size={14} /> {t(lang, 'together.leave')}
                 </button>
               </div>
             </div>
 
             <div className="section-label" style={{ paddingLeft: 0, margin: '14px 0 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <MessageCircle size={13} style={{ color: 'var(--accent)' }} /> ROOM CHAT
+              <MessageCircle size={13} style={{ color: 'var(--accent)' }} /> {t(lang, 'together.chatTitle')}
             </div>
             <div ref={chatRef} style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto', padding: '8px 10px', border: '1px solid var(--stroke)', borderRadius: 12, marginBottom: 8 }}>
               {messages.length === 0 ? (
-                <span style={{ fontSize: 12.5, color: 'var(--text-3)' }}>Say hi — messages last for the room (ephemeral).</span>
+                <span style={{ fontSize: 12.5, color: 'var(--text-3)' }}>{t(lang, 'together.chatEmpty')}</span>
               ) : messages.map((m) => (
                 <div key={m.id} style={{ fontSize: 12.5, lineHeight: 1.4 }}>
                   <b style={{ color: m.memberId === together.memberId ? 'var(--accent)' : 'var(--text)' }}>{m.name}</b>{' '}
@@ -171,8 +173,8 @@ export default function ListenTogetherModal() {
                 value={chatText}
                 onChange={(e) => setChatText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && chatText.trim()) { sendTogetherChat(chatText); setChatText(''); } }}
-                placeholder="Message the room…"
-                aria-label="Room message"
+                placeholder={t(lang, 'together.chatPh')}
+                aria-label={t(lang, 'together.chatPh')}
                 maxLength={200}
               />
               <button

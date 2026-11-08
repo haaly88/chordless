@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Play, Shuffle, Music2, CloudOff, RotateCcw } from 'lucide-react';
 import usePlayer from '../store.js';
 import { apiPlaylist } from '../lib/api.js';
-import { formatTotalDuration, pluralize } from '../lib/format.js';
+import { formatTotalDuration } from '../lib/format.js';
+import { t, fmtCount } from '../lib/i18n.js';
 import TrackRow, { TrackListHeader } from './TrackRow.jsx';
 
 /** Remote YouTube playlist page loaded via /api/playlist. */
 export default function YtPlaylistView({ playlistId }) {
   const playTracks = usePlayer((s) => s.playTracks);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [retryTick, setRetryTick] = useState(0);
@@ -27,10 +29,10 @@ export default function YtPlaylistView({ playlistId }) {
     return (
       <div className="empty-state">
         <CloudOff />
-        <h3>Couldn’t load this playlist</h3>
+        <h3>{t(lang, 'yt.loadError')}</h3>
         <p>{error}</p>
         <button className="btn primary" style={{ marginTop: 18 }} onClick={() => setRetryTick((n) => n + 1)}>
-          <RotateCcw size={16} /> Try again
+          <RotateCcw size={16} /> {t(lang, 'common.tryAgain')}
         </button>
       </div>
     );
@@ -61,15 +63,15 @@ export default function YtPlaylistView({ playlistId }) {
           <div className="hero-art playlist-fallback"><Music2 strokeWidth={1.4} /></div>
         )}
         <div style={{ minWidth: 0 }}>
-          <div className="hero-kicker">PLAYLIST</div>
+          <div className="hero-kicker">{t(lang, 'yt.kicker')}</div>
           <h1 className="hero-title">{title}</h1>
-          <div className="hero-meta">{meta || pluralize(tracks.length, 'track')}</div>
+          <div className="hero-meta">{meta || fmtCount(lang, tracks.length, tracks.length === 1 ? 'track' : 'tracks')}</div>
           <div className="hero-actions">
             <button className="btn primary" onClick={() => playTracks(tracks, 0)} disabled={!tracks.length}>
-              <Play size={17} fill="#fff" strokeWidth={0} /> Play
+              <Play size={17} fill="#fff" strokeWidth={0} /> {t(lang, 'btn.play')}
             </button>
             <button className="btn" onClick={() => playTracks(tracks, 0, { shuffle: true })} disabled={!tracks.length}>
-              <Shuffle size={16} /> Shuffle
+              <Shuffle size={16} /> {t(lang, 'btn.shuffle')}
             </button>
           </div>
         </div>
@@ -78,8 +80,8 @@ export default function YtPlaylistView({ playlistId }) {
       {tracks.length === 0 ? (
         <div className="empty-state">
           <Music2 />
-          <h3>Empty playlist</h3>
-          <p>This playlist has no playable tracks.</p>
+          <h3>{t(lang, 'yt.emptyTitle')}</h3>
+          <p>{t(lang, 'yt.emptyText')}</p>
         </div>
       ) : (
         <>

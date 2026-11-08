@@ -4,6 +4,7 @@ import usePlayer from '../store.js';
 import { apiLyrics } from '../lib/api.js';
 import { parseLrc, activeLineIndex } from '../lib/lrc.js';
 import { formatTime } from '../lib/format.js';
+import { t } from '../lib/i18n.js';
 import SeekBar from './SeekBar.jsx';
 
 const LANG_OPTIONS = [
@@ -43,6 +44,7 @@ export default function KaraokeMode() {
   const setLyricsTargetLang = usePlayer((s) => s.setLyricsTargetLang);
   const translatedLyrics = usePlayer((s) => s.translatedLyrics);
   const translateLyrics = usePlayer((s) => s.translateLyrics);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const clearTranslatedLyrics = usePlayer((s) => s.clearTranslatedLyrics);
 
   const [state, setState] = useState({ status: 'idle', data: null, message: null });
@@ -119,13 +121,13 @@ export default function KaraokeMode() {
 
   if (!track) {
     return (
-      <div className="karaoke-overlay" role="dialog" aria-label="Karaoke">
+      <div className="karaoke-overlay" role="dialog" aria-label={t(lang, 'karaoke.title')}>
         <div className="karaoke-back" aria-hidden="true" />
         <div style={{ position: 'relative', zIndex: 2, display: 'grid', placeItems: 'center', height: '100%', padding: 24, textAlign: 'center' }}>
           <div>
             <Mic size={36} />
-            <p style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>Pick a song first to sing along.</p>
-            <button className="btn" onClick={() => toggleKaraoke(false)}>Close</button>
+            <p style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>{t(lang, 'karaoke.noSong')}</p>
+            <button className="btn" onClick={() => toggleKaraoke(false)}>{t(lang, 'btn.close')}</button>
           </div>
         </div>
       </div>
@@ -145,7 +147,7 @@ export default function KaraokeMode() {
           <img src={track.thumbnail} alt="" referrerPolicy="no-referrer" />
           <div>
             <b>{track.title}</b>
-            <span>{track.artist || 'Unknown artist'}</span>
+            <span>{track.artist || t(lang, 'common.unknownArtist')}</span>
           </div>
         </div>
         <div className="karaoke-head-tools">
@@ -156,11 +158,11 @@ export default function KaraokeMode() {
               </button>
             ))}
           </div>
-          <button className="icon-btn" onClick={() => setLyricsOffset(Math.round((offset - 0.5) * 10) / 10)} title="Lyrics earlier" aria-label="Lyrics earlier"><Minus size={15} /></button>
+          <button className="icon-btn" onClick={() => setLyricsOffset(Math.round((offset - 0.5) * 10) / 10)} title={t(lang, 'karaoke.earlier')} aria-label={t(lang, 'karaoke.earlier')}><Minus size={15} /></button>
           <span style={{ fontSize: 12, minWidth: 44, textAlign: 'center' }}>{offset >= 0 ? `+${offset.toFixed(1)}` : offset.toFixed(1)}s</span>
-          <button className="icon-btn" onClick={() => setLyricsOffset(Math.round((offset + 0.5) * 10) / 10)} title="Lyrics later" aria-label="Lyrics later"><Plus size={15} /></button>
-          <button className="icon-btn" onClick={() => setLyricsOffset(0)} title="Reset offset" aria-label="Reset offset"><RotateCcw size={14} /></button>
-          <button className={`icon-btn${lyricsTranslation ? ' active' : ''}`} onClick={toggleLyricsTranslation} aria-pressed={lyricsTranslation} title="Translate" aria-label="Translate"><Globe size={16} /></button>
+          <button className="icon-btn" onClick={() => setLyricsOffset(Math.round((offset + 0.5) * 10) / 10)} title={t(lang, 'karaoke.later')} aria-label={t(lang, 'karaoke.later')}><Plus size={15} /></button>
+          <button className="icon-btn" onClick={() => setLyricsOffset(0)} title={t(lang, 'karaoke.resetOffset')} aria-label={t(lang, 'karaoke.resetOffset')}><RotateCcw size={14} /></button>
+          <button className={`icon-btn${lyricsTranslation ? ' active' : ''}`} onClick={toggleLyricsTranslation} aria-pressed={lyricsTranslation} title={t(lang, 'karaoke.translate')} aria-label={t(lang, 'karaoke.translate')}><Globe size={16} /></button>
           {lyricsTranslation && (
             <div className="lang-wrap" ref={langRef}>
               <button className="lang-trigger" onClick={() => setLangOpen((v) => !v)} aria-expanded={langOpen} title="Translation language">
@@ -168,7 +170,7 @@ export default function KaraokeMode() {
               </button>
               {langOpen && (
                 <div className="lang-menu" role="menu" aria-label="Translation language">
-                  <div className="ctx-label">TRANSLATE TO</div>
+                  <div className="ctx-label">{t(lang, 'karaoke.translateTo')}</div>
                   <div className="lang-list">
                     {LANG_OPTIONS.map((o) => (
                       <button key={o.code} className={`lang-item${o.code === lyricsTargetLang ? ' active' : ''}`} role="menuitemradio" aria-checked={o.code === lyricsTargetLang} onClick={() => { setLyricsTargetLang(o.code); setLangOpen(false); }}>
@@ -185,16 +187,16 @@ export default function KaraokeMode() {
 
       <div className="karaoke-body">
         {state.status === 'loading' && (
-          <div className="karaoke-status"><span className="spinner" aria-hidden="true" /> Loading lyrics…</div>
+          <div className="karaoke-status"><span className="spinner" aria-hidden="true" /> {t(lang, 'karaoke.loading')}</div>
         )}
         {state.status === 'error' && (
-          <div className="karaoke-status"><AlertCircle size={30} /><b>Couldn’t load lyrics</b><small>{state.message}</small><button className="btn" onClick={() => setRetryTick((n) => n + 1)}><RefreshCw size={15} /> Try again</button></div>
+          <div className="karaoke-status"><AlertCircle size={30} /><b>{t(lang, 'karaoke.loadError')}</b><small>{state.message}</small><button className="btn" onClick={() => setRetryTick((n) => n + 1)}><RefreshCw size={15} /> {t(lang, 'common.tryAgain')}</button></div>
         )}
         {state.status === 'ready' && payload && !payload.found && (
-          <div className="karaoke-status"><Mic size={30} /><b>No lyrics found</b><small>LRCLIB doesn’t have this track yet.</small></div>
+          <div className="karaoke-status"><Mic size={30} /><b>{t(lang, 'karaoke.noLyrics')}</b><small>{t(lang, 'karaoke.noLyricsSub')}</small></div>
         )}
         {state.status === 'ready' && payload?.instrumental && (
-          <div className="karaoke-status"><Music size={32} /><b>Instrumental</b><small>No vocals — enjoy the notes.</small></div>
+          <div className="karaoke-status"><Music size={32} /><b>{t(lang, 'karaoke.instrumental')}</b><small>{t(lang, 'karaoke.instrumentalSub')}</small></div>
         )}
         {syncedLines.length > 0 && (
           <div className={`karaoke-scroll ${sizeClass}`} ref={scrollRef} onWheel={suspend} onTouchMove={suspend} aria-label="Karaoke lyrics">
@@ -224,7 +226,7 @@ export default function KaraokeMode() {
           <div className={`karaoke-scroll ${sizeClass}`} onWheel={suspend} onTouchMove={suspend}>
             <div className="karaoke-plain">{payload.plainLyrics}</div>
             {translatedLyrics?.translated && lyricsTranslation && <div className="karaoke-plain-sub">{translatedLyrics.translated}</div>}
-            <div style={{ textAlign: 'center', color: 'rgba(255,255,255,.4)', fontSize: 11, letterSpacing: '.18em', padding: '20px 0' }}>PLAIN LYRICS · NOT SYNCED</div>
+            <div style={{ textAlign: 'center', color: 'rgba(255,255,255,.4)', fontSize: 11, letterSpacing: '.18em', padding: '20px 0' }}>{t(lang, 'karaoke.plainNote')}</div>
           </div>
         )}
       </div>
@@ -236,11 +238,11 @@ export default function KaraokeMode() {
           <span>{formatTime(duration)}</span>
         </div>
         <div className="karaoke-controls">
-          <button className="icon-btn" onClick={prev} aria-label="Previous"><SkipBack size={24} /></button>
-          <button className="karaoke-play" onClick={togglePlay} aria-label={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? <Pause size={26} /> : <Play size={26} style={{ marginLeft: 2 }} />}</button>
-          <button className="icon-btn" onClick={() => next(true)} aria-label="Next"><SkipForward size={24} /></button>
+          <button className="icon-btn" onClick={prev} aria-label={t(lang, 'player.prev')} title={t(lang, 'player.prev')}><SkipBack size={24} /></button>
+          <button className="karaoke-play" onClick={togglePlay} aria-label={isPlaying ? t(lang, 'player.pause') : t(lang, 'player.play')} title={isPlaying ? t(lang, 'player.pause') : t(lang, 'player.play')}>{isPlaying ? <Pause size={26} /> : <Play size={26} style={{ marginLeft: 2 }} />}</button>
+          <button className="icon-btn" onClick={() => next(true)} aria-label={t(lang, 'player.next')} title={t(lang, 'player.next')}><SkipForward size={24} /></button>
         </div>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,.5)' }}>C exits · Esc closes · tap a line to seek</div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,.5)' }}>{t(lang, 'karaoke.hint')}</div>
       </footer>
     </div>
   );
