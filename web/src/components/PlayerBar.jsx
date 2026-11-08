@@ -99,7 +99,7 @@ function SleepMenu() {
   const remainingLabel = remaining != null ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}` : null;
 
   return (
-    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }} ref={ref}>
+    <div className="pb-sleep-wrap" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }} ref={ref}>
       <button
         className={`icon-btn${active ? ' active' : ''}`}
         onClick={() => setOpen((v) => !v)}
@@ -323,7 +323,7 @@ export default function PlayerBar() {
           <Mic size={19} />
         </button>
         <button
-          className="icon-btn"
+          className="icon-btn pb-karaoke-btn"
           onClick={() => toggleKaraoke(true)}
           aria-label="Karaoke mode"
           title="Karaoke mode (C)"

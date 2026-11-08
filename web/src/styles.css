@@ -667,6 +667,12 @@ img { user-select: none; -webkit-user-drag: none; }
 .pb-marquee { display: inline-flex; white-space: nowrap; animation: pb-marquee 12s linear infinite; }
 .pb-marquee > span { padding-right: 48px; flex-shrink: 0; }
 @keyframes pb-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+/* Fade the right edge where the loop seam (2nd title copy) would peek in
+   when the box is wider than the title — no more ghost duplicate text. */
+.pb-title:has(> .pb-marquee) {
+  -webkit-mask-image: linear-gradient(90deg, #000 70%, transparent 92%);
+  mask-image: linear-gradient(90deg, #000 70%, transparent 92%);
+}
 @media (prefers-reduced-motion: reduce) { .pb-marquee { animation: none; } }
 .seekbar-track { position: relative; width: 100%; height: 4px; border-radius: 99px; background: color-mix(in srgb, var(--text) 16%, transparent); overflow: visible; transition: height .15s; }
 .seekbar-marker { position: absolute; top: 50%; width: 2px; height: 8px; transform: translate(-50%, -50%); background: color-mix(in srgb, var(--accent) 65%, white); border-radius: 2px; pointer-events: none; opacity: .85; }
@@ -1927,6 +1933,16 @@ img { user-select: none; -webkit-user-drag: none; }
   .hero-title { font-size: calc(36px * var(--fscale, 1)); }
   .greeting { font-size: calc(28px * var(--fscale, 1)); }
   .view-title { font-size: calc(27px * var(--fscale, 1)); }
+  /* PlayerBar gets crowded: drop the redundant queue-duration text,
+     collapse volume to its mute button, shrink controls. */
+  .pb-queue-info { display: none; }
+  .vol-slider .vol-track { display: none; }
+  .pb-right .icon-btn { width: 36px; height: 36px; }
+  .pb-right { gap: 0; }
+}
+@media (max-width: 1150px) {
+  /* Even tighter: park sleep + karaoke in Now Playing only. */
+  .pb-right .pb-sleep-wrap, .pb-right .pb-karaoke-btn { display: none; }
 }
 @media (max-width: 1280px) {
   :root { --sidebar-w: 214px; --player-h: 80px; }
