@@ -6,6 +6,7 @@ import {
 import usePlayer from '../store.js';
 import { formatTime, formatTotalDuration } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
+import { parseLrc, activeLineIndex } from '../lib/lrc.js';
 import SeekBar from './SeekBar.jsx';
 import Visualizer from './Visualizer.jsx';
 
@@ -75,6 +76,13 @@ function SleepMenu() {
   const setSleepTimer = usePlayer((s) => s.setSleepTimer);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const [, forceTick] = useState(0);
+
+  useEffect(() => {
+    if (typeof sleepTimer !== 'number') return undefined;
+    const id = setInterval(() => forceTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [sleepTimer]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -87,9 +95,11 @@ function SleepMenu() {
 
   const active = sleepTimer != null;
   const currentValue = sleepTimer === 'track' ? 'track' : null;
+  const remaining = typeof sleepTimer === 'number' ? Math.max(0, Math.ceil((sleepTimer - Date.now()) / 1000)) : null;
+  const remainingLabel = remaining != null ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}` : null;
 
   return (
-    <div style={{ position: 'relative' }} ref={ref}>
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }} ref={ref}>
       <button
         className={`icon-btn${active ? ' active' : ''}`}
         onClick={() => setOpen((v) => !v)}
@@ -99,6 +109,17 @@ function SleepMenu() {
       >
         <Moon size={19} />
       </button>
+      {remainingLabel && (
+        <button
+          className="pill"
+          onClick={() => setSleepTimer(null)}
+          title={`Sleep timer — ${remainingLabel} left. Click to cancel.`}
+          aria-label={`Sleep timer ${remainingLabel} left, click to cancel`}
+          style={{ fontVariantNumeric: 'tabular-nums', fontSize: 11.5, padding: '4px 10px' }}
+        >
+          {remainingLabel} ×
+        </button>
+      )}
       {open && (
         <div className="menu-pop" role="menu" aria-label="Sleep timer options">
           <div className="ctx-label">SLEEP TIMER</div>
@@ -153,10 +174,43 @@ export default function PlayerBar() {
   const miniPlayer = usePlayer((s) => s.miniPlayer);
   const toggleMiniPlayer = usePlayer((s) => s.toggleMiniPlayer);
   const lang = usePlayer((s) => s.settings.lang || 'en');
+  const lyricsOffset = usePlayer((s) => s.lyricsOffset);
+  const [miniLyric, setMiniLyric] = useState('');
+
+  useEffect(() => {
+    if (!track?.id || !lyricsOpen) { setMiniLyric(''); return undefined; }
+    let cancelled = false;
+    let timer = null;
+    (async () => {
+      try {
+        const c = JSON.parse(localStorage.getItem(`cl:lyrics:${track.id}`) || 'null');
+        const data = c?.data;
+        if (cancelled || !data?.syncedLyrics) return;
+        const lines = parseLrc(data.syncedLyrics);
+        if (!lines.length) return;
+        const tick = () => {
+          try {
+            const tNow = usePlayer.getState().currentTime + (usePlayer.getState().lyricsOffset || 0);
+            const idx = activeLineIndex(lines, tNow);
+            setMiniLyric(lines[idx]?.text || '');
+          } catch { /* ignore */ }
+        };
+        tick();
+        timer = setInterval(tick, 300);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; if (timer) clearInterval(timer); };
+  }, [track?.id, lyricsOpen]);
 
   const repeatLabel = repeat === 'one' ? t(lang, 'player.repeat') : repeat === 'all' ? t(lang, 'player.repeat') : t(lang, 'player.repeat');
 
   return (
+    <>
+      {miniLyric && (
+        <div aria-live="polite" style={{ position: 'fixed', left: '50%', bottom: 'calc(var(--player-h) + 8px)', transform: 'translateX(-50%)', zIndex: 39, maxWidth: 'min(560px, 86vw)', background: 'var(--panel-strong)', border: '1px solid var(--stroke-strong)', color: 'var(--text)', padding: '6px 14px', borderRadius: 99, fontSize: 12.5, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,.4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {miniLyric}
+        </div>
+      )}
     <footer className={`player-bar${miniPlayer ? ' mini' : ''}`} aria-label="Now playing bar">
       {/* left — artwork & meta */}
       <div className="pb-left">
@@ -317,5 +371,6 @@ export default function PlayerBar() {
         </button>
       </div>
     </footer>
+    </>
   );
 }

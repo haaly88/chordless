@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X, GripVertical, ListMusic, Trash2, BookmarkPlus, Play, Search } from 'lucide-react';
 import usePlayer from '../store.js';
 import { formatTime, formatTotalDuration } from '../lib/format.js';
@@ -25,6 +25,13 @@ export default function QueuePanel() {
   const [dragFrom, setDragFrom] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
   const [filter, setFilter] = useState('');
+  const listRef = useRef(null);
+  const activeRowRef = useRef(null);
+
+  useEffect(() => {
+    // Keep the playing track visible when the panel opens or the track changes.
+    activeRowRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [index === 0 ? '' : index]);
 
   const upNextCount = Math.max(0, queue.length - index - 1);
   const needle = filter.trim().toLowerCase();
@@ -83,7 +90,7 @@ export default function QueuePanel() {
           <p>No tracks match “{filter.trim()}”.</p>
         </div>
       ) : (
-        <div className="queue-list" role="list">
+        <div className="queue-list" role="list" ref={listRef}>
           {visible.map(({ track, i }) => {
             const active = i === index;
             const cls = ['queue-item'];
@@ -93,6 +100,7 @@ export default function QueuePanel() {
             return (
               <div
                 key={`${track.id}-${i}`}
+                ref={active ? activeRowRef : null}
                 className={cls.join(' ')}
                 role="listitem"
                 draggable={!filtering}

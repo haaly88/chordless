@@ -107,10 +107,20 @@ export default function LibraryView() {
     }
   };
 
+  const tiltProps = {
+    onMouseMove: (e) => {
+      const el = e.currentTarget;
+      const rect = el.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      el.style.transform = `perspective(700px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) translateY(-2px)`;
+    },
+    onMouseLeave: (e) => { e.currentTarget.style.transform = ''; },
+  };
   const renderPlaylistCard = (p) => {
     const covers = p.coverUrl ? [p.coverUrl] : [...new Set(p.tracks.map((t) => t.thumbnail).filter(Boolean))].slice(0, 4);
     return (
-    <button key={p.id} className="playlist-card" onClick={() => setView({ name: 'playlist', id: p.id })}>
+    <button key={p.id} className="playlist-card" onClick={() => setView({ name: 'playlist', id: p.id })} {...tiltProps}>
       <div className="playlist-art-wrap">
         {covers.length === 0 ? (
           <div className="playlist-art-fallback"><Music2 size={34} strokeWidth={1.4} /></div>

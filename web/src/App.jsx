@@ -403,6 +403,7 @@ export default function App() {
 
   return (
     <div className={`app${navOpen ? ' nav-open' : ''}`}>
+      <div className="aurora" aria-hidden="true"><span /><span /></div>
       <button className="layout-drawer-toggle" onClick={() => setNavOpen(true)} aria-label="Open navigation">
         <Menu size={22} />
       </button>

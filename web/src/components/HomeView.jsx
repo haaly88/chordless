@@ -147,7 +147,15 @@ function Shelf({ title, icon, items, onPlayAll }) {
             : () => playTrack(track, playable.length ? playable : items);
           return (
           <button key={track.id} className="shelf-card" onClick={onClick}
-                  aria-label={`${isEntity ? 'Open' : 'Play'} ${track.title}`}>
+                  aria-label={`${isEntity ? 'Open' : 'Play'} ${track.title}`}
+                  onMouseMove={(e) => {
+                    const el = e.currentTarget;
+                    const rect = el.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) / rect.width - 0.5;
+                    const y = (e.clientY - rect.top) / rect.height - 0.5;
+                    el.style.transform = `perspective(700px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) translateY(-3px)`;
+                  }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = ''; }}>
             <span className="sc-art-wrap">
               <img src={track.thumbnail} alt={`${track.title} artwork`} loading="lazy" referrerPolicy="no-referrer" />
               {!isEntity && (
