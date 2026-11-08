@@ -306,14 +306,14 @@ export default function CollectionView({ playlistId }) {
       {tracks.length === 0 ? (
         <div className="empty-state">
           <Heart strokeWidth={1.4} />
-          <h3>{isLikedView ? 'No likes yet' : 'Empty playlist'}</h3>
+          <h3>{isLikedView ? t(lang, 'coll.emptyLiked') : t(lang, 'coll.empty')}</h3>
           <p>
             {isLikedView
               ? 'Tap the heart on any track — it will land here, synced across your queue instantly.'
               : 'Right-click any track and choose “Add to playlist”, or use the ⋯ button next to a song.'}
           </p>
           <button className="btn primary" style={{ marginTop: 18 }} onClick={() => setView({ name: 'search' })}>
-            <Play size={16} fill="#fff" strokeWidth={0} /> Find music
+            <Play size={16} fill="#fff" strokeWidth={0} /> {t(lang, 'coll.findMusic')}
           </button>
         </div>
       ) : (

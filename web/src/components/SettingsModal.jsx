@@ -283,7 +283,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>Language</b>
-            <small>Bahasa antarmuka (sidebar, beranda, judul halaman). Stage 1.</small>
+            <small>{t(lang, 'settings.desc.lang')}</small>
           </div>
           <div className="segmented" role="radiogroup" aria-label="Language" style={{ flexWrap: 'wrap' }}>
             {[
@@ -307,7 +307,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>Text size</b>
-            <small>Scale the whole interface. Compact saves space, Large is easier to read.</small>
+            <small>{t(lang, 'settings.desc.textSize')}</small>
           </div>
           <div className="segmented" role="radiogroup" aria-label="Text size" style={{ flexWrap: 'wrap' }}>
             {[
@@ -330,7 +330,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>Reduce motion</b>
-            <small>Turn off animations and transitions across the app.</small>
+            <small>{t(lang, 'settings.desc.reduceMotion')}</small>
           </div>
           <button
             className={`switch${settings.reduceMotion ? ' on' : ''}`}
@@ -344,8 +344,8 @@ export default function SettingsModal() {
         {/* home sections (custom shelves) */}
         <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
           <div>
-            <b>Home sections</b>
-            <small>Show, hide, and reorder what appears on the Home page.</small>
+            <b>{t(lang, 'settings.homeSections')}</b>
+            <small>{t(lang, 'settings.desc.homeSections')}</small>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
             {[
@@ -492,7 +492,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>Skip sponsor segments</b>
-            <small>Skips creator-inserted sections detected by the SponsorBlock community (sponsors, self-promo, subscribe reminders, non-music parts). Note: the platform’s own ad slots in Embedded mode can’t be skipped — the Stream engine carries none.</small>
+            <small>{t(lang, 'settings.desc.sb')}</small>
           </div>
           <button
             className={`switch${settings.sb?.enabled !== false ? ' on' : ''}`}
@@ -540,7 +540,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>Stream source</b>
-            <small>If a song won’t play (some networks throttle playback), pick another. “Auto” tries them all.</small>
+            <small>{t(lang, 'settings.desc.streamClient')}</small>
           </div>
           <div className="segmented" role="radiogroup" aria-label="Stream source" style={{ flexWrap: 'wrap' }}>
             {[
@@ -566,7 +566,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b><Palette size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />Adaptive theme</b>
-            <small>Recolor the whole app from the artwork of the track that’s playing — buttons, glows, progress.</small>
+            <small>{t(lang, 'settings.desc.adaptive')}</small>
           </div>
           <button
             className={`switch${settings.adaptive ? ' on' : ''}`}
@@ -590,7 +590,7 @@ export default function SettingsModal() {
         <div className="setting-row" style={{ alignItems: 'center' }}>
           <div>
             <b>Backup &amp; restore</b>
-            <small>Export likes, playlists, history, queue and settings to a JSON file — or import from a backup.</small>
+            <small>{t(lang, 'settings.desc.export')}</small>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button className="btn" onClick={exportLibrary} style={{ padding: '8px 14px', fontSize: 12.5 }}>
@@ -720,7 +720,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>Gapless playback</b>
-            <small>True gapless: the next track preloads in the background and starts the instant the current one ends — no silence between songs. Replaces crossfade (turns it off). Stream engine only; Embedded engine can’t gapless.</small>
+            <small>{t(lang, 'settings.desc.gapless')}</small>
           </div>
           <button
             className={`switch${gapless.enabled ? ' on' : ''}`}
@@ -786,7 +786,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>Autoplay / Radio</b>
-            <small>When your queue ends, keep playing similar songs (same artist &amp; vibe) instead of stopping.</small>
+            <small>{t(lang, 'settings.desc.autoplay')}</small>
           </div>
           <button
             className={`switch${settings.autoplay ? ' on' : ''}`}
@@ -808,7 +808,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>Audio advanced</b>
-            <small>Stream quality (YouTube), loudness normalization, and stereo balance.</small>
+            <small>{t(lang, 'settings.desc.advanced')}</small>
           </div>
         </div>
         <div style={{ padding: '4px 4px 14px' }}>
@@ -837,7 +837,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b><Flame size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />Network-adaptive quality</b>
-            <small>Auto-lowers YouTube quality when the connection is slow or the stream stalls, then recovers when it’s fast again. Applies on the next track.</small>
+            <small>{t(lang, 'settings.desc.adaptiveQuality')}</small>
           </div>
           <button
             className={`switch${settings.adaptiveQuality !== false ? ' on' : ''}`}
@@ -870,7 +870,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>Normalize loudness</b>
-            <small>Gentle compression keeps quiet and loud songs at a consistent level.</small>
+            <small>{t(lang, 'settings.desc.normalize')}</small>
           </div>
           <button
             className={`switch${settings.normalize ? ' on' : ''}`}
@@ -913,7 +913,7 @@ export default function SettingsModal() {
         <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
           <div>
             <b>Keyboard shortcuts</b>
-            <small>Click a key, then press a new key to remap. Space/K play-pause, N next, P previous by default.</small>
+            <small>{t(lang, 'settings.desc.keybinds')}</small>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
             {[['playPause', 'Play / Pause'], ['next', 'Next'], ['prev', 'Previous']].map(([id, label]) => {
@@ -937,7 +937,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>Reset app data</b>
-            <small>Wipes likes, playlists, queue and settings from this browser.</small>
+            <small>{t(lang, 'settings.desc.reset')}</small>
           </div>
           <button
             className={`btn danger${resetArm ? ' armed' : ''}`}

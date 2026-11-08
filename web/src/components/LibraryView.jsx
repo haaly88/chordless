@@ -301,7 +301,7 @@ export default function LibraryView() {
       {recent.length === 0 ? (
         <div className="empty-state" style={{ paddingTop: 30 }}>
           <Clock />
-          <h3>Nothing yet</h3>
+          <h3>{t(lang, 'lib.nothing')}</h3>
           <p>Play some songs and they’ll show up here.</p>
         </div>
       ) : (
