@@ -212,6 +212,19 @@ export default function PlayerBar() {
 
   const repeatLabel = repeat === 'one' ? t(lang, 'player.repeat') : repeat === 'all' ? t(lang, 'player.repeat') : t(lang, 'player.repeat');
 
+  // Marquee seam fix: lock the title box to the FIRST copy's width, so the
+  // second copy (which follows it for the seamless loop) can never peek in
+  // when the box happens to be wider than the title ("ghost title").
+  const titleRef = useRef(null);
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    const span = el.querySelector('.pb-marquee > span');
+    if (!span) return;
+    const avail = el.parentElement?.clientWidth || span.offsetWidth;
+    el.style.width = `${Math.min(span.offsetWidth, avail)}px`;
+  }, [track?.title]);
+
   return (
     <>
       {miniLyric && (
@@ -233,7 +246,7 @@ export default function PlayerBar() {
               title="Open Now Playing"
             />
             <div className="pb-meta">
-              <div className="pb-title" onClick={() => toggleNowPlaying(true)} role="button" tabIndex={0}
+              <div className="pb-title" ref={titleRef} onClick={() => toggleNowPlaying(true)} role="button" tabIndex={0}
                    onKeyDown={(e) => e.key === 'Enter' && toggleNowPlaying(true)}>
                 {track.title.length > 18 ? (
                   <span className="pb-marquee" aria-label={track.title}>
