@@ -115,7 +115,7 @@ export default function Sidebar({ open = false, onClose }) {
           <div className="logo-name">Chordless<span>MUSIC</span></div>
         </button>
         <button
-          className="icon-btn"
+          className="icon-btn theme-btn"
           onClick={() => updateSettings({ theme: theme === 'dark' ? 'light' : 'dark' })}
           aria-label="Toggle theme"
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
