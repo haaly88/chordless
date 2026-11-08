@@ -90,6 +90,22 @@ export default function App() {
     apply(theme);
   }, [theme]);
 
+  // ---------- UI scale (whole-layout compensation for display scaling) ----------
+  // CSS `zoom` on #root only, with width/height divided by the same factor
+  // so the zoomed app still fills exactly 100vw × 100dvh. This lets the UI
+  // on Windows "150% display scale" (devicePixelRatio 1.5) match the
+  // physical size seen in browsers that ignore OS scaling.
+  const uiScale = usePlayer((s) => s.settings.uiScale || 1);
+  useEffect(() => {
+    const el = document.getElementById('root');
+    if (!el) return undefined;
+    if (uiScale === 1) { el.style.zoom = ''; el.style.width = ''; el.style.height = ''; return undefined; }
+    el.style.zoom = String(uiScale);
+    el.style.width = `calc(100vw / ${uiScale})`;
+    el.style.height = `calc(100dvh / ${uiScale})`;
+    return () => { el.style.zoom = ''; el.style.width = ''; el.style.height = ''; };
+  }, [uiScale]);
+
   // ---------- text size + reduce motion ----------
   // Text size scales FONTS only via the --fscale CSS variable (set on the
   // root, multiplied into every font-size). Using the browser `zoom`

@@ -341,6 +341,31 @@ export default function SettingsModal() {
         </div>
         <div className="setting-row">
           <div>
+            <b>UI scale</b>
+            <small>Scales the whole interface. Auto-adjusted for high-DPI displays (e.g. Windows 150%).</small>
+          </div>
+          <div className="segmented" role="radiogroup" aria-label="UI scale" style={{ flexWrap: 'wrap' }}>
+            {[
+              [0.6, '60%'],
+              [0.7, '70%'],
+              [0.8, '80%'],
+              [0.9, '90%'],
+              [1, '100%'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                role="radio"
+                aria-checked={Number(settings.uiScale || 1) === value}
+                className={Number(settings.uiScale || 1) === value ? 'active' : ''}
+                onClick={() => updateSettings({ uiScale: value })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="setting-row">
+          <div>
             <b>{t(lang, 'settings.reduceMotion')}</b>
             <small>{t(lang, 'settings.desc.reduceMotion')}</small>
           </div>
