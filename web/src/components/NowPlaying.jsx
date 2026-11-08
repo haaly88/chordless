@@ -39,6 +39,13 @@ export default function NowPlaying() {
   const clearABLoop = usePlayer((s) => s.clearABLoop);
   const chapters = usePlayer((s) => s.chapters || []);
   const lang = usePlayer((s) => s.settings.lang || 'en');
+  const nextTrackNP = usePlayer((s) => {
+    const q = s.queue; const idx = s.index;
+    if (!q?.length || idx < 0) return null;
+    if (idx + 1 < q.length) return q[idx + 1];
+    if (s.repeat === 'all') return q[0];
+    return null;
+  });
   const toggleNowPlaying = usePlayer((s) => s.toggleNowPlaying);
   const lyricsOpen = usePlayer((s) => s.lyricsOpen);
   const toggleLyrics = usePlayer((s) => s.toggleLyrics);
@@ -234,7 +241,7 @@ export default function NowPlaying() {
                 ? <span className="spinner" style={{ borderColor: 'rgba(0,0,0,.25)', borderTopColor: '#000' }} aria-hidden="true" />
                 : isPlaying ? <Pause size={29} /> : <Play size={29} style={{ marginLeft: 3 }} />}
             </button>
-            <button className="icon-btn" onClick={() => next(true)} aria-label="Next track" title="Next">
+            <button className="icon-btn" onClick={() => next(true)} aria-label="Next track" title={nextTrackNP ? `Next: ${nextTrackNP.title}` : 'Next'}>
               <SkipForward size={26} fill="rgba(255,255,255,.9)" strokeWidth={0} />
             </button>
             <button className={`icon-btn np-repeat${repeat !== 'off' ? ' active' : ''}`} onClick={cycleRepeat} aria-pressed={repeat !== 'off'} aria-label={repeatLabel} title={repeatLabel}>

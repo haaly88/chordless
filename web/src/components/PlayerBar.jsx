@@ -168,12 +168,20 @@ export default function PlayerBar() {
   const toggleTogether = usePlayer((s) => s.toggleTogether);
   const together = usePlayer((s) => s.together);
   const queueLength = usePlayer((s) => s.queue.length);
+  const nextTrack = usePlayer((s) => {
+    const q = s.queue; const idx = s.index;
+    if (!q?.length || idx < 0) return null;
+    if (idx + 1 < q.length) return q[idx + 1];
+    if (s.repeat === 'all') return q[0];
+    return null;
+  });
   const queueDurationFormatted = usePlayer((s) => s.queueDurationFormatted());
   const addToQueue = usePlayer((s) => s.addToQueue);
   const openMenu = usePlayer((s) => s.openMenu);
   const miniPlayer = usePlayer((s) => s.miniPlayer);
   const toggleMiniPlayer = usePlayer((s) => s.toggleMiniPlayer);
   const lang = usePlayer((s) => s.settings.lang || 'en');
+  const nextTitle = nextTrack ? `${t(lang, 'player.next')}: ${nextTrack.title || ''}` : t(lang, 'player.next');
   const lyricsOffset = usePlayer((s) => s.lyricsOffset);
   const [miniLyric, setMiniLyric] = useState('');
 
@@ -288,7 +296,7 @@ export default function PlayerBar() {
                 ? <Pause size={19} />
                 : <Play size={19} style={{ marginLeft: 2 }} />}
             </button>
-            <button className="icon-btn" onClick={() => next(true)} aria-label={t(lang, 'player.next')} title={t(lang, 'player.next')}>
+            <button className="icon-btn" onClick={() => next(true)} aria-label={t(lang, 'player.next')} title={nextTitle}>
               <SkipForward size={21} fill="currentColor" strokeWidth={0} />
             </button>
             <button className={`icon-btn${repeat !== 'off' ? ' active' : ''}`} onClick={cycleRepeat} aria-pressed={repeat !== 'off'} aria-label={repeatLabel} title={repeatLabel}>

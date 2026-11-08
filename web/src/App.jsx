@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useCallback, Component, lazy, Suspense } from 'react';
-import { Menu } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, useCallback, Component, lazy, Suspense } from 'react';
+import { Menu, ArrowUp } from 'lucide-react';
 import usePlayer, { audio, audioB, streamSrc, write, setPendingInstallPrompt } from './store.js';
 import HomeView from './components/HomeView.jsx';
 import Sidebar from './components/Sidebar.jsx';
@@ -23,6 +23,7 @@ const KaraokeMode = lazy(() => import('./components/KaraokeMode.jsx'));
 const ListenTogetherModal = lazy(() => import('./components/ListenTogetherModal.jsx'));
 const QueuePanel = lazy(() => import('./components/QueuePanel.jsx'));
 const SettingsModal = lazy(() => import('./components/SettingsModal.jsx'));
+const ShortcutsHelp = lazy(() => import('./components/ShortcutsHelp.jsx'));
 
 class ViewErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -49,8 +50,11 @@ export default function App() {
   const settingsOpen = usePlayer((s) => s.settingsOpen);
   const karaokeOpen = usePlayer((s) => s.karaokeOpen);
   const togetherOpen = usePlayer((s) => s.togetherOpen);
+  const shortcutsOpen = usePlayer((s) => s.shortcutsOpen);
   const closeMenu = usePlayer((s) => s.closeMenu);
   const [navOpen, setNavOpen] = useState(false);
+  const [showBackTop, setShowBackTop] = useState(false);
+  const mainRef = useRef(null);
   const closeNav = useCallback(() => setNavOpen(false), []);
   const theme = usePlayer((s) => s.settings.theme);
   const adaptive = usePlayer((s) => s.settings.adaptive);
@@ -325,6 +329,7 @@ export default function App() {
       }
       if (e.key === 'Escape') {
         const s = usePlayer.getState();
+        if (s.shortcutsOpen) { s.setShortcutsOpen(false); return; }
         if (s.karaokeOpen) { s.toggleKaraoke(false); return; }
         if (s.togetherOpen) { s.toggleTogether(false); return; }
         if (s.menu) { s.closeMenu(); return; }
@@ -335,6 +340,12 @@ export default function App() {
       }
       if (typing) return;
 
+      // "?" (Shift+/) → keyboard shortcuts help
+      if (e.key === '?') {
+        e.preventDefault();
+        usePlayer.getState().setShortcutsOpen(true);
+        return;
+      }
       const s = usePlayer.getState();
       const kb = s.settings?.keybinds || {};
       const isPlayPause = (kb.playPause || [' ', 'k']).includes(e.key) || (kb.playPause || [' ', 'k']).includes(e.key.toLowerCase());
@@ -377,12 +388,13 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // close context menu on scroll of the main pane
+  // close context menu on scroll of the main pane + track back-to-top
   useEffect(() => {
-    const main = document.querySelector('.main');
+    const main = mainRef.current || document.querySelector('.main');
     if (!main) return undefined;
-    const onScroll = () => closeMenu();
+    const onScroll = () => { closeMenu(); setShowBackTop(main.scrollTop > 600); };
     main.addEventListener('scroll', onScroll, { passive: true });
+    setShowBackTop(main.scrollTop > 600);
     return () => main.removeEventListener('scroll', onScroll);
   }, [closeMenu, view]);
 
@@ -414,10 +426,20 @@ export default function App() {
           You’re offline — playing downloads &amp; local library
         </div>
       )}
-      <main className="main" key={view?.name + (view?.id || '')}>
+      <main className="main" key={view?.name + (view?.id || '')} ref={mainRef}>
         <ViewErrorBoundary>
-          <Suspense fallback={<div className="empty-state" aria-busy="true"><p>Loading…</p></div>}>{mainView}</Suspense>
+          <Suspense fallback={<div className="skel-view" aria-busy="true" aria-label="Loading view"><div className="skel skel-hero" /><div className="skel skel-row" /><div className="skel skel-row" /><div className="skel skel-row" /><div className="skel skel-row" /></div>}>{mainView}</Suspense>
         </ViewErrorBoundary>
+        {showBackTop && !nowPlayingOpen && !karaokeOpen && (
+          <button
+            className="back-top"
+            onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+            aria-label="Back to top"
+            title="Back to top"
+          >
+            <ArrowUp size={20} />
+          </button>
+        )}
       </main>
 
       <EmbedEngine />
@@ -432,6 +454,7 @@ export default function App() {
       <Toasts />
       <Suspense fallback={null}>
         {settingsOpen && <SettingsModal />}
+        {shortcutsOpen && <ShortcutsHelp />}
       </Suspense>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Home, Search, Heart, Plus, Music2, Check, X, Library, BarChart3, Settings, Moon, Sun, ListPlus, Folder, ChevronLeft, ChevronRight, Trash2, Download } from 'lucide-react';
+import { Home, Search, Heart, Plus, Music2, Check, X, Library, BarChart3, Settings, Moon, Sun, ListPlus, Folder, ChevronLeft, ChevronRight, Trash2, Download, Keyboard } from 'lucide-react';
 import usePlayer from '../store.js';
 import { t } from '../lib/i18n.js';
 
@@ -40,6 +40,7 @@ export default function Sidebar({ open = false, onClose }) {
   const createFolder = usePlayer((s) => s.createFolder);
   const deleteFolder = usePlayer((s) => s.deleteFolder);
   const setSettingsOpen = usePlayer((s) => s.setSettingsOpen);
+  const setShortcutsOpen = usePlayer((s) => s.setShortcutsOpen);
   const theme = usePlayer((s) => s.settings.theme);
   const updateSettings = usePlayer((s) => s.updateSettings);
   const sidebarCollapsed = usePlayer((s) => Boolean(s.settings.sidebarCollapsed));
@@ -142,6 +143,9 @@ export default function Sidebar({ open = false, onClose }) {
         ))}
         <button className="nav-item" onClick={() => setSettingsOpen(true)}>
           <Settings aria-hidden="true" /><span className="txt">{t(lang, 'nav.settings')}</span>
+        </button>
+        <button className="nav-item" onClick={() => setShortcutsOpen(true)} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">
+          <Keyboard aria-hidden="true" /><span className="txt">Shortcuts</span>
         </button>
       </nav>
 
