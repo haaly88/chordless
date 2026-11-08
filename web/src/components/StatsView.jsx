@@ -137,7 +137,7 @@ export default function StatsView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <h1 className="view-title" style={{ margin: 0 }}>{t(lang, 'stats.title')}<span className="sub">FROM YOUR LISTENING</span></h1>
         <button className="btn" onClick={exportStory} style={{ marginLeft: 'auto' }}>Export story PNG</button>
       </div>
