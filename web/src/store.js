@@ -7,7 +7,7 @@
 import { create } from 'zustand';
 import { apiSponsorBlock, apiChapters, apiAddonSearch, apiTranslate, apiSearch, addonTrackUrl, apiTogetherCreate, apiTogetherJoin, apiTogetherState, apiTogetherPush, apiTogetherChat, apiTogetherPresence, apiTogetherLeave, apiShareCreate, apiShareGet } from './lib/api.js';
 import { upgradeTracks } from './lib/thumb.js';
-import { translateToastTitle } from './lib/i18n.js';
+import { translateToastTitle, translateToastSub } from './lib/i18n.js';
 import { totalDuration, formatTotalDuration } from './lib/format.js';
 import { buildForYouMix } from './lib/ai-mix.js';
 import { read, write, readString, writeString, readMigrated } from './lib/storage.js';
@@ -396,7 +396,8 @@ export const usePlayer = create((set, get) => ({
     // action: { label, onClick } — renders a tappable button inside the toast
     const lang = get().settings?.lang || 'en';
     const localized = translateToastTitle(lang, title);
-    set((s) => ({ toasts: [...s.toasts.slice(-2), { id, title: localized, sub, action }] }));
+    const localizedSub = translateToastSub(lang, sub);
+    set((s) => ({ toasts: [...s.toasts.slice(-2), { id, title: localized, sub: localizedSub, action }] }));
     setTimeout(() => usePlayer.getState().dismissToast(id), action ? 5200 : 4200);
   },
   dismissToast(id) {

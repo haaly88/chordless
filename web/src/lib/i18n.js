@@ -220,6 +220,55 @@ const DICT = {
     'toast.libraryExported': 'Perpustakaan diekspor',
     'toast.libraryImported': 'Perpustakaan diimpor',
     'toast.importFailed': 'Impor gagal',
+    'toast.together': 'Listen Together',
+    'toast.offline': 'Pemutaran terblokir',
+    'toast.slow': 'Jaringan lambat',
+    'toast.couldNotCreate': 'Tidak bisa buat room',
+    'toast.missingCode': 'Kode hilang',
+    'toast.couldNotJoin': 'Tidak bisa gabung room',
+    'toast.closed': 'Room ditutup',
+    'toast.skipped': 'Dilewati',
+    'toast.radioOn': 'Radio aktif',
+    'toast.radioEnded': 'Radio selesai',
+    'toast.loopA': 'Titik loop A',
+    'toast.loopB': 'Titik loop B',
+    'toast.loopSet': 'Titik loop diatur',
+    'toast.addedQueue': 'Ditambahkan ke antrean',
+    'toast.playNext': 'Akan diputar berikutnya',
+    'toast.removedQueue': 'Dihapus dari antrean',
+    'toast.alreadySaved': 'Sudah disimpan',
+    'toast.invalidEQ': 'Preset EQ tidak valid',
+    'toast.copied': 'Playlist disalin',
+    'toast.shareCopied': 'Link bagikan disalin',
+    'toast.shareFailed': 'Bagikan gagal',
+    'toast.sharedImported': 'Playlist bagikan diimpor',
+    'toast.shareLinkFailed': 'Link bagikan gagal',
+    'toast.playlistImported': 'Playlist diimpor',
+    'toast.sorted': 'Playlist diurutkan',
+    'toast.noDupes': 'Tidak ada duplikat',
+    'toast.dupesRemoved': 'Duplikat dihapus',
+    'toast.merged': 'Playlist digabung',
+    'toast.tracksRemoved': 'Lagu dihapus',
+    'toast.removedDownload': 'Dihapus dari unduhan',
+    'toast.clearedDownloads': 'Unduhan dibersihkan',
+    'toast.folderCreated': 'Folder dibuat',
+    'toast.folderDeleted': 'Folder dihapus',
+    'toast.historyCleared': 'Riwayat dibersihkan',
+    'toast.sleep': 'Pengatur tidur',
+    'toast.addonAdded': 'Addon ditambahkan',
+    'toast.addonRemoved': 'Addon dihapus',
+    'toast.playingYouTube': 'Diputar di YouTube',
+    'toast.noSource': 'Tidak ada sumber bisa diputar',
+    'toast.switchedAddon': 'Ganti addon',
+    'toast.notFound': 'Tidak ditemukan di YouTube',
+    'toast.searchFailed': 'Pencarian gagal',
+    'toast.switchEngine': 'Ganti mesin audio',
+    'toast.streamFailed': 'Stream gagal',
+    'toast.welcome': 'Selamat datang kembali',
+    'toast.backend': 'Backend offline',
+    'toast.ytDlp': 'yt-dlp tidak ditemukan',
+    'toast.preview': 'Addon hanya pratinjau',
+    'toast.openShared': 'Membuka playlist bagikan…',
     'search.emptyTitle': 'Cari musik',
     'search.noMatches': 'Tidak ada hasil',
     'search.recentShort': 'TERAKHIR',
@@ -329,7 +378,7 @@ export function t(lang, key) {
   return DICT[lang]?.[key] || DICT.en[key] || key;
 }
 
-/** Map a known English toast title to a localized one (stage 3 bridge). */
+/** Map a known English toast title to a localized one. */
 const TOAST_KEYS = {
   'Playlist created': 'toast.playlistCreated',
   'Playlist deleted': 'toast.playlistDeleted',
@@ -345,11 +394,82 @@ const TOAST_KEYS = {
   'Library exported': 'toast.libraryExported',
   'Library imported': 'toast.libraryImported',
   'Import failed': 'toast.importFailed',
+  'Listen Together': 'toast.together',
+  'Playback blocked': 'toast.offline',
+  'Network slow': 'toast.slow',
+  'Could not create room': 'toast.couldNotCreate',
+  'Missing code': 'toast.missingCode',
+  'Could not join room': 'toast.couldNotJoin',
+  'Room closed': 'toast.closed',
+  'Skipped': 'toast.skipped',
+  'Radio on': 'toast.radioOn',
+  'Radio ended': 'toast.radioEnded',
+  'Loop point A': 'toast.loopA',
+  'Loop point B': 'toast.loopB',
+  'Loop point set': 'toast.loopSet',
+  'Added to queue': 'toast.addedQueue',
+  'Will play next': 'toast.playNext',
+  'Removed from queue': 'toast.removedQueue',
+  'Already saved': 'toast.alreadySaved',
+  'Invalid EQ preset': 'toast.invalidEQ',
+  'Playlist copied': 'toast.copied',
+  'Share link copied': 'toast.shareCopied',
+  'Share failed': 'toast.shareFailed',
+  'Shared playlist imported': 'toast.sharedImported',
+  'Share link failed': 'toast.shareLinkFailed',
+  'Playlist imported': 'toast.playlistImported',
+  'Playlist sorted': 'toast.sorted',
+  'No duplicates found': 'toast.noDupes',
+  'Duplicates removed': 'toast.dupesRemoved',
+  'Playlists merged': 'toast.merged',
+  'Tracks removed': 'toast.tracksRemoved',
+  'Removed from downloads': 'toast.removedDownload',
+  'Downloads cleared': 'toast.clearedDownloads',
+  'Folder created': 'toast.folderCreated',
+  'Folder deleted': 'toast.folderDeleted',
+  'History cleared': 'toast.historyCleared',
+  'Sleep timer': 'toast.sleep',
+  'Addon added': 'toast.addonAdded',
+  'Addon removed': 'toast.addonRemoved',
+  'Playing on YouTube': 'toast.playingYouTube',
+  'No playable source': 'toast.noSource',
+  'Switched addon': 'toast.switchedAddon',
+  'Not found on YouTube': 'toast.notFound',
+  'Search failed': 'toast.searchFailed',
+  'Switching audio engine': 'toast.switchEngine',
+  'Stream failed': 'toast.streamFailed',
+  'Welcome back': 'toast.welcome',
+  'Backend offline': 'toast.backend',
+  'yt-dlp not found': 'toast.ytDlp',
+  'Addon preview only': 'toast.preview',
+  'Opening shared playlist…': 'toast.openShared',
 };
 
 export function translateToastTitle(lang, title) {
   const key = TOAST_KEYS[title];
   return key ? t(lang, key) : title;
+}
+
+/** Translate common dynamic toast subs (counts/names preserved). */
+export function translateToastSub(lang, sub) {
+  if (!sub || lang !== 'id') return sub;
+  return String(sub)
+    .replace(/^Saved (\d+) tracks as /, 'Disimpan $1 lagu sebagai ')
+    .replace(/^(\d+) removed from /, '$1 dihapus dari ')
+    .replace(/^(\d+) new tracks added to /, '$1 lagu baru ditambahkan ke ')
+    .replace(/\( (\d+) tracks\)$/, '($1 lagu)')
+    .replace(/\((\d+) tracks\)$/, '($1 lagu)')
+    .replace(/^Share code (\S+) — others join with the same code\.$/, 'Bagikan kode $1 — orang lain gabung dengan kode yang sama.')
+    .replace(/^Room (\S+) — following the host\.$/, 'Room $1 — mengikuti host.')
+    .replace(/^Continuing with (\d+) similar tracks\.$/, 'Lanjut dengan $1 lagu serupa.')
+    .replace(/^No more similar tracks found\.$/, 'Tidak ada lagu serupa lagi.')
+    .replace(/^Playback will stop after this track\.$/, 'Pemutaran berhenti setelah lagu ini.')
+    .replace(/^Playback will stop in (\d+) minutes\.$/, 'Pemutaran berhenti dalam $1 menit.')
+    .replace(/^Good night\. Playback stopped\.$/, 'Selamat malam. Pemutaran berhenti.')
+    .replace(/^Backup saved as JSON file\.$/, 'Cadangan disimpan sebagai file JSON.')
+    .replace(/^Backup restored successfully\.$/, 'Cadangan berhasil dipulihkan.')
+    .replace(/^All offline audio removed\.$/, 'Semua audio offline dihapus.')
+    .replace(/^Added to playlist$/, 'Ditambahkan ke playlist');
 }
 
 export const SUPPORTED_LANGS = [
