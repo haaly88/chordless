@@ -24,8 +24,23 @@ Plays music straight from YouTube Music (search, home feed, album/track pages), 
 - **Skip sponsor segments** via [SponsorBlock](https://github.com/ajayyy/SponsorBlock) with Undo; categories configurable in Settings
 - **Library**: Liked Songs, custom playlists (create / rename / delete / reorder covers), playlist folders, share/import via clipboard JSON, export/import library JSON, full history, "Recently played" shelf
 - **Queue**: drag-to-reorder, play-next / add-to-queue, clear, Save as playlist, survives restarts (restored paused), queue filter/search
-- **Playback**: shuffle (smart, avoids same-artist back-to-back), repeat off/all/one, autoplay/radio (appends similar tracks at queue end), sleep timer, volume + mute, keyboard shortcuts, Media Session API
-- **Interactions**: right-click context menu on every track, toasts, voice search, search history (20 max, corruption-safe), PWA + service worker
+- **Playback**: shuffle (smart, avoids same-artist back-to-back), repeat off/all/one, autoplay/radio (appends similar tracks at queue end), sleep timer, volume + mute, **AB loop** (A/B points), **skip silence**, per-track **speed memory**, customizable keyboard shortcuts, Media Session API
+- **Chapters** — YouTube chapter markers on the SeekBar + click-to-seek list in Now Playing; "View chapters" in the track context menu
+- **Download for Offline** — IndexedDB blobs per track (context menu, Now Playing, Library shelf with size/clear), plays offline even in embed mode
+- **Import from Link** — YouTube Music / Deezer / Spotify playlist-track URLs → playable playlist (`/api/import`)
+- **Share Playlist Link** — `/share/{id}` URL (7-day expiry) that imports on open + clipboard JSON
+- **Playlist Tools** — sort (A-Z/Z-A/artist/duration), dedupe, merge, bulk select-remove, **Download all**, genre filter; **duplicate finder** across playlists in Library
+- **Auto collage cover** — playlist cards auto-build a 4-cover mosaic; custom cover optional
+- **Stats** — weekly totals + delta, streak, peak hour, uniques, 24h chart, **Diagnostics** (LCP/CLS/INP, heap, connection), **Export story PNG**
+- **Saved Searches** — save query + filter, restore in one tap; **auto-complete** from saved/history/trending
+- **PWA** — install prompt (Sidebar "Install app"), offline banner, pull-to-refresh on Home
+- **Listen Together** — host-authoritative sync + **room chat & emoji reactions** + per-member presence (now playing)
+- **Custom Home shelves** — show/hide + reorder Home sections (Settings → Home sections); auto collage cover in Library
+- **Appearance** — dark/light/system, **text size** (Compact/Default/Large), **reduce motion**, adaptive accent from artwork, **language toggle EN/ID** (core UI + toasts + section labels)
+- **Audio advanced** — EQ presets **shareable via clipboard** (Copy/Paste EQ), spatial, normalize, balance, crossfade/gapless, SponsorBlock, adaptive quality, chapters, skip silence
+- **Library**: Liked Songs, custom playlists, folders, share/import via clipboard JSON **+ share link**, import from external link, **duplicate finder**, export/import library JSON, full history, "Recently played" shelf, **Downloaded** shelf
+- **Queue**: drag-to-reorder, play-next / add-to-queue, clear, Save as playlist, survives restarts, queue filter/search
+- **Interactions**: right-click context menu, toasts (localized), voice search, search history + saved searches, PWA + service worker, mini visualizer in PlayerBar, title marquee, 3D cover tilt, lyrics cache + `.lrc` export
 - **Mobile layout**: sidebar collapses to an off-canvas drawer with hamburger; mini player keeps controls usable
 
 ## Requirements

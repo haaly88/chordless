@@ -282,7 +282,7 @@ export default function SettingsModal() {
         {/* language */}
         <div className="setting-row">
           <div>
-            <b>Language</b>
+            <b>{t(lang, 'settings.lang')}</b>
             <small>{t(lang, 'settings.desc.lang')}</small>
           </div>
           <div className="segmented" role="radiogroup" aria-label="Language" style={{ flexWrap: 'wrap' }}>
@@ -306,7 +306,7 @@ export default function SettingsModal() {
         {/* text size + motion */}
         <div className="setting-row">
           <div>
-            <b>Text size</b>
+            <b>{t(lang, 'settings.textSize')}</b>
             <small>{t(lang, 'settings.desc.textSize')}</small>
           </div>
           <div className="segmented" role="radiogroup" aria-label="Text size" style={{ flexWrap: 'wrap' }}>
@@ -329,7 +329,7 @@ export default function SettingsModal() {
         </div>
         <div className="setting-row">
           <div>
-            <b>Reduce motion</b>
+            <b>{t(lang, 'settings.reduceMotion')}</b>
             <small>{t(lang, 'settings.desc.reduceMotion')}</small>
           </div>
           <button
@@ -491,7 +491,7 @@ export default function SettingsModal() {
         {/* sponsorblock */}
         <div className="setting-row">
           <div>
-            <b>Skip sponsor segments</b>
+            <b>{t(lang, 'settings.sb')}</b>
             <small>{t(lang, 'settings.desc.sb')}</small>
           </div>
           <button
@@ -539,7 +539,7 @@ export default function SettingsModal() {
         {/* youtube client */}
         <div className="setting-row">
           <div>
-            <b>Stream source</b>
+            <b>{t(lang, 'settings.streamClient')}</b>
             <small>{t(lang, 'settings.desc.streamClient')}</small>
           </div>
           <div className="segmented" role="radiogroup" aria-label="Stream source" style={{ flexWrap: 'wrap' }}>
@@ -719,7 +719,7 @@ export default function SettingsModal() {
         {/* gapless + preload */}
         <div className="setting-row">
           <div>
-            <b>Gapless playback</b>
+            <b>{t(lang, 'settings.gapless')}</b>
             <small>{t(lang, 'settings.desc.gapless')}</small>
           </div>
           <button
@@ -897,7 +897,7 @@ export default function SettingsModal() {
         </div>
         <div className="setting-row">
           <div>
-            <b>Skip silence</b>
+            <b>{t(lang, 'settings.skipSilence')}</b>
             <small>{t(lang, 'settings.desc.skipSilence')}</small>
           </div>
           <button
@@ -912,7 +912,7 @@ export default function SettingsModal() {
         {/* keyboard remap */}
         <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
           <div>
-            <b>Keyboard shortcuts</b>
+            <b>{t(lang, 'settings.keybinds')}</b>
             <small>{t(lang, 'settings.desc.keybinds')}</small>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
@@ -936,7 +936,7 @@ export default function SettingsModal() {
         {/* reset */}
         <div className="setting-row">
           <div>
-            <b>Reset app data</b>
+            <b>{t(lang, 'settings.reset')}</b>
             <small>{t(lang, 'settings.desc.reset')}</small>
           </div>
           <button
