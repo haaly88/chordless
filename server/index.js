@@ -32,6 +32,10 @@ app.use('/api', (_req, res, next) => {
 
 // Lightweight rate limiter for expensive endpoints (yt-dlp spawns).
 const rateWindows = new Map(); // ip -> { count, resetAt }
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, w] of rateWindows) if (now > w.resetAt) rateWindows.delete(ip);
+}, 60 * 1000).unref?.();
 function rateLimit(max) {
   return (req, res, next) => {
     const ip = req.ip || 'local';
@@ -51,6 +55,10 @@ function rateLimit(max) {
 }
 app.use(['/api/import', '/api/chapters'], rateLimit(10));
 app.use('/api/share', rateLimit(30));
+// Expensive spawns / abuse-prone endpoints:
+app.use(['/api/stream', '/api/addon/track'], rateLimit(30));
+app.use(['/api/together/create', '/api/together/join'], rateLimit(10));
+app.use('/api/health', rateLimit(30));
 
 // ---------- API ----------
 

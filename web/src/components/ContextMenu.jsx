@@ -53,7 +53,7 @@ export default function ContextMenu() {
   useEffect(() => {
     if (!menu) return undefined;
     const onPointerDown = (e) => { if (!ref.current?.contains(e.target)) closeMenu(); };
-    const onKey = (e) => { if (e.key === 'Escape') closeMenu(); };
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); closeMenu(); } };
     const onWheel = (e) => { if (!ref.current?.contains(e.target)) closeMenu(); };
     const onResize = () => closeMenu();
     document.addEventListener('pointerdown', onPointerDown, true);

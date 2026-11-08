@@ -63,8 +63,9 @@ function VolumeControl() {
         onKeyDown={(e) => {
           // Adjust the STORED level (not the muted display value) so arrow
           // keys never clobber volume to 0 / jump to 5% while muted.
-          if (e.key === 'ArrowLeft') { e.preventDefault(); setVolume(Math.max(0, volume - 0.05)); }
-          if (e.key === 'ArrowRight') { e.preventDefault(); setVolume(Math.min(1, volume + 0.05)); }
+          // stopPropagation stops the global arrows double-applying.
+          if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); setVolume(Math.max(0, volume - 0.05)); }
+          if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); setVolume(Math.min(1, volume + 0.05)); }
         }}
       >
         <div className="vol-fill" style={{ width: `${effective * 100}%` }} />
@@ -89,7 +90,7 @@ function SleepMenu() {
   useEffect(() => {
     if (!open) return undefined;
     const onDoc = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
-    const onEsc = (e) => e.key === 'Escape' && setOpen(false);
+    const onEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
     document.addEventListener('pointerdown', onDoc);
     document.addEventListener('keydown', onEsc);
     return () => { document.removeEventListener('pointerdown', onDoc); document.removeEventListener('keydown', onEsc); };

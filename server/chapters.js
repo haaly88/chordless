@@ -5,14 +5,13 @@
 import { spawn } from 'node:child_process';
 import { createCache } from './cache.js';
 import { isValidVideoId } from './stream.js';
+import { withYtDlpSlot } from './pool.js';
 
 const cache = createCache({ max: 200, ttlMs: 6 * 60 * 60 * 1000 });
+const inflight = new Map(); // id -> Promise (dedup concurrent spawns)
 
-export async function getChapters(id) {
-  if (!isValidVideoId(id)) return [];
-  const cached = cache.get(id);
-  if (cached) return cached;
-  const chapters = await new Promise((resolve, reject) => {
+function fetchChaptersOnce(id) {
+  return withYtDlpSlot(() => new Promise((resolve, reject) => {
     const args = [
       '-m', 'yt_dlp',
       '--js-runtimes', 'node',
@@ -52,9 +51,18 @@ export async function getChapters(id) {
         resolve([]);
       }
     });
-  }).catch(() => {
+  }));
+}
+
+export async function getChapters(id) {
+  if (!isValidVideoId(id)) return [];
+  const cached = cache.get(id);
+  if (cached) return cached;
+  if (inflight.has(id)) return inflight.get(id);
+  const p = fetchChaptersOnce(id).catch(() => {
     cache.set(id, []);
     return [];
-  });
-  return chapters;
+  }).finally(() => inflight.delete(id));
+  inflight.set(id, p);
+  return p;
 }

@@ -56,7 +56,7 @@ export default function KaraokeMode() {
   useEffect(() => {
     if (!langOpen) return undefined;
     const onDoc = (e) => { if (!langRef.current?.contains(e.target)) setLangOpen(false); };
-    const onEsc = (e) => { if (e.key === 'Escape') setLangOpen(false); };
+    const onEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setLangOpen(false); } };
     document.addEventListener('pointerdown', onDoc);
     document.addEventListener('keydown', onEsc);
     return () => { document.removeEventListener('pointerdown', onDoc); document.removeEventListener('keydown', onEsc); };

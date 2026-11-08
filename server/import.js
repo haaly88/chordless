@@ -10,6 +10,7 @@
  * Limit: first 50 entries; resolution is best-effort per entry.
  */
 import { spawn } from 'node:child_process';
+import { withYtDlpSlot } from './pool.js';
 import { getPlaylist, searchMusic, normalizeLocale } from './innertube.js';
 
 const MAX_TRACKS = 50;
@@ -149,7 +150,7 @@ async function importSpotifyTrack(id, locale) {
 
 /** Dump a Spotify playlist via yt-dlp flat playlist → resolve each on YouTube. */
 function ytDlpFlatPlaylist(url) {
-  return new Promise((resolve, reject) => {
+  return withYtDlpSlot(() => new Promise((resolve, reject) => {
     const args = [
       '-m', 'yt_dlp', '--no-warnings', '--flat-playlist',
       '--print', '%(title)s ||| %(uploader)s',
@@ -170,7 +171,7 @@ function ytDlpFlatPlaylist(url) {
       if (code !== 0) return reject(new Error(err.slice(-300) || 'yt-dlp failed for this Spotify link.'));
       resolve(out);
     });
-  });
+  }));
 }
 
 async function importSpotifyPlaylist(id, locale) {

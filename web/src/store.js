@@ -46,6 +46,8 @@ export function inactiveAudio() { return activeSlot === 'A' ? audioB : audio; }
 export function getActiveSlot() { return activeSlot; }
 // Module-level gapless state (not reactive — read via store state mirrors).
 let preloaded = null; // { forIndex, trackId, url, slot }
+let preloadBusy = { forIndex: null }; // guards async offline-resolve spawns
+let translateToken = 0; // guards lyric-translation races per track
 
 let audioCtx = null;
 let analyserNode = null;
@@ -311,7 +313,10 @@ const persistedQueue = persistedQueueRaw
 export const usePlayer = create((set, get) => ({
   // ---- playback state ----
   queue: persistedQueue?.queue?.length ? persistedQueue.queue : [],
-  index: Number.isInteger(persistedQueue?.index) ? persistedQueue.index : -1,
+  // Clamp a stale/corrupt persisted index into range.
+  index: (persistedQueue?.queue?.length && Number.isInteger(persistedQueue?.index))
+    ? Math.max(0, Math.min(persistedQueue.index, persistedQueue.queue.length - 1))
+    : -1,
   restorePosition: persistedQueue?.position || 0,
   hasRestoredQueue: Boolean(persistedQueue?.queue?.length),
   isPlaying: false,
@@ -425,6 +430,17 @@ export const usePlayer = create((set, get) => ({
   requestSearchFocus() { set((s) => ({ searchFocusTick: s.searchFocusTick + 1 })); },
   setSearchQuery(searchQuery) { set({ searchQuery }); },
 
+  // Guests are driven by the host — used by every local playback/queue
+  // request so guests can never diverge queue/index/audio.
+  _guestBlocked() {
+    const tg = get().together;
+    if (tg?.code && !tg.isHost && !get().togetherApplyingRemote) {
+      get().toast('Listen Together', 'You are a guest — playback is controlled by the host.');
+      return true;
+    }
+    return false;
+  },
+
   // ---------- core playback ----------
   currentTrack() {
     const { queue, index } = get();
@@ -432,6 +448,7 @@ export const usePlayer = create((set, get) => ({
   },
 
   playTrack(track, contextList) {
+    if (get()._guestBlocked()) return;
     const list = Array.isArray(contextList) && contextList.length ? contextList : [track];
     let index = list.findIndex((t) => sameTrack(t, track));
     if (index < 0) index = 0;
@@ -440,6 +457,7 @@ export const usePlayer = create((set, get) => ({
   },
 
   playTracks(list, startIndex = 0, { shuffle = false } = {}) {
+    if (get()._guestBlocked()) return;
     if (!list?.length) return;
     if (shuffle) {
       const first = list[startIndex] || list[0];
@@ -453,6 +471,7 @@ export const usePlayer = create((set, get) => ({
   },
 
   playIndex(i) {
+    if (get()._guestBlocked()) return;
     const { queue } = get();
     if (i < 0 || i >= queue.length) return;
     set({ index: i });
@@ -471,6 +490,14 @@ export const usePlayer = create((set, get) => ({
     return { url, useAddon, orphan, addonManifest };
   },
 
+  // Silence BOTH engines — stream <audio> and the embed iframe. Without
+  // this, switching engines mid-playback leaves the old engine audible.
+  _stopBothEngines() {
+    try { activeAudio().pause(); } catch { /* noop */ }
+    try { inactiveAudio().pause(); } catch { /* noop */ }
+    try { embedBridge.player?.pauseVideo?.(); } catch { /* noop */ }
+  },
+
   async _loadAndPlay(index, list, { fromGapless = false } = {}) {
     // Guests are driven by the host — ignore local playback requests.
     if (get().together?.code && !get().together?.isHost && !get().togetherApplyingRemote) {
@@ -487,8 +514,8 @@ export const usePlayer = create((set, get) => ({
     clearFadeTimer();
     preloaded = null;
     set({ preloadedIndex: -1, preloadedTrackId: null, gaplessStatus: get().settings?.gapless?.enabled && !isEmbedEngine(get()) ? 'idle' : 'off' });
+    get()._stopBothEngines();
     const el = activeAudio();
-    el.pause();
     el.removeAttribute('src');
     el.currentTime = 0;
 
@@ -792,32 +819,66 @@ export const usePlayer = create((set, get) => ({
     if (remaining > cfg.preloadSeconds) return;
     const track = get().queue[nextIndex];
     if (!track) return;
-    const { url, orphan } = get()._resolveTrackUrl(track);
-    if (orphan || !url) return;
-    const nxt = inactiveAudio();
-    nxt.src = url;
-    nxt.preload = 'auto';
-    nxt.playbackRate = get().playbackRate || 1;
-    nxt.volume = 0; // preloads silently; volume restored on promote
-    nxt.load();
-    preloaded = { forIndex: nextIndex, trackId: track.id, url, slot: getActiveSlot() === 'A' ? 'B' : 'A' };
-    set({ preloadedIndex: nextIndex, preloadedTrackId: track.id, gaplessStatus: 'preloading' });
+    // Offline downloads preload their blob URL — never the network URL
+    // (which would stall or fail offline). getOfflineUrl is async; the
+    // `preloadBusy` flag prevents duplicate spawns from the 250ms timer.
+    if (preloadBusy.forIndex === nextIndex) return;
+    preloadBusy = { forIndex: nextIndex };
+    (async () => {
+      try {
+        let url = null;
+        let orphan = false;
+        try {
+          const offlineUrl = await getOfflineUrl(track.id);
+          if (offlineUrl) url = offlineUrl;
+        } catch { /* IndexedDB unavailable */ }
+        if (!url) {
+          const resolved = get()._resolveTrackUrl(track);
+          url = resolved.url;
+          orphan = resolved.orphan;
+        }
+        if (orphan || !url) return;
+        // The world may have moved on while we awaited — revalidate.
+        if (get()._nextIndexForGapless() !== nextIndex) return;
+        if (preloaded && preloaded.forIndex === nextIndex) return;
+        const nxt = inactiveAudio();
+        nxt.src = url;
+        nxt.preload = 'auto';
+        nxt.playbackRate = get().playbackRate || 1;
+        nxt.volume = 0; // preloads silently; volume restored on promote
+        nxt.load();
+        preloaded = { forIndex: nextIndex, trackId: track.id, url, slot: getActiveSlot() === 'A' ? 'B' : 'A' };
+        set({ preloadedIndex: nextIndex, preloadedTrackId: track.id, gaplessStatus: 'preloading' });
+      } finally {
+        preloadBusy = { forIndex: null };
+      }
+    })().catch(() => { /* best-effort preload */ });
   },
   _promotePreload() {
     if (!preloaded) return false;
     const { forIndex, trackId } = preloaded;
     const { queue, index } = get();
     if (forIndex !== index + 1) return false;
+    // Repeat-one wins over a pending preload — never advance past it.
+    if (get().repeat === 'one') return false;
     const track = queue[forIndex];
     if (!track || track.id !== trackId) return false;
     const nextEl = inactiveAudio();
+    if (!nextEl.src) return false; // async preload still in flight
     // Swap which element is active, then play the preloaded bytes.
     // activeSlot is module-level; promote then re-read activeAudio().
     // eslint-disable-next-line no-assign-after-explicit-operations
     activeSlot = preloaded.slot;
     const el = activeAudio();
     el.volume = get()._targetVolume();
-    el.playbackRate = get().playbackRate || 1;
+    // Restore per-track speed memory (same rule as _loadAndPlay).
+    let rate = get().playbackRate || 1;
+    try {
+      const map = readMigrated('cl:rateByTrack', {}) || {};
+      if (Number.isFinite(map[track.id])) rate = Math.max(0.25, Math.min(4, map[track.id]));
+    } catch { /* ignore */ }
+    el.playbackRate = rate;
+    if (rate !== (get().playbackRate || 1)) set({ playbackRate: rate });
     const p = el.play();
     if (p?.catch) p.catch(() => { /* will surface via handleError */ });
     preloaded = null;
@@ -1054,6 +1115,8 @@ export const usePlayer = create((set, get) => ({
         return;
       }
       if (!current) return;
+      // Stream engine must not keep playing alongside the embed.
+      try { activeAudio().pause(); inactiveAudio().pause(); } catch { /* noop */ }
       if (!embedBridge.ready || embedBridge.loadedId !== current.id) {
         s._loadAndPlay(s.index, s.queue);
         set({ isPlaying: true });
@@ -1064,8 +1127,10 @@ export const usePlayer = create((set, get) => ({
       get()._togetherPushState?.();
       return;
     }
-    if (isPlaying) { clearFadeTimer(); activeAudio().pause(); set({ isPlaying: false }); }
+    if (isPlaying) { clearFadeTimer(); get()._stopBothEngines(); set({ isPlaying: false }); }
     else {
+      // Embed engine must not keep playing alongside the stream.
+      try { embedBridge.player?.pauseVideo?.(); } catch { /* noop */ }
       getAnalyser();
       if (audioCtx?.state === 'suspended') audioCtx.resume().catch(() => {});
       if (!activeAudio().src) get()._loadAndPlay(index, queue);
@@ -1170,6 +1235,9 @@ export const usePlayer = create((set, get) => ({
       return;
     }
     if (repeat === 'one' && !manual) {
+      // Repeat-one restarts the whole track — kill any A/B loop first,
+      // or the tak would loop just the A–B segment forever.
+      if (get().abLoop?.a != null || get().abLoop?.b != null) set({ abLoop: { a: null, b: null } });
       if (isEmbedEngine(get())) {
         try { embedBridge.player?.seekTo(0, true); embedBridge.player?.playVideo(); } catch { /* noop */ }
         set({ currentTime: 0, isPlaying: true });
@@ -1201,6 +1269,7 @@ export const usePlayer = create((set, get) => ({
   },
 
   prev() {
+    if (get()._guestBlocked()) return;
     const { index, currentTime } = get();
     if (currentTime > 3) { get().seekTo(0); return; }
     if (index > 0) get().playIndex(index - 1);
@@ -1288,6 +1357,7 @@ export const usePlayer = create((set, get) => ({
   },
 
   toggleShuffle() {
+    if (get()._guestBlocked()) return;
     const { shuffle, queue, index, shuffleBackup } = get();
     if (!queue.length) { set({ shuffle: !shuffle }); return; }
     const current = queue[index];
@@ -1302,6 +1372,7 @@ export const usePlayer = create((set, get) => ({
   },
 
   cycleRepeat() {
+    if (get()._guestBlocked()) return;
     const order = ['off', 'all', 'one'];
     const nextRepeat = order[(order.indexOf(get().repeat) + 1) % order.length];
     set({ repeat: nextRepeat });
@@ -1331,7 +1402,12 @@ export const usePlayer = create((set, get) => ({
       get().toast('Listen Together', 'You are a guest — queue is controlled by the host.');
       return;
     }
-    set((s) => ({ queue: [...s.queue, track] }));
+    set((s) => ({
+      queue: [...s.queue, track],
+      // Keep the un-shuffled backup in sync so disabling shuffle later
+      // doesn't lose mutations made while shuffled.
+      shuffleBackup: s.shuffle && s.shuffleBackup ? [...s.shuffleBackup, track] : s.shuffleBackup,
+    }));
     usePlayer.getState().toast('Added to queue', track.title);
     get()._persistQueue();
     get()._togetherPushState?.();
@@ -1347,7 +1423,14 @@ export const usePlayer = create((set, get) => ({
       const at = s.index + 1;
       const queue = s.queue.slice();
       queue.splice(at, 0, track);
-      return { queue };
+      let shuffleBackup = s.shuffleBackup;
+      if (s.shuffle && shuffleBackup) {
+        // Mirror into the backup right after the current track there.
+        const curAt = shuffleBackup.findIndex((t) => sameTrack(t, queue[s.index]));
+        shuffleBackup = shuffleBackup.slice();
+        shuffleBackup.splice(curAt >= 0 ? curAt + 1 : shuffleBackup.length, 0, track);
+      }
+      return { queue, shuffleBackup };
     });
     usePlayer.getState().toast('Will play next', track.title);
     get()._persistQueue();
@@ -1356,10 +1439,14 @@ export const usePlayer = create((set, get) => ({
   },
 
   removeFromQueue(i) {
+    if (get()._guestBlocked()) return;
     const { queue, index } = get();
     if (i < 0 || i >= queue.length) return;
     const removed = queue[i];
     const nextQueue = queue.filter((_, idx) => idx !== i);
+    // Mirror the removal into the shuffle backup as well.
+    const backup = get().shuffleBackup;
+    const nextBackup = backup ? backup.filter((t) => !sameTrack(t, removed)) : null;
     let nextIndex = index;
     if (i < index) nextIndex = index - 1;
     else if (i === index) {
@@ -1373,16 +1460,17 @@ export const usePlayer = create((set, get) => ({
         return;
       }
       nextIndex = Math.min(i, nextQueue.length - 1);
-      set({ queue: nextQueue, index: nextIndex });
+      set({ queue: nextQueue, index: nextIndex, shuffleBackup: nextBackup });
       get()._loadAndPlay(nextIndex, nextQueue);
       return;
     }
-    set({ queue: nextQueue, index: nextIndex });
+    set({ queue: nextQueue, index: nextIndex, shuffleBackup: nextBackup });
     get().toast('Removed from queue', removed?.title);
     get()._persistQueue();
   },
 
   reorderQueue(from, to) {
+    if (get()._guestBlocked()) return;
     const { queue, index } = get();
     if (from === to || from < 0 || from >= queue.length || to < 0 || to >= queue.length) return;
     const nextQueue = queue.slice();
@@ -1397,6 +1485,7 @@ export const usePlayer = create((set, get) => ({
   },
 
   clearQueue() {
+    if (get()._guestBlocked()) return;
     const prev = get().queue;
     const prevIndex = get().index;
     clearFadeTimer();
@@ -1408,8 +1497,11 @@ export const usePlayer = create((set, get) => ({
       get().toast('Queue cleared', `${prev.length} tracks`, {
         label: 'Undo',
         onClick: () => {
+          // Restore AND reload the track at the old index — otherwise the
+          // element/src are stale and Play resumes the wrong thing.
           set({ queue: prev, index: prevIndex });
           get()._persistQueue();
+          if (prevIndex >= 0 && prevIndex < prev.length) get()._loadAndPlay(prevIndex, prev);
         },
       });
     }
@@ -1433,7 +1525,7 @@ export const usePlayer = create((set, get) => ({
     return totalDuration(get().queue);
   },
   queueDurationFormatted() {
-    return formatTotalDuration(get().queue);
+    return formatTotalDuration(get().queue, get().settings.lang || 'en');
   },
 
   // ---------- search history ----------
@@ -1593,20 +1685,28 @@ export const usePlayer = create((set, get) => ({
 
   // ---------- lyrics translation ----------
   toggleLyricsTranslation() {
+    translateToken += 1; // invalidate any in-flight translation
     set((s) => ({ lyricsTranslation: !s.lyricsTranslation }));
     if (!get().lyricsTranslation) set({ translatedLyrics: null });
   },
   setLyricsTargetLang(lang) {
+    translateToken += 1;
     set({ lyricsTargetLang: lang, translatedLyrics: null });
   },
   async translateLyrics(text) {
     const { lyricsTargetLang } = get();
     if (!text || !lyricsTargetLang) return null;
+    // Token guard: a late response for a previous track must not
+    // repopulate ghost translation text on the current one.
+    const token = ++translateToken;
+    const trackId = get().currentTrack()?.id || null;
     try {
       const result = await apiTranslate(text, lyricsTargetLang);
+      if (token !== translateToken || (get().currentTrack()?.id || null) !== trackId) return null;
       set({ translatedLyrics: result });
       return result.translated;
     } catch {
+      if (token !== translateToken || (get().currentTrack()?.id || null) !== trackId) return null;
       set({ translatedLyrics: { translated: text, target: lyricsTargetLang } });
       return text;
     }
@@ -1654,7 +1754,10 @@ export const usePlayer = create((set, get) => ({
         if (Array.isArray(payload.history)) updates.history = upgradePersisted(payload.history);
         if (payload.queue && Array.isArray(payload.queue.queue)) {
           updates.queue = payload.queue.queue.map((t) => ({ ...t, duration: t.duration || 0 }));
-          updates.index = Number.isInteger(payload.queue.index) ? payload.queue.index : -1;
+          // Clamp: a hand-edited backup with index 999 must not strand the
+          // player in an out-of-range state.
+          const rawIndex = Number.isInteger(payload.queue.index) ? payload.queue.index : -1;
+          updates.index = updates.queue.length === 0 ? -1 : Math.max(0, Math.min(rawIndex, updates.queue.length - 1));
           updates.restorePosition = payload.queue.position || 0;
           updates.hasRestoredQueue = Boolean(payload.queue.queue.length);
         }
@@ -1913,10 +2016,11 @@ export const usePlayer = create((set, get) => ({
     get().toast('Sleep timer', `Playback will stop in ${value} minutes.`);
   },
   sleepTimerTick() {
-    const { sleepTimer, isPlaying } = get();
+    const { sleepTimer } = get();
     if (typeof sleepTimer === 'number' && Date.now() >= sleepTimer) {
       clearFadeTimer();
-      activeAudio().pause();
+      // Stop BOTH engines (embed kept playing otherwise).
+      get()._stopBothEngines();
       activeAudio().volume = get()._targetVolume();
       set({ isPlaying: false, sleepTimer: null });
       get().toast('Sleep timer', 'Good night. Playback stopped.');
@@ -2106,7 +2210,7 @@ export const usePlayer = create((set, get) => ({
     if (e?.target && e.target !== activeAudio()) return;
     const { sleepTimer } = get();
     if (sleepTimer === 'track') {
-      activeAudio().pause();
+      get()._stopBothEngines();
       clearFadeTimer();
       activeAudio().volume = get()._targetVolume();
       set({ isPlaying: false, sleepTimer: null, currentTime: 0 });

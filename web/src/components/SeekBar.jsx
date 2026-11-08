@@ -49,8 +49,10 @@ export default function SeekBar({ value, duration, onSeek, ariaLabel = 'Seek', m
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onKeyDown={(e) => {
-        if (e.key === 'ArrowLeft') { e.preventDefault(); onSeek(Math.max(0, value - 5), false); }
-        if (e.key === 'ArrowRight') { e.preventDefault(); onSeek(Math.min(duration, value + 5), false); }
+        // stopPropagation: the window-level shortcuts also handle arrows —
+        // without this a single press would seek twice.
+        if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); onSeek(Math.max(0, value - 5), false); }
+        if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); onSeek(Math.min(duration, value + 5), false); }
       }}
     >
       <div className="seekbar-track">

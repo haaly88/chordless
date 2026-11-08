@@ -174,7 +174,7 @@ export default function Sidebar({ open = false, onClose }) {
             onChange={(e) => setFolderName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') submitFolder();
-              if (e.key === 'Escape') { setFolderCreating(false); setFolderName(''); }
+              if (e.key === 'Escape') { e.stopPropagation(); setFolderCreating(false); setFolderName(''); }
             }}
             aria-label="New folder name"
             autoFocus
@@ -197,7 +197,7 @@ export default function Sidebar({ open = false, onClose }) {
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') submitCreate();
-              if (e.key === 'Escape') { setCreating(false); setName(''); }
+              if (e.key === 'Escape') { e.stopPropagation(); setCreating(false); setName(''); }
             }}
             aria-label="New playlist name"
           />

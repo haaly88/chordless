@@ -33,11 +33,15 @@ export function totalDuration(tracks) {
   return (tracks || []).reduce((acc, t) => acc + (t.duration || 0), 0);
 }
 
-export function formatTotalDuration(tracks) {
+export function formatTotalDuration(tracks, lang = 'en') {
   const secs = totalDuration(tracks);
   if (!secs) return '';
   const h = Math.floor(secs / 3600);
   const m = Math.round((secs % 3600) / 60);
+  if (lang === 'id') {
+    if (h > 0) return `${h} jam ${m} mnt`;
+    return `${m} mnt`;
+  }
   if (h > 0) return `${h} hr ${m} min`;
   return `${m} min`;
 }

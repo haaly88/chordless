@@ -144,7 +144,7 @@ export default function CollectionView({ playlistId }) {
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') commitRename();
-                  if (e.key === 'Escape') { setName(playlist?.name || ''); setEditing(false); }
+                  if (e.key === 'Escape') { e.stopPropagation(); setName(playlist?.name || ''); setEditing(false); }
                 }}
                 aria-label="Playlist name"
               />
@@ -198,7 +198,7 @@ export default function CollectionView({ playlistId }) {
                     onChange={(e) => setCoverUrl(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') { commitCover(); }
-                      if (e.key === 'Escape') { setCoverEditing(false); }
+                      if (e.key === 'Escape') { e.stopPropagation(); setCoverEditing(false); }
                     }}
                     aria-label="Playlist cover URL"
                   />

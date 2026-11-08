@@ -6,6 +6,7 @@
 
 const rooms = new Map(); // code -> room
 const TTL_MS = 2 * 60 * 60 * 1000;
+const MAX_ROOMS = 200; // bound memory; oldest evicted first (Map keeps insertion order)
 
 function genCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -62,6 +63,7 @@ export function createRoom(name) {
     lastSeen: now(),
   };
   rooms.set(code, room);
+  while (rooms.size > MAX_ROOMS) rooms.delete(rooms.keys().next().value);
   return { code, memberId, host: true, room: publicRoom(room) };
 }
 
@@ -110,6 +112,17 @@ export function pushState(code, memberId, patch) {
     }
   }
   if (JSON.stringify(sanitized).length > 100 * 1024) return { error: 'State too large (max 100KB).' };
+  // Clamp numeric state — a malformed host must never drive guest seeks
+  // to NaN/negative/huge values.
+  if ('index' in sanitized) {
+    sanitized.index = Number.isInteger(sanitized.index)
+      ? Math.max(0, Math.min(sanitized.index, Math.max(0, (sanitized.queue?.length ?? r.state.queue?.length ?? 1) - 1)))
+      : -1;
+  }
+  if ('currentTime' in sanitized) {
+    sanitized.currentTime = Math.max(0, Math.min(24 * 3600, Number(sanitized.currentTime) || 0));
+  }
+  if ('isPlaying' in sanitized) sanitized.isPlaying = Boolean(sanitized.isPlaying);
   for (const k of allowed) {
     if (k in sanitized) r.state[k] = sanitized[k];
   }

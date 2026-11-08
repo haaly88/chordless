@@ -11,6 +11,7 @@ import { t } from '../lib/i18n.js';
 import SeekBar from './SeekBar.jsx';
 import Visualizer from './Visualizer.jsx';
 import LyricsPanel from './LyricsPanel.jsx';
+import { parseLrc, activeLineIndex } from '../lib/lrc.js';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
@@ -67,16 +68,43 @@ export default function NowPlaying() {
 
   const [speedOpen, setSpeedOpen] = useState(false);
   const [visualizerFullscreen, setVisualizerFullscreen] = useState(false);
+  const [lyricLine, setLyricLine] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState(null);
   const [shareBlob, setShareBlob] = useState(null);
   const [shareBusy, setShareBusy] = useState(false);
   const speedRef = useRef(null);
 
+  // Current lyric line from the local cache (synced LRC parsed live).
+  useEffect(() => {
+    if (!track?.id) { setLyricLine(''); return undefined; }
+    let cancelled = false;
+    let timer = null;
+    (async () => {
+      try {
+        const all = JSON.parse(localStorage.getItem('cl:lyricsCache') || '{}');
+        const data = all?.[track.id]?.data;
+        if (cancelled || !data?.syncedLyrics) return;
+        const lines = parseLrc(data.syncedLyrics);
+        if (!lines.length) return;
+        const tick = () => {
+          try {
+            const tNow = usePlayer.getState().currentTime + (usePlayer.getState().lyricsOffset || 0);
+            const idx = activeLineIndex(lines, tNow);
+            setLyricLine(lines[idx]?.text || '');
+          } catch { /* ignore */ }
+        };
+        tick();
+        timer = setInterval(tick, 300);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; if (timer) clearInterval(timer); };
+  }, [track?.id]);
+
   useEffect(() => {
     if (!speedOpen) return undefined;
     const onDoc = (e) => { if (!speedRef.current?.contains(e.target)) setSpeedOpen(false); };
-    const onEsc = (e) => e.key === 'Escape' && setSpeedOpen(false);
+    const onEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setSpeedOpen(false); } };
     document.addEventListener('pointerdown', onDoc);
     document.addEventListener('keydown', onEsc);
     return () => { document.removeEventListener('pointerdown', onDoc); document.removeEventListener('keydown', onEsc); };
@@ -87,7 +115,7 @@ export default function NowPlaying() {
     let cancelled = false;
     setShareBusy(true);
     setShareUrl(null);
-    generateShareCard(track, currentTime, duration).then(({ url, blob }) => {
+    generateShareCard(track, currentTime, duration, lyricLine).then(({ url, blob }) => {
       if (cancelled) { if (url) URL.revokeObjectURL(url); return; }
       setShareUrl(url);
       setShareBlob(blob);
@@ -177,10 +205,10 @@ export default function NowPlaying() {
           </div>
 
           {/* current lyrics line (like BitChord) */}
-          {track.syncedLyrics && (
+          {lyricLine && (
             <div className="np-lyric-line">
               <span className="np-lyric-quote">“</span>
-              <span className="np-lyric-text">{track.syncedLyrics}</span>
+              <span className="np-lyric-text">{lyricLine}</span>
             </div>
           )}
 
@@ -523,7 +551,7 @@ function wrapLines(ctx, text, maxWidth, maxLines) {
   return lines;
 }
 
-async function generateShareCard(track, currentTime = 0, duration = 0) {
+async function generateShareCard(track, currentTime = 0, duration = 0, lyricLine = '') {
   const S = 1080;
   const canvas = document.createElement('canvas');
   canvas.width = S;
@@ -600,10 +628,10 @@ async function generateShareCard(track, currentTime = 0, duration = 0) {
   artistLines.forEach((line) => ctx.fillText(line, S / 2, artistY));
 
   let cursorY = artistY + 52;
-  if (track.syncedLyrics) {
+  if (lyricLine) {
     ctx.fillStyle = 'rgba(216,180,254,.95)';
     ctx.font = 'italic 500 30px "Segoe UI", Inter, system-ui, sans-serif';
-    const lyricLines = wrapLines(ctx, `“${track.syncedLyrics}”`, S - 260, 2);
+    const lyricLines = wrapLines(ctx, `“${lyricLine}”`, S - 260, 2);
     lyricLines.forEach((line, i) => ctx.fillText(line, S / 2, cursorY + i * 42));
     cursorY += lyricLines.length * 42 + 14;
   }

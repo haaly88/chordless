@@ -30,7 +30,7 @@ function SettingsDropdown({ value, onChange, label }) {
   useEffect(() => {
     if (!open) return undefined;
     const onDoc = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
-    const onEsc = (e) => { if (e.key === 'Escape') setOpen(false); };
+    const onEsc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
     document.addEventListener('pointerdown', onDoc);
     document.addEventListener('keydown', onEsc);
     setTimeout(() => inputRef.current?.focus(), 30);
@@ -188,7 +188,7 @@ export default function SettingsModal() {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') { setSettingsOpen(false); return; }
+      if (e.key === 'Escape') { e.stopPropagation(); setSettingsOpen(false); return; }
       if (e.key !== 'Tab') return;
       const root = panelRef.current;
       if (!root) return;

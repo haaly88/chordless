@@ -191,7 +191,7 @@ export default function SearchView() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
+          onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setQuery(''); } }}
           placeholder={t(lang, 'search.placeholder')}
           aria-label="Search music"
           autoComplete="off"

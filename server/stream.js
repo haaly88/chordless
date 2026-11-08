@@ -13,6 +13,7 @@
 import { spawn } from 'node:child_process';
 import { Readable } from 'node:stream';
 import { createCache } from './cache.js';
+import { withYtDlpSlot } from './pool.js';
 
 const urlCache = createCache({ max: 300, ttlMs: 4 * 60 * 60 * 1000 });
 const failCache = createCache({ max: 300, ttlMs: 45 * 1000 });
@@ -56,7 +57,7 @@ function formatForQuality(quality) {
   return FORMAT_BY_QUALITY[String(quality || 'high').toLowerCase()] || FORMAT_BY_QUALITY.high;
 }
 
-function runYtDlp(id, playerClient, quality) {
+function runYtDlpOnce(id, playerClient, quality) {
   const format = formatForQuality(quality);
   return new Promise((resolve, reject) => {
     const args = [
@@ -95,6 +96,11 @@ function runYtDlp(id, playerClient, quality) {
       resolve({ ext, url, client: playerClient || 'default' });
     });
   });
+}
+
+function runYtDlp(id, playerClient, quality) {
+  // Global pool: at most 4 concurrent yt-dlp processes machine-wide.
+  return withYtDlpSlot(() => runYtDlpOnce(id, playerClient, quality));
 }
 
 /** Check that a googlevideo URL actually serves bytes (not 403). */
@@ -196,7 +202,11 @@ export async function streamAudio(req, res) {
   // Cached URL refused — drop it and re-resolve once
   if (!upstream || upstream.error || (upstream.status !== 206 && (upstream.status === 403 || upstream.status === 404 || upstream.status === 410))) {
     console.warn('[stream] cached URL refused for', id, '— re-resolving');
-    for (const key of urlCacheKeys(id)) urlCache.set(key, undefined);
+    // Evict every real key variant (pref × quality) — the previous
+    // `stream:pref:id` guess never matched, so stale URLs lived 4h.
+    for (const p of CLIENT_PREFS) {
+      for (const q of ['high', 'medium', 'low']) urlCache.delete(`stream:${p}:${q}:${id}`);
+    }
     try {
       info = await resolveStream(id, client, qualityParam);
       upstream = await tryFetch(info);
@@ -238,16 +248,16 @@ export function pipeUpstream(req, res, upstream, contentType) {
   nodeStream.pipe(res);
 }
 
-function urlCacheKeys(id) {
-  return [...CLIENT_PREFS].map((p) => `stream:${p}:${id}`);
-}
-
 export async function ytDlpAvailable() {
   return new Promise((resolve) => {
     const child = spawn('python', ['-m', 'yt_dlp', '--version'], { windowsHide: true });
     let out = '';
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      resolve(null);
+    }, 10000);
     child.stdout.on('data', (d) => { out += d; });
-    child.on('error', () => resolve(null));
-    child.on('close', (code) => resolve(code === 0 ? out.trim() : null));
+    child.on('error', () => { clearTimeout(timer); resolve(null); });
+    child.on('close', (code) => { clearTimeout(timer); resolve(code === 0 ? out.trim() : null); });
   });
 }

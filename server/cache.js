@@ -10,6 +10,7 @@ export function createCache({ max = 500, ttlMs = 5 * 60 * 1000 } = {}) {
       map.delete(key); map.set(key, hit);
       return hit.value;
     },
+    delete(key) { map.delete(key); },
     set(key, value, ttl = ttlMs) {
       if (map.size >= max) {
         const oldest = map.keys().next().value;

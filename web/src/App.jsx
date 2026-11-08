@@ -356,6 +356,12 @@ export default function App() {
       }
       if (typing) return;
 
+      // While any modal/panel is up, playback shortcuts stay out of the
+      // way (Escape above still works; Ctrl+K handled earlier). NowPlaying
+      // is a playback surface, so its shortcuts stay live.
+      const sModal = usePlayer.getState();
+      if (sModal.shortcutsOpen || sModal.settingsOpen || sModal.togetherOpen || sModal.karaokeOpen || sModal.queueOpen || sModal.menu) return;
+
       // "?" (Shift+/) → keyboard shortcuts help
       if (e.key === '?') {
         e.preventDefault();
