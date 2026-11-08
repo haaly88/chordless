@@ -1902,3 +1902,30 @@ img { user-select: none; -webkit-user-drag: none; }
   .shelf:nth-child(4) { animation-delay: .12s; }
   @keyframes rise-in { from { opacity: 0; transform: translateY(10px); } }
 }
+
+/* ============================================================
+   Density — shell adapts to smaller windows (PWA / small lappy)
+   Large screens keep the roomy defaults (sidebar 264px, player 92px,
+   generous padding); narrower windows shrink the fixed chrome so the
+   bottom player and content never feel oversized.
+   ============================================================ */
+@media (max-width: 1500px) {
+  :root { --sidebar-w: 232px; --player-h: 84px; }
+  .main { padding: 24px 26px calc(var(--player-h) + 26px); }
+  .hero-title { font-size: calc(36px * var(--fscale, 1)); }
+  .greeting { font-size: calc(28px * var(--fscale, 1)); }
+  .view-title { font-size: calc(27px * var(--fscale, 1)); }
+}
+@media (max-width: 1280px) {
+  :root { --sidebar-w: 214px; --player-h: 80px; }
+  .main { padding: 20px 22px calc(var(--player-h) + 22px); }
+  .sb-top { padding: 14px 14px 14px 10px; }
+  .hero-title { font-size: calc(32px * var(--fscale, 1)); }
+  .greeting { font-size: calc(25px * var(--fscale, 1)); }
+  .pb-art { width: 52px; height: 52px; }
+}
+@media (max-height: 820px) {
+  :root { --player-h: 78px; }
+  .main { padding-top: 18px; padding-bottom: calc(var(--player-h) + 20px); }
+  .pb-art { width: 48px; height: 48px; }
+}
