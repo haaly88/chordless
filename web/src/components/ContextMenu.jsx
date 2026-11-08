@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import usePlayer from '../store.js';
 import { apiChapters } from '../lib/api.js';
+import { t } from '../lib/i18n.js';
 
 /**
  * Right-click menu for any track: play now / next / later, like,
@@ -28,6 +29,7 @@ export default function ContextMenu() {
   const removeOfflineTrack = usePlayer((s) => s.removeOfflineTrack);
   const offlineIds = usePlayer((s) => s.offlineIds);
   const downloadingIds = usePlayer((s) => s.downloadingIds);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const toast = usePlayer((s) => s.toast);
   const playTrackForChapter = usePlayer((s) => s.playTrack);
   const [chapterBusy, setChapterBusy] = useState(false);
@@ -83,20 +85,20 @@ export default function ContextMenu() {
       </div>
 
       <button className="ctx-item" role="menuitem" onClick={act(() => playTrack(track, contextList))}>
-        <Play size={17} fill="currentColor" strokeWidth={0} /> Play now
+        <Play size={17} fill="currentColor" strokeWidth={0} /> {t(lang, 'ctx.playNow')}
       </button>
       <button className="ctx-item" role="menuitem" onClick={act(() => playNextInQueue(track))}>
-        <ListStart size={17} /> Play next
+        <ListStart size={17} /> {t(lang, 'ctx.playNext')}
       </button>
       <button className="ctx-item" role="menuitem" onClick={act(() => addToQueue(track))}>
-        <ListPlus size={17} /> Add to queue
+        <ListPlus size={17} /> {t(lang, 'ctx.addQueue')}
       </button>
 
       <div className="ctx-sep" />
 
       <button className="ctx-item" role="menuitem" onClick={act(() => toggleLike(track))}>
         <Heart size={17} fill={isLiked ? 'var(--accent)' : 'none'} color={isLiked ? 'var(--accent)' : undefined} />
-        {isLiked ? 'Remove from Liked Songs' : 'Like'}
+        {isLiked ? t(lang, 'ctx.unlike') : t(lang, 'ctx.like')}
       </button>
 
       {!track.isAddon && track.id && (
@@ -119,7 +121,7 @@ export default function ContextMenu() {
             }
           }}
         >
-          <ListOrdered size={17} /> {chapterBusy ? 'Chapters…' : 'View chapters'}
+          <ListOrdered size={17} /> {chapterBusy ? 'Chapters…' : t(lang, 'ctx.viewChapters')}
         </button>
       )}
 
@@ -142,7 +144,7 @@ export default function ContextMenu() {
         }
         return (
           <button className="ctx-item" role="menuitem" onClick={act(() => downloadTrack(track))}>
-            <Download size={17} /> Download for offline
+            <Download size={17} /> {t(lang, 'ctx.download')}
           </button>
         );
       })()}

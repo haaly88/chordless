@@ -258,7 +258,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.appearance')}</b>
-            <small>Choose the app theme. “System” follows your OS dark/light setting.</small>
+            <small>{t(lang, 'settings.desc.appearance')}</small>
           </div>
           <div className="segmented" role="radiogroup" aria-label="Theme" style={{ flexWrap: 'wrap' }}>
             {[
@@ -399,7 +399,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.playbackEngine')}</b>
-            <small>“Auto” streams audio directly and falls back to the embedded player if blocked. “Stream” is lighter. “Embedded” always works.</small>
+            <small>{t(lang, 'settings.desc.playback')}</small>
           </div>
           <div className="segmented" role="radiogroup" aria-label="Playback engine" style={{ flexWrap: 'wrap' }}>
             {[
@@ -424,7 +424,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div style={{ minWidth: 0, flex: 1 }}>
             <b><MapPin size={14} style={{ verticalAlign: '-2px', marginRight: 6, color: 'var(--accent)' }} />Region</b>
-            <small>Trending Now, Viral Hits, Top Charts &amp; New Releases follow this region. “Auto” detects from your browser language &amp; timezone.</small>
+            <small>{t(lang, 'settings.desc.region')}</small>
           </div>
           <SettingsDropdown value={settings.region || 'auto'} onChange={(v) => updateSettings({ region: v })} label="Region for charts" />
         </div>
@@ -439,7 +439,7 @@ export default function SettingsModal() {
         <div className="setting-row" style={{ alignItems: 'flex-start' }}>
           <div>
             <b><Flame size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{t(lang, 'settings.lossless')}</b>
-            <small>Search queries every addon; if one fails, playback automatically tries the next, then YouTube. Order = priority (top is first).</small>
+            <small>{t(lang, 'settings.desc.addons')}</small>
           </div>
         </div>
         <div style={{ padding: '4px 4px 14px' }}>
@@ -617,7 +617,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.equalizer')}</b>
-            <small>Adjust bass, mid and treble. Presets apply instantly.</small>
+            <small>{t(lang, 'settings.desc.eq')}</small>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             {[
@@ -687,7 +687,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.crossfade')}</b>
-            <small>Fades out smoothly near the end of each track and fades in on the next — no abrupt cuts. Works with the Stream engine (addon &amp; YouTube streams).</small>
+            <small>{t(lang, 'settings.desc.crossfade')}</small>
           </div>
           <button
             className={`switch${crossfade.enabled ? ' on' : ''}`}
@@ -753,7 +753,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.spatial')}</b>
-            <small>Widens the stereo image for headphones (mid/side processing). Works with the Stream engine (addons &amp; YouTube streams).</small>
+            <small>{t(lang, 'settings.desc.spatial')}</small>
           </div>
           <button
             className={`switch${spatial.enabled ? ' on' : ''}`}
@@ -898,7 +898,7 @@ export default function SettingsModal() {
         <div className="setting-row">
           <div>
             <b>Skip silence</b>
-            <small>Automatically jump past long quiet gaps (2.5s+ of near-silence) during playback.</small>
+            <small>{t(lang, 'settings.desc.skipSilence')}</small>
           </div>
           <button
             className={`switch${settings.skipSilence ? ' on' : ''}`}
