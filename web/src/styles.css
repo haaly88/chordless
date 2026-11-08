@@ -1517,6 +1517,23 @@ img { user-select: none; -webkit-user-drag: none; }
 @media (prefers-reduced-motion: reduce) {
   .aurora span, .np-backdrop img, .pb-marquee, .skel, .eq span, .back-top, .np-art-halo { animation: none !important; }
 }
+
+/* Reduce blur: strip expensive backdrop blurs & transparency. Surfaces
+   become near-solid so text stays readable; big blurred artwork layers
+   and the aurora are hidden entirely. Big GPU/CPU saver on weak iGPUs. */
+:root.reduce-blur {
+  --panel: var(--panel-solid);
+  --glass: color-mix(in srgb, var(--panel-solid) 62%, transparent);
+  --glass-strong: color-mix(in srgb, var(--panel-solid) 82%, transparent);
+}
+.reduce-blur * { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.reduce-blur .aurora { display: none; }
+.reduce-blur .np-backdrop img,
+.reduce-blur .karaoke-back img,
+.reduce-blur .np-art-halo { display: none; }
+.reduce-blur .player-bar { background: var(--panel-solid); }
+.reduce-blur .modal-backdrop { background: rgba(0,0,0,.78); }
+.reduce-blur .pb-art, .reduce-blur .np-art { box-shadow: 0 6px 18px rgba(0,0,0,.45); }
 .reduce-motion .main { scroll-behavior: auto; animation: none; }
 .reduce-motion .skel, .reduce-motion .back-top { animation: none; }
 

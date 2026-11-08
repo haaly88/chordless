@@ -377,6 +377,19 @@ export default function SettingsModal() {
             onClick={() => updateSettings({ reduceMotion: !settings.reduceMotion })}
           />
         </div>
+        <div className="setting-row">
+          <div>
+            <b>Reduce blur</b>
+            <small>Removes backdrop blur, transparency and blurred artwork layers. Cooler GPU, flatter look.</small>
+          </div>
+          <button
+            className={`switch${settings.reduceBlur ? ' on' : ''}`}
+            role="switch"
+            aria-checked={Boolean(settings.reduceBlur)}
+            aria-label="Reduce blur"
+            onClick={() => updateSettings({ reduceBlur: !settings.reduceBlur })}
+          />
+        </div>
 
         {/* home sections (custom shelves) */}
         <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>

@@ -281,6 +281,7 @@ const persistedSettings = {
     return dpr >= 1.45 ? 0.7 : dpr >= 1.2 ? 0.8 : 1;
   })(),
   reduceMotion: storedSettings?.reduceMotion === true,
+  reduceBlur: storedSettings?.reduceBlur === true,
   sidebarCollapsed: storedSettings?.sidebarCollapsed === true,
   lang: ['en', 'id'].includes(String(storedSettings?.lang || 'en')) ? String(storedSettings.lang) : 'en',
   homeSections: {

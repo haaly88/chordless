@@ -109,12 +109,17 @@ export default function App() {
   // barely changed. One code path now behaves identically everywhere.
   const fontScale = usePlayer((s) => s.settings.fontScale || 1);
   const reduceMotion = usePlayer((s) => Boolean(s.settings.reduceMotion));
+  const reduceBlur = usePlayer((s) => Boolean(s.settings.reduceBlur));
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--fscale', String(fontScale));
     root.classList.toggle('reduce-motion', reduceMotion);
-    return () => { root.style.removeProperty('--fscale'); };
-  }, [fontScale, reduceMotion]);
+    root.classList.toggle('reduce-blur', reduceBlur);
+    return () => {
+      root.style.removeProperty('--fscale');
+      root.classList.remove('reduce-blur');
+    };
+  }, [fontScale, reduceMotion, reduceBlur]);
 
   // ---------- adaptive accent from artwork ----------
   useEffect(() => {
