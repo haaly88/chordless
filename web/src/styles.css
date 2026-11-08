@@ -145,6 +145,23 @@ img { user-select: none; -webkit-user-drag: none; }
   transition: width 0.35s var(--ease), transform 0.35s var(--ease);
 }
 
+/* Desktop collapse (rail / minimal) — toggled from the sidebar header. */
+.sidebar.rail { width: var(--rail-w); padding-left: 8px; padding-right: 8px; }
+.sidebar.rail .logo { justify-content: center; padding-left: 0; padding-right: 0; }
+.sidebar.rail .logo-name,
+.sidebar.rail .nav-item span.txt,
+.sidebar.rail .lib-item .lib-meta,
+.sidebar.rail .lib-item .lib-expand,
+.sidebar.rail .lib-header span,
+.sidebar.rail .lib-meta,
+.sidebar.rail .foot-note,
+.sidebar.rail .sidebar-foot .foot-label,
+.sidebar.rail .new-playlist-pill span { display: none; }
+.sidebar.rail .nav-item { justify-content: center; padding: 11px 0; }
+.sidebar.rail .lib-item { justify-content: center; padding: 6px 4px; }
+.sidebar.rail .lib-header { justify-content: center; }
+.sidebar.rail .sb-top { justify-content: center; }
+
 .logo {
   display: flex;
   align-items: center;

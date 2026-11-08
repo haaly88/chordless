@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Home, Search, Heart, Plus, Music2, Check, X, Library, BarChart3, Settings, Moon, Sun, ListPlus, Folder, ChevronRight, Trash2, Download } from 'lucide-react';
+import { Home, Search, Heart, Plus, Music2, Check, X, Library, BarChart3, Settings, Moon, Sun, ListPlus, Folder, ChevronLeft, ChevronRight, Trash2, Download } from 'lucide-react';
 import usePlayer from '../store.js';
 import { t } from '../lib/i18n.js';
 
@@ -42,6 +42,7 @@ export default function Sidebar({ open = false, onClose }) {
   const setSettingsOpen = usePlayer((s) => s.setSettingsOpen);
   const theme = usePlayer((s) => s.settings.theme);
   const updateSettings = usePlayer((s) => s.updateSettings);
+  const sidebarCollapsed = usePlayer((s) => Boolean(s.settings.sidebarCollapsed));
   const lang = usePlayer((s) => s.settings.lang || 'en');
   const installAvailable = usePlayer((s) => s.installAvailable);
   const promptInstall = usePlayer((s) => s.promptInstall);
@@ -104,7 +105,7 @@ export default function Sidebar({ open = false, onClose }) {
     (id === 'stats' && view?.name === 'stats');
 
   return (
-    <aside className={`sidebar${open ? ' open' : ''}`} aria-label="Sidebar" aria-hidden={isSmall && !open ? 'true' : undefined} inert={isSmall && !open ? '' : undefined}>
+    <aside className={`sidebar${open ? ' open' : ''}${sidebarCollapsed && !isSmall ? ' rail' : ''}`} aria-label="Sidebar" aria-hidden={isSmall && !open ? 'true' : undefined} inert={isSmall && !open ? '' : undefined}>
       {/* wordmark row with theme toggle */}
       <div className="sb-top">
         <button className="logo" onClick={() => setView({ name: 'home' })} aria-label="Chordless — Home">
@@ -120,6 +121,15 @@ export default function Sidebar({ open = false, onClose }) {
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
           {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
+        </button>
+        <button
+          className="icon-btn sidebar-collapse-btn"
+          onClick={() => updateSettings({ sidebarCollapsed: !sidebarCollapsed })}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          style={{ display: isSmall ? 'none' : 'grid' }}
+        >
+          {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
       </div>
 

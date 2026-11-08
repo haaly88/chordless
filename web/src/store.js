@@ -272,6 +272,7 @@ const persistedSettings = {
   autoplay: Boolean(storedSettings?.autoplay),
   fontScale: [0.9, 1, 1.15].includes(Number(storedSettings?.fontScale)) ? Number(storedSettings.fontScale) : 1,
   reduceMotion: storedSettings?.reduceMotion === true,
+  sidebarCollapsed: storedSettings?.sidebarCollapsed === true,
   lang: ['en', 'id'].includes(String(storedSettings?.lang || 'en')) ? String(storedSettings.lang) : 'en',
   homeSections: {
     order: Array.isArray(storedSettings?.homeSections?.order)
