@@ -565,7 +565,7 @@ export default function SettingsModal() {
         {/* adaptive accent */}
         <div className="setting-row">
           <div>
-            <b><Palette size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />Adaptive theme</b>
+            <b><Palette size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{t(lang, 'settings.adaptiveTheme')}</b>
             <small>{t(lang, 'settings.desc.adaptive')}</small>
           </div>
           <button
@@ -580,7 +580,7 @@ export default function SettingsModal() {
         {/* history */}
         <div className="setting-row">
           <div>
-            <b>Listening history</b>
+            <b>{t(lang, 'settings.history')}</b>
             <small>{historyCount} {historyCount === 1 ? 'entry' : 'entries'} stored locally, powering “Recently played”.</small>
           </div>
           <button className="btn danger" onClick={clearHistory}><Trash2 size={15} /> Clear</button>
@@ -785,7 +785,7 @@ export default function SettingsModal() {
         {/* autoplay / radio */}
         <div className="setting-row">
           <div>
-            <b>Autoplay / Radio</b>
+            <b>{t(lang, 'settings.autoplay')}</b>
             <small>{t(lang, 'settings.desc.autoplay')}</small>
           </div>
           <button
@@ -807,7 +807,7 @@ export default function SettingsModal() {
         {/* audio advanced */}
         <div className="setting-row">
           <div>
-            <b>Audio advanced</b>
+            <b>{t(lang, 'settings.advanced')}</b>
             <small>{t(lang, 'settings.desc.advanced')}</small>
           </div>
         </div>
@@ -836,7 +836,7 @@ export default function SettingsModal() {
         </div>
         <div className="setting-row">
           <div>
-            <b><Flame size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />Network-adaptive quality</b>
+            <b><Flame size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{t(lang, 'settings.adaptiveQuality')}</b>
             <small>{t(lang, 'settings.desc.adaptiveQuality')}</small>
           </div>
           <button
@@ -869,7 +869,7 @@ export default function SettingsModal() {
         )}
         <div className="setting-row">
           <div>
-            <b>Normalize loudness</b>
+            <b>{t(lang, 'settings.normalize')}</b>
             <small>{t(lang, 'settings.desc.normalize')}</small>
           </div>
           <button
