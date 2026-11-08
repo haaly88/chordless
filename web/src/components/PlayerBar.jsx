@@ -173,7 +173,7 @@ export default function PlayerBar() {
             <div className="pb-meta">
               <div className="pb-title" onClick={() => toggleNowPlaying(true)} role="button" tabIndex={0}
                    onKeyDown={(e) => e.key === 'Enter' && toggleNowPlaying(true)}>
-                {track.title.length > 28 ? (
+                {track.title.length > 18 ? (
                   <span className="pb-marquee" aria-label={track.title}>
                     <span>{track.title}</span><span aria-hidden="true">{track.title}</span>
                   </span>
