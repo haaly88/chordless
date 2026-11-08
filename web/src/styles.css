@@ -1514,8 +1514,8 @@ img { user-select: none; -webkit-user-drag: none; }
 .shortcut-card.dashed b { font-size: 12px; }
 
 /* ============ stats view ============ */
-.stat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
-.stat-card { display: flex; align-items: center; gap: 14px; background: var(--panel); border: 1px solid var(--stroke); border-radius: 15px; padding: 16px; }
+.stat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+.stat-card { display: flex; align-items: center; gap: 14px; background: var(--panel); border: 1px solid var(--stroke); border-radius: 15px; padding: 20px; }
 .stat-icon { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; color: #fff; flex: 0 0 auto; }
 .stat-icon.red { background: linear-gradient(150deg, #fc3c44, #b01e28); }
 .stat-icon.amber { background: linear-gradient(150deg, #f7b955, #c26b00); }
@@ -1523,10 +1523,10 @@ img { user-select: none; -webkit-user-drag: none; }
 .stat-card b { font-size: 18px; font-weight: 800; display: block; letter-spacing: -0.02em; }
 .stat-card span { font-size: 11px; color: var(--text-3); font-weight: 600; display: block; margin-top: 2px; }
 .chart-card { background: var(--panel); border: 1px solid var(--stroke); border-radius: 15px; padding: 18px; margin-bottom: 18px; }
-.chart-bars { display: flex; gap: 12px; height: 120px; align-items: flex-end; }
-.chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; }
+.chart-bars { display: flex; gap: 12px; height: 160px; align-items: flex-end; }
+.chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
 .chart-bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
-.chart-bar { width: 32px; min-height: 4px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 85%, white), color-mix(in srgb, var(--accent) 70%, #000)); border-radius: 6px 6px 3px 3px; transition: height .4s var(--ease); }
+.chart-bar { width: 32px; min-height: 8px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 85%, white), color-mix(in srgb, var(--accent) 70%, #000)); border-radius: 6px 6px 3px 3px; transition: height .4s var(--ease); }
 .chart-col span { font-size: 11px; color: var(--text-3); font-weight: 700; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .rank-row { display: flex; align-items: center; gap: 12px; padding: 9px 8px; border-radius: 11px; border: none; background: transparent; width: 100%; text-align: left; }

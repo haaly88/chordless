@@ -184,8 +184,9 @@ export default function StatsView() {
         <div className="chart-bars">
           {stats.days.map((d, i) => (
             <div key={i} className="chart-col">
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--text-2)' }}>{d.count}</span>
               <div className="chart-bar-wrap">
-                <div className="chart-bar" style={{ height: `${(d.count / stats.maxDay) * 100}%` }} />
+                <div className="chart-bar" style={{ height: `${Math.max(6, (d.count / stats.maxDay) * 100)}%` }} />
               </div>
               <span>{d.label}</span>
             </div>
