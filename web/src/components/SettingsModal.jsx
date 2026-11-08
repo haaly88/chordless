@@ -187,7 +187,19 @@ export default function SettingsModal() {
   }, [remapFor, settings.keybinds, updateSettings]);
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') setSettingsOpen(false); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { setSettingsOpen(false); return; }
+      if (e.key !== 'Tab') return;
+      const root = panelRef.current;
+      if (!root) return;
+      const focusable = root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      const list = [...focusable].filter((el) => !el.disabled && el.offsetParent !== null);
+      if (!list.length) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     document.addEventListener('keydown', onKey);
     panelRef.current?.focus();
     return () => document.removeEventListener('keydown', onKey);

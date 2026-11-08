@@ -1381,11 +1381,22 @@ export const usePlayer = create((set, get) => ({
   },
 
   clearQueue() {
+    const prev = get().queue;
+    const prevIndex = get().index;
     clearFadeTimer();
     activeAudio().pause();
     activeAudio().volume = get()._targetVolume();
     set({ queue: [], index: -1, isPlaying: false, currentTime: 0, duration: 0 });
     get()._persistQueue();
+    if (prev.length) {
+      get().toast('Queue cleared', `${prev.length} tracks`, {
+        label: 'Undo',
+        onClick: () => {
+          set({ queue: prev, index: prevIndex });
+          get()._persistQueue();
+        },
+      });
+    }
   },
 
   saveQueueAsPlaylist() {
@@ -1672,11 +1683,19 @@ export const usePlayer = create((set, get) => ({
     return playlist;
   },
   deletePlaylist(id) {
+    const deleted = get().playlists.find((p) => p.id === id);
     const playlists = get().playlists.filter((p) => p.id !== id);
     set({ playlists });
     write('cl:playlists', playlists);
     if (get().view?.name === 'playlist' && get().view?.id === id) set({ view: { name: 'home' } });
-    get().toast('Playlist deleted');
+    get().toast('Playlist deleted', deleted?.name, {
+      label: 'Undo',
+      onClick: () => {
+        if (!deleted) return;
+        set({ playlists: [deleted, ...get().playlists] });
+        write('cl:playlists', get().playlists);
+      },
+    });
   },
   renamePlaylist(id, name) {
     const clean = String(name || '').trim();

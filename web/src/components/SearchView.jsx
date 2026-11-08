@@ -279,7 +279,22 @@ export default function SearchView() {
               </div>
               <div className="chips">
                 {searchHistory.map((s) => (
-                  <button key={s} className="chip" onClick={() => setQuery(s)}>{s}</button>
+                  <span key={s} className="chip" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      onClick={() => setQuery(s)}
+                      style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer', padding: 0 }}
+                    >
+                      {s}
+                    </button>
+                    <button
+                      onClick={() => removeSearchHistory(s)}
+                      aria-label={`Remove “${s}” from recent searches`}
+                      title="Remove"
+                      style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', padding: 0, display: 'grid', placeItems: 'center' }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
                 ))}
               </div>
             </>
