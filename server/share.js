@@ -6,6 +6,7 @@
 
 const shares = new Map(); // id -> { name, tracks, createdAt }
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_SHARES = 1000; // bound memory; oldest evicted first (Map keeps insertion order)
 
 function genId() {
   return Math.random().toString(36).slice(2, 10).toLowerCase();
@@ -27,6 +28,9 @@ export function createShare(playlist) {
   let id = genId();
   while (shares.has(id)) id = genId();
   shares.set(id, { name, tracks, createdAt: Date.now() });
+  while (shares.size > MAX_SHARES) {
+    shares.delete(shares.keys().next().value);
+  }
   return { id, name, tracks: tracks.length };
 }
 

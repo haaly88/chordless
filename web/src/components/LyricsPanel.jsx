@@ -70,11 +70,11 @@ export default function LyricsPanel({ track }) {
     const controller = new AbortController();
     const effectiveDuration = duration && duration > 0 ? duration : track?.duration;
     setState({ status: 'loading', data: null, message: null });
-    const cacheKey = `cl:lyrics:${track.id}`;
     const readCache = () => {
+      // Single capped index (50 entries) — never per-track keys.
       try {
-        const c = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-        return c?.data ? c : null;
+        const all = JSON.parse(localStorage.getItem('cl:lyricsCache') || '{}');
+        return all?.[track.id]?.data ? all[track.id] : null;
       } catch { return null; }
     };
     const writeCache = (data) => {

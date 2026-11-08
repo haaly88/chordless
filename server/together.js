@@ -92,8 +92,26 @@ export function pushState(code, memberId, patch) {
   // Only host can push authoritative state; guests may send lightweight pings (ignored).
   if (memberId !== r.hostId) return publicRoom(r);
   const allowed = ['track', 'queue', 'index', 'isPlaying', 'currentTime'];
+  // Bound the payload: guests poll this every 1.5s, so an unbounded queue
+  // would balloon both server RAM and every poll response.
+  const sanitized = {};
+  if (patch && typeof patch === 'object') {
+    for (const k of allowed) {
+      if (!(k in patch)) continue;
+      if (k === 'queue') {
+        sanitized.queue = Array.isArray(patch.queue) ? patch.queue.slice(0, 200) : [];
+      } else if (k === 'track') {
+        sanitized.track = patch.track && typeof patch.track === 'object'
+          ? { id: String(patch.track.id || ''), title: String(patch.track.title || '').slice(0, 200), artist: String(patch.track.artist || '').slice(0, 200), thumbnail: String(patch.track.thumbnail || '').slice(0, 500), duration: Number(patch.track.duration) || 0 }
+          : null;
+      } else {
+        sanitized[k] = patch[k];
+      }
+    }
+  }
+  if (JSON.stringify(sanitized).length > 100 * 1024) return { error: 'State too large (max 100KB).' };
   for (const k of allowed) {
-    if (k in (patch || {})) r.state[k] = patch[k];
+    if (k in sanitized) r.state[k] = sanitized[k];
   }
   r.state.updatedAt = now();
   r.state.version += 1;
@@ -107,7 +125,10 @@ export function pushPresence(code, memberId, track) {
   const member = r.members.get(memberId);
   if (!member) return null;
   if (track && track.id) {
-    r.presence.set(memberId, { track, at: now() });
+    r.presence.set(memberId, {
+      track: { id: String(track.id), title: String(track.title || '').slice(0, 200), artist: String(track.artist || '').slice(0, 200), thumbnail: String(track.thumbnail || '').slice(0, 500) },
+      at: now(),
+    });
   } else {
     r.presence.delete(memberId);
   }

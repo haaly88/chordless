@@ -7,7 +7,15 @@
  * The old strategy (cache-first for everything, same version forever)
  * served stale JS indefinitely after deploys.
  */
-const CACHE_NAME = 'chordless-v6';
+const CACHE_NAME = 'chordless-v7';
+const MAX_CACHE_ENTRIES = 80; // hashed chunks accumulate across builds otherwise
+
+// Keep the cache bounded: drop the oldest entries after each new put.
+async function trimCache(cache) {
+  const keys = await cache.keys();
+  if (keys.length <= MAX_CACHE_ENTRIES) return;
+  await Promise.all(keys.slice(0, keys.length - MAX_CACHE_ENTRIES).map((k) => cache.delete(k)));
+}
 const ASSETS = [
   '/index.html',
   '/manifest.json',
@@ -69,7 +77,7 @@ self.addEventListener('fetch', (event) => {
         return fetch(request).then((res) => {
           if (res.ok) {
             const copy = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy).then(() => trimCache(cache)));
           }
           return res;
         });

@@ -191,8 +191,8 @@ export default function PlayerBar() {
     let timer = null;
     (async () => {
       try {
-        const c = JSON.parse(localStorage.getItem(`cl:lyrics:${track.id}`) || 'null');
-        const data = c?.data;
+        const all = JSON.parse(localStorage.getItem('cl:lyricsCache') || '{}');
+        const data = all?.[track.id]?.data;
         if (cancelled || !data?.syncedLyrics) return;
         const lines = parseLrc(data.syncedLyrics);
         if (!lines.length) return;
