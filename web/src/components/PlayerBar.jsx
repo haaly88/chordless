@@ -153,7 +153,7 @@ export default function PlayerBar() {
   const toggleMiniPlayer = usePlayer((s) => s.toggleMiniPlayer);
   const lang = usePlayer((s) => s.settings.lang || 'en');
 
-  const repeatLabel = repeat === 'one' ? 'Repeat this track' : repeat === 'all' ? 'Repeat all' : 'Repeat off';
+  const repeatLabel = repeat === 'one' ? t(lang, 'player.repeat') : repeat === 'all' ? t(lang, 'player.repeat') : t(lang, 'player.repeat');
 
   return (
     <footer className={`player-bar${miniPlayer ? ' mini' : ''}`} aria-label="Now playing bar">
@@ -211,7 +211,7 @@ export default function PlayerBar() {
       {!miniPlayer && (
         <div className="pb-center">
           <div className="pb-controls">
-            <button className={`icon-btn${shuffle ? ' active' : ''}`} onClick={toggleShuffle} aria-pressed={shuffle} aria-label="Shuffle" title="Shuffle">
+            <button className={`icon-btn${shuffle ? ' active' : ''}`} onClick={toggleShuffle} aria-pressed={shuffle} aria-label={t(lang, 'player.shuffle')} title={t(lang, 'player.shuffle')}>
               <Shuffle size={18} />
             </button>
             <button className="icon-btn" onClick={prev} aria-label={t(lang, 'player.prev')} title={t(lang, 'player.prev')}>
@@ -301,12 +301,12 @@ export default function PlayerBar() {
         <button
           className="icon-btn"
           onClick={toggleMiniPlayer}
-          aria-label={miniPlayer ? 'Expand player' : 'Collapse to mini player'}
-          title={miniPlayer ? 'Expand player' : 'Mini player'}
+          aria-label={miniPlayer ? t(lang, 'player.expand') : t(lang, 'player.collapse')}
+          title={miniPlayer ? t(lang, 'player.expand') : t(lang, 'player.collapse')}
         >
           {miniPlayer ? <ChevronUp size={21} /> : <ChevronDown size={21} />}
         </button>
-        <button className="icon-btn" onClick={() => toggleNowPlaying(true)} aria-label="Open Now Playing" title="Now Playing (F)">
+        <button className="icon-btn" onClick={() => toggleNowPlaying(true)} aria-label={t(lang, 'player.openNow')} title={t(lang, 'player.openNow')}>
           <ChevronUp size={21} />
         </button>
       </div>

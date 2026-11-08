@@ -161,7 +161,7 @@ export default function ContextMenu() {
           aria-expanded={subOpen}
           onClick={() => setSubOpen((v) => !v)}
         >
-          <ListMusic size={17} /> Add to playlist
+          <ListMusic size={17} /> {t(lang, 'ctx.addPlaylist')}
           <ChevronRight size={15} style={{ marginLeft: 'auto' }} />
         </button>
         {subOpen && (
@@ -174,7 +174,7 @@ export default function ContextMenu() {
                 setView({ name: 'playlist', id: p.id });
               })}
             >
-              <Plus size={17} /> New playlist…
+              <Plus size={17} /> {t(lang, 'ctx.newPlaylist')}
             </button>
             {playlists.length > 0 && <div className="ctx-sep" />}
             {playlists.map((p) => {
@@ -188,21 +188,21 @@ export default function ContextMenu() {
                 </button>
               );
             })}
-            {playlists.length === 0 && <div className="ctx-empty">No playlists yet</div>}
+            {playlists.length === 0 && <div className="ctx-empty">{t(lang, 'ctx.noPlaylists')}</div>}
           </div>
         )}
       </div>
 
       {playlistId && (
         <button className="ctx-item danger" role="menuitem" onClick={act(() => removeFromPlaylist(playlistId, track.id))}>
-          <Trash2 size={17} /> Remove from this playlist
+          <Trash2 size={17} /> {t(lang, 'ctx.removePlaylist')}
         </button>
       )}
 
       <div className="ctx-sep" />
 
       <button className="ctx-item" role="menuitem" onClick={act(() => track.artist && searchFor(track.artist))}>
-        <Search size={17} /> Search “{(track.artist || 'artist').slice(0, 34)}”
+        <Search size={17} /> {t(lang, 'ctx.searchArtist')} “{(track.artist || 'artist').slice(0, 34)}”
       </button>
     </div>
   );

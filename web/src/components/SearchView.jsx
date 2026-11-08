@@ -302,11 +302,11 @@ export default function SearchView() {
       {query.trim() && (results || loading || error) && (
         <div className="filter-pills" role="tablist" aria-label="Filter results">
           {[
-            { id: 'all', label: `All (${results?.length ?? '…'})`, icon: <ListMusic size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> },
-            { id: 'song', label: `Songs (${songs.length})`, icon: <Music2 size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> },
-            { id: 'video', label: `Videos (${videos.length})`, icon: <Clapperboard size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> },
-            { id: 'artist', label: `Artists (${artists.length})`, icon: <User size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> },
-            { id: 'album', label: `Albums (${albums.length})`, icon: <Disc size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> },
+            { id: 'all', label: `${t(lang, 'search.all')} (${results?.length ?? '…'})`, icon: <ListMusic size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> },
+            { id: 'song', label: `${t(lang, 'search.songs')} (${songs.length})`, icon: <Music2 size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> },
+            { id: 'video', label: `${t(lang, 'search.videos')} (${videos.length})`, icon: <Clapperboard size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> },
+            { id: 'artist', label: `${t(lang, 'search.artists')} (${artists.length})`, icon: <User size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> },
+            { id: 'album', label: `${t(lang, 'search.albums')} (${albums.length})`, icon: <Disc size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> },
           ].map((f) => (
             <button key={f.id} role="tab" aria-selected={filter === f.id} className={`pill${filter === f.id ? ' active' : ''}`} onClick={() => setFilter(f.id)}>
               {f.icon}{f.label}
@@ -321,7 +321,7 @@ export default function SearchView() {
           >
             {savedSearches.some((s) => s.query.toLowerCase() === query.trim().toLowerCase() && (s.filter || 'all') === filter)
               ? <><BookmarkCheck size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> Saved</>
-              : <><Bookmark size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> Save search</>}
+              : <><Bookmark size={13} style={{ verticalAlign: '-2px', marginRight: 5 }} /> {t(lang, 'search.saveSearch')}</>}
           </button>
         </div>
       )}
