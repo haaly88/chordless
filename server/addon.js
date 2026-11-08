@@ -22,9 +22,28 @@ export function normalizeBase(raw) {
   let url;
   try { url = new URL(input); } catch { return null; }
   if (!/^https?:$/.test(url.protocol)) return null;
+  if (isBlockedHost(url.hostname)) return null;
   // allow either "…/a" or "…/a/manifest.json" — both mean the same base
   const path = url.pathname.replace(/\/+$/, '').replace(/\/manifest\.json$/i, '');
   return url.origin + path;
+}
+
+/** Block loopback / link-local / private hosts to prevent SSRF from the proxy. */
+function isBlockedHost(hostname) {
+  const h = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
+  if (!h) return true;
+  if (h === 'localhost' || h.endsWith('.local') || h === '::1') return true;
+  const ip = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ip) {
+    const a = Number(ip[1]), b = Number(ip[2]);
+    if (a === 10 || a === 127 || a === 0) return true; // private + loopback
+    if (a === 172 && b >= 16 && b <= 31) return true; // private
+    if (a === 192 && b === 168) return true; // private
+    if (a === 169 && b === 254) return true; // link-local + cloud metadata
+    if (a >= 224) return true; // multicast / reserved
+  }
+  if (/^(fc|fd|fe8|fe9|fea|feb)/i.test(h)) return true; // IPv6 unique-local/link-local
+  return false;
 }
 
 function scoreName(a, b) { return (a || '').trim().toLowerCase().includes((b || '').trim().toLowerCase()) ? 1 : 0; }

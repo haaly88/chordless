@@ -17,6 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const WEB_DIST = path.join(ROOT, 'web', 'dist');
 const PORT = Number(process.env.PORT) || 3001;
+const HOST = String(process.env.HOST || '127.0.0.1');
 const isProd = process.env.NODE_ENV === 'production';
 
 const app = express();
@@ -28,6 +29,28 @@ app.use('/api', (_req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
+
+// Lightweight rate limiter for expensive endpoints (yt-dlp spawns).
+const rateWindows = new Map(); // ip -> { count, resetAt }
+function rateLimit(max) {
+  return (req, res, next) => {
+    const ip = req.ip || 'local';
+    const now = Date.now();
+    const w = rateWindows.get(ip);
+    if (!w || now > w.resetAt) {
+      rateWindows.set(ip, { count: 1, resetAt: now + 60_000 });
+      return next();
+    }
+    w.count += 1;
+    if (w.count > max) {
+      res.setHeader('Retry-After', String(Math.ceil((w.resetAt - now) / 1000)));
+      return res.status(429).json({ error: 'Too many requests — try again shortly.' });
+    }
+    next();
+  };
+}
+app.use(['/api/import', '/api/chapters'], rateLimit(10));
+app.use('/api/share', rateLimit(30));
 
 // ---------- API ----------
 
@@ -328,6 +351,6 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`\n  Chordless server → http://localhost:${PORT}  (${isProd ? 'production' : 'development'})\n`);
+app.listen(PORT, HOST, () => {
+  console.log(`\n  Chordless server → http://${HOST}:${PORT}  (${isProd ? 'production' : 'development'})\n`);
 });

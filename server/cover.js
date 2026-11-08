@@ -42,6 +42,9 @@ export async function coverImage(req, res) {
     });
     if (!upstream.ok) return res.status(502).json({ error: `Cover fetch failed (HTTP ${upstream.status})` });
     const contentType = upstream.headers.get('content-type') || 'image/jpeg';
+    if (!/^image\/(jpeg|png|webp|gif)$/i.test(contentType)) {
+      return res.status(502).json({ error: 'Cover is not an image' });
+    }
     const buf = Buffer.from(await upstream.arrayBuffer());
     if (buf.length > 15 * 1024 * 1024) return res.status(413).json({ error: 'Cover too large' });
     cache.set(`cover:${url.href}`, { body: buf, contentType });
