@@ -37,6 +37,9 @@ audioB.preload = 'auto';
 audioB.crossOrigin = 'anonymous';
 let activeSlot = 'A';
 let silenceSince = null;
+let pendingInstallPrompt = null;
+export function setPendingInstallPrompt(evt) { pendingInstallPrompt = evt; }
+export function getPendingInstallPrompt() { return pendingInstallPrompt; }
 export function activeAudio() { return activeSlot === 'A' ? audio : audioB; }
 export function inactiveAudio() { return activeSlot === 'A' ? audioB : audio; }
 export function getActiveSlot() { return activeSlot; }
@@ -319,6 +322,8 @@ export const usePlayer = create((set, get) => ({
   ignoreSegmentUuid: null, // segment NOT to re-skip (set after Undo)
   chapters: [],            // YouTube chapters for the current track
   chaptersFor: null,
+  installAvailable: false, // PWA beforeinstallprompt fired
+  isOnline: typeof navigator === 'undefined' ? true : navigator.onLine,
 
   // ---------- equalizer ----------
   equalizerPreset: 'flat',
@@ -429,6 +434,18 @@ export const usePlayer = create((set, get) => ({
   setShortcutsOpen(open) { set({ shortcutsOpen: open }); },
   openMenu(menu) { set({ menu }); },
   closeMenu() { if (get().menu) set({ menu: null }); },
+  setInstallAvailable(v) { set({ installAvailable: Boolean(v) }); },
+  async promptInstall() {
+    try {
+      const evt = pendingInstallPrompt;
+      if (!evt) return false;
+      evt.prompt();
+      const choice = await evt.userChoice;
+      pendingInstallPrompt = null;
+      set({ installAvailable: false });
+      return choice?.outcome === 'accepted';
+    } catch { return false; }
+  },
   requestSearchFocus() { set((s) => ({ searchFocusTick: s.searchFocusTick + 1 })); },
   setSearchQuery(searchQuery) { set({ searchQuery }); },
   searchFor(term) {

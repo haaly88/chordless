@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback, Component, lazy, Suspense } from 'react';
 import { Menu } from 'lucide-react';
-import usePlayer, { audio, audioB, streamSrc, write } from './store.js';
+import usePlayer, { audio, audioB, streamSrc, write, setPendingInstallPrompt } from './store.js';
 import HomeView from './components/HomeView.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import PlayerBar from './components/PlayerBar.jsx';
@@ -227,11 +227,22 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  // ---------- network-adaptive quality (init once) ----------
+  // ---------- online/offline + PWA install prompt (init once) ----------
+  const isOnline = usePlayer((s) => s.isOnline);
   useEffect(() => {
     try { usePlayer.getState().initNetworkAdaptive?.(); } catch { /* ignore */ }
     try { usePlayer.getState().refreshOffline?.(); } catch { /* ignore */ }
-    return undefined;
+    const onOnline = () => { usePlayer.setState({ isOnline: true }); usePlayer.getState().toast('Back online', 'Streaming restored.'); };
+    const onOffline = () => { usePlayer.setState({ isOnline: false }); usePlayer.getState().toast('You’re offline', 'Playing downloads and local library.'); };
+    const onInstall = (e) => { e.preventDefault(); setPendingInstallPrompt(e); usePlayer.getState().setInstallAvailable(true); };
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    window.addEventListener('beforeinstallprompt', onInstall);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+      window.removeEventListener('beforeinstallprompt', onInstall);
+    };
   }, []);
 
   // ---------- Listen Together polling (poll every 1.5s; host heartbeat 3s) ----------
@@ -397,6 +408,11 @@ export default function App() {
       </button>
       {navOpen && <div className="nav-overlay" onClick={closeNav} aria-hidden="true" />}
       <Sidebar open={navOpen} onClose={closeNav} />
+      {!isOnline && (
+        <div role="status" style={{ position: 'fixed', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 99, background: 'var(--panel-strong)', border: '1px solid var(--stroke-strong)', color: 'var(--text)', padding: '8px 16px', borderRadius: 99, fontSize: 12.5, fontWeight: 700, boxShadow: '0 10px 30px rgba(0,0,0,.4)' }}>
+          You’re offline — playing downloads &amp; local library
+        </div>
+      )}
       <main className="main" key={view?.name + (view?.id || '')}>
         <ViewErrorBoundary>
           <Suspense fallback={<div className="empty-state" aria-busy="true"><p>Loading…</p></div>}>{mainView}</Suspense>

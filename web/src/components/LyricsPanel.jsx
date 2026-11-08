@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Mic, Minus, Plus, Music, LocateFixed, RotateCcw, AlertCircle, RefreshCw, Globe, ChevronDown, Check } from 'lucide-react';
+import { Mic, Minus, Plus, Music, LocateFixed, RotateCcw, AlertCircle, RefreshCw, Globe, ChevronDown, Check, Download } from 'lucide-react';
 import usePlayer from '../store.js';
 import { apiLyrics } from '../lib/api.js';
 import { parseLrc, activeLineIndex } from '../lib/lrc.js';
@@ -70,11 +70,31 @@ export default function LyricsPanel({ track }) {
     const controller = new AbortController();
     const effectiveDuration = duration && duration > 0 ? duration : track?.duration;
     setState({ status: 'loading', data: null, message: null });
+    const cacheKey = `cl:lyrics:${track.id}`;
+    const readCache = () => {
+      try {
+        const c = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+        return c?.data ? c : null;
+      } catch { return null; }
+    };
+    const writeCache = (data) => {
+      try {
+        const all = JSON.parse(localStorage.getItem('cl:lyricsCache') || '{}');
+        all[track.id] = { data, at: Date.now() };
+        const entries = Object.entries(all).sort((a, b) => b[1].at - a[1].at).slice(0, 50);
+        localStorage.setItem('cl:lyricsCache', JSON.stringify(Object.fromEntries(entries)));
+      } catch { /* full/blocked */ }
+    };
     apiLyrics({ artist: track.artist, track: track.title, album: track.album, duration: effectiveDuration }, { signal: controller.signal })
-      .then((data) => setState({ status: 'ready', data, message: null }))
+      .then((data) => { writeCache(data); setState({ status: 'ready', data, message: null }); })
       .catch((err) => {
         if (err.name === 'AbortError') return;
-        setState({ status: 'error', data: null, message: err.message || 'Failed to load lyrics' });
+        const cached = readCache()?.data;
+        if (cached) {
+          setState({ status: 'ready', data: cached, message: 'offline' });
+        } else {
+          setState({ status: 'error', data: null, message: err.message || 'Failed to load lyrics' });
+        }
       });
     return () => controller.abort();
   }, [track?.id, track?.title, track?.artist, track?.album, Math.round(duration || 0), retryTick]);
@@ -250,6 +270,24 @@ export default function LyricsPanel({ track }) {
           >
             <Globe size={15} />
           </button>
+          {payload?.syncedLyrics && (
+            <button
+              className="icon-btn"
+              onClick={() => {
+                const blob = new Blob([payload.syncedLyrics], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${String(track.title || 'lyrics').replace(/[\\/:*?"<>|]/g, '').slice(0, 80)} — ${String(track.artist || 'unknown').slice(0, 40)}.lrc`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 2000);
+              }}
+              title="Export lyrics as .lrc"
+              aria-label="Export lyrics as .lrc"
+            >
+              <Download size={15} />
+            </button>
+          )}
           {lyricsTranslation && (
             <div className="lang-wrap" ref={langRef}>
               <button

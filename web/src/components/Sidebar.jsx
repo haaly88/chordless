@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Home, Search, Heart, Plus, Music2, Check, X, Library, BarChart3, Settings, Moon, Sun, ListPlus, Folder, ChevronRight, Trash2 } from 'lucide-react';
+import { Home, Search, Heart, Plus, Music2, Check, X, Library, BarChart3, Settings, Moon, Sun, ListPlus, Folder, ChevronRight, Trash2, Download } from 'lucide-react';
 import usePlayer from '../store.js';
 import { t } from '../lib/i18n.js';
 
@@ -43,6 +43,8 @@ export default function Sidebar({ open = false, onClose }) {
   const theme = usePlayer((s) => s.settings.theme);
   const updateSettings = usePlayer((s) => s.updateSettings);
   const lang = usePlayer((s) => s.settings.lang || 'en');
+  const installAvailable = usePlayer((s) => s.installAvailable);
+  const promptInstall = usePlayer((s) => s.promptInstall);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [folderCreating, setFolderCreating] = useState(false);
@@ -141,6 +143,11 @@ export default function Sidebar({ open = false, onClose }) {
       <button className="new-playlist-pill" style={{ height: 36, marginTop: -6 }} onClick={() => setFolderCreating((v) => !v)} aria-label="Create folder">
         <Folder size={15} /> {folderCreating ? 'Cancel' : t(lang, 'home.shortcut.newFolder')}
       </button>
+      {installAvailable && (
+        <button className="new-playlist-pill" style={{ height: 36, marginTop: -6 }} onClick={() => promptInstall()} aria-label="Install app">
+          <Download size={15} /> Install app
+        </button>
+      )}
 
       {folderCreating && (
         <div className="create-row" style={{ display: 'flex', gap: 6, padding: '2px 10px 8px' }}>
