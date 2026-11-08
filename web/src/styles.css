@@ -1505,6 +1505,18 @@ img { user-select: none; -webkit-user-drag: none; }
 
 /* In-app Reduce motion toggle (Settings → Appearance) */
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { animation-duration: .001s !important; transition-duration: .001s !important; }
+/* Perpetual animations must STOP under reduce-motion (the rule above
+   would otherwise make them toggle 1000×/s): */
+.reduce-motion .aurora span,
+.reduce-motion .np-backdrop img,
+.reduce-motion .pb-marquee,
+.reduce-motion .skel,
+.reduce-motion .eq span,
+.reduce-motion .back-top,
+.reduce-motion .np-art-halo { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .aurora span, .np-backdrop img, .pb-marquee, .skel, .eq span, .back-top, .np-art-halo { animation: none !important; }
+}
 .reduce-motion .main { scroll-behavior: auto; animation: none; }
 .reduce-motion .skel, .reduce-motion .back-top { animation: none; }
 

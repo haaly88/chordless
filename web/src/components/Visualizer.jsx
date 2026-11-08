@@ -19,11 +19,11 @@ export default function Visualizer({ className, bars = 56 }) {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
     const ctx = canvas.getContext('2d');
-    let width = 0, height = 0, dpr = Math.min(2, window.devicePixelRatio || 1);
+    let width = 0, height = 0, dpr = Math.min(1.5, window.devicePixelRatio || 1);
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
-      dpr = Math.min(2, window.devicePixelRatio || 1);
+      dpr = Math.min(1.5, window.devicePixelRatio || 1);
       width = Math.max(1, Math.floor(rect.width));
       height = Math.max(1, Math.floor(rect.height));
       canvas.width = width * dpr;
@@ -36,8 +36,11 @@ export default function Visualizer({ className, bars = 56 }) {
 
     const n = bars;
     const freq = new Uint8Array(128);
-    const accent = () =>
-      getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#fc3c44';
+    // Cache the accent: getComputedStyle every frame forces style
+    // recalculation — read it rarely (track change / every few seconds).
+    let cachedAccent = '#fc3c44';
+    const refreshAccent = () =>
+      (cachedAccent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#fc3c44');
     const seedFor = (str) => {
       let h = 2166136261 >>> 0;
       const s = String(str || 'x');
@@ -68,17 +71,54 @@ export default function Visualizer({ className, bars = 56 }) {
       t = 0;
     };
 
-    const draw = () => {
+    // Frame pacing: ~30fps while playing, ~10fps while paused (idle drift),
+    // one static frame when the user enabled Reduce Motion. All time
+    // accumulators are timestamp-based so throttling never speeds things up.
+    let lastTs = 0;
+    let lastDrawAt = 0;
+    let frameCount = 0;
+    let staticDrawn = false;
+
+    const draw = (ts = 0) => {
       rafRef.current = requestAnimationFrame(draw);
       const state = usePlayer.getState();
+      const isPlaying = state.isPlaying;
+
+      // Tab fully hidden: browsers pause rAF already, but never waste
+      // a frame of JS work if we get here.
+      if (typeof document !== 'undefined' && document.hidden) return;
+
+      // Reduce motion: draw once, then leave the bars static.
+      if (state.settings?.reduceMotion) {
+        if (!staticDrawn) {
+          staticDrawn = true;
+          renderFrame(state, 0, true);
+        }
+        return;
+      }
+      staticDrawn = false;
+
+      const now = ts / 1000 || performance.now() / 1000;
+      const dt = lastTs ? Math.min(0.1, now - lastTs) : 0.016;
+      lastTs = now;
+      const minInterval = isPlaying ? 1 / 30 : 1 / 10;
+      if (now - lastDrawAt < minInterval) return;
+      lastDrawAt = now;
+      renderFrame(state, dt, false);
+    };
+
+    const renderFrame = (state, dt, still) => {
+      frameCount += 1;
+      if (frameCount % 240 === 1) refreshAccent();
       const isPlaying = state.isPlaying;
       const rate = state.playbackRate || 1;
       const trackId = state.currentTrack()?.id ?? null;
       if (trackId !== lastTrackId) {
         lastTrackId = trackId;
         seedTrack(trackId);
+        refreshAccent();
       }
-      t += 0.016 * rate;
+      t += (still ? 0.5 : dt) * rate;
 
       const levels = levelsRef.current;
       const analyser = getAnalyser();
@@ -115,8 +155,8 @@ export default function Visualizer({ className, bars = 56 }) {
             const target = Math.min(0.98, Math.max(0.05, shape * depth * (0.35 + 0.75 * beat) + shimmer + 0.12));
             levels[i] += (target - levels[i]) * 0.28;
           }
-        } else {
-          idleT += 0.016;
+        } else if (!isPlaying && !still) {
+          idleT += dt;
           for (let i = 0; i < n; i++) {
             const wave = 0.055 + 0.05 * (0.5 + 0.5 * Math.sin(idleT * 1.4 + i * 0.34));
             levels[i] += (wave - levels[i]) * 0.06;
@@ -124,30 +164,37 @@ export default function Visualizer({ className, bars = 56 }) {
         }
       }
 
+      // Solid fill + white tip per bar — avoids creating dozens of
+      // canvas gradients every frame (the main per-frame CPU cost).
       ctx.clearRect(0, 0, width, height);
       const gap = Math.max(2, Math.round(width / (n * 2.6)));
       const barW = Math.max(2, (width - gap * (n - 1)) / n);
       const baseY = height - 2;
       const maxBar = height - 4;
-      const col = accent();
+      const col = cachedAccent;
 
       for (let i = 0; i < n; i++) {
         const v = Math.min(1, Math.max(0.02, levels[i]));
         const h = Math.max(3, v * maxBar);
         const x = i * (barW + gap);
         const y = baseY - h;
-        const grad = ctx.createLinearGradient(0, y, 0, baseY);
-        grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.25, col);
-        grad.addColorStop(1, col);
-        ctx.fillStyle = grad;
         ctx.globalAlpha = 0.55 + v * 0.45;
+        ctx.fillStyle = col;
         const r = Math.min(barW / 2, 3);
         ctx.beginPath();
         if (ctx.roundRect) ctx.roundRect(x, y, barW, h, r);
         else ctx.rect(x, y, barW, h);
         ctx.fill();
         ctx.globalAlpha = 1;
+        const tipH = Math.max(1.5, h * 0.22);
+        ctx.fillStyle = '#ffffff';
+        if (ctx.roundRect) {
+          ctx.beginPath();
+          ctx.roundRect(x, y, barW, tipH, Math.min(r, tipH / 2));
+          ctx.fill();
+        } else {
+          ctx.fillRect(x, y, barW, tipH);
+        }
       }
     };
     draw();
