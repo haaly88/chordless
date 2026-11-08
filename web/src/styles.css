@@ -14,7 +14,7 @@
   --hover-strong: rgba(255, 255, 255, 0.1);
   --text: #f5f5f7;
   --text-2: #a6a6ae;
-  --text-3: #6d6d76;
+  --text-3: #9a9aa2;
   --stroke: rgba(255, 255, 255, 0.09);
   --stroke-strong: rgba(255, 255, 255, 0.16);
   --shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
@@ -35,7 +35,7 @@
   --hover-strong: rgba(0, 0, 0, 0.09);
   --text: #1c1c1e;
   --text-2: #5b5b63;
-  --text-3: #8e8e96;
+  --text-3: #6b6b72;
   --stroke: rgba(0, 0, 0, 0.08);
   --stroke-strong: rgba(0, 0, 0, 0.14);
   --shadow: 0 24px 70px rgba(20, 20, 40, 0.18);
@@ -1428,6 +1428,13 @@ img { user-select: none; -webkit-user-drag: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001s !important; transition-duration: .001s !important; }
   .main { scroll-behavior: auto; }
+}
+
+/* Touch targets (mobile): hit areas ≥ 44px where it matters most. */
+@media (pointer: coarse) {
+  .pill, .chip { min-height: 44px; }
+  .seekbar { height: 28px; }
+  .icon-btn { min-width: 44px; min-height: 44px; }
 }
 
 /* In-app Reduce motion toggle (Settings → Appearance) */
