@@ -7,6 +7,7 @@ import usePlayer from '../store.js';
 import { formatTime, formatTotalDuration } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import SeekBar from './SeekBar.jsx';
+import Visualizer from './Visualizer.jsx';
 
 const SLEEP_OPTIONS = [
   { label: 'Off', value: null },
@@ -172,10 +173,15 @@ export default function PlayerBar() {
             <div className="pb-meta">
               <div className="pb-title" onClick={() => toggleNowPlaying(true)} role="button" tabIndex={0}
                    onKeyDown={(e) => e.key === 'Enter' && toggleNowPlaying(true)}>
-                {track.title}
+                {track.title.length > 28 ? (
+                  <span className="pb-marquee" aria-label={track.title}>
+                    <span>{track.title}</span><span aria-hidden="true">{track.title}</span>
+                  </span>
+                ) : track.title}
               </div>
               <div className="pb-artist">{track.artist || 'Unknown artist'}</div>
             </div>
+            {!miniPlayer && <Visualizer className="pb-mini-viz" bars={18} />}
             <button
               className={`icon-btn like-btn${liked ? ' liked' : ''}`}
               onClick={() => toggleLike(track)}

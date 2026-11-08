@@ -10,10 +10,10 @@ import usePlayer, { getAnalyser } from '../store.js';
  *     convincing spectrum seeded from the track id (tempo + phases), still
  *     fully synchronized to play/pause & playback rate.
  */
-export default function Visualizer({ className }) {
+export default function Visualizer({ className, bars = 56 }) {
   const canvasRef = useRef(null);
   const rafRef = useRef(0);
-  const levelsRef = useRef(new Float32Array(56).fill(0.04));
+  const levelsRef = useRef(new Float32Array(bars).fill(0.04));
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -34,7 +34,7 @@ export default function Visualizer({ className }) {
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
 
-    const n = 56;
+    const n = bars;
     const freq = new Uint8Array(128);
     const accent = () =>
       getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#fc3c44';

@@ -123,7 +123,16 @@ export default function NowPlaying() {
         {/* LEFT — large artwork */}
         <div className="np-left">
           <div className="np-art-halo" aria-hidden="true" />
-          <div className="np-art-wrap">
+          <div
+            className="np-art-wrap"
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = (e.clientX - rect.left) / rect.width - 0.5;
+              const y = (e.clientY - rect.top) / rect.height - 0.5;
+              e.currentTarget.style.transform = `perspective(900px) rotateY(${x * 12}deg) rotateX(${-y * 12}deg) scale(1.02)`;
+            }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = ''; }}
+          >
             <img className="np-art" src={track.thumbnail} alt={`${track.title} artwork`} referrerPolicy="no-referrer" />
             <div className="np-art-overlay" />
             <div className="np-art-sheen" aria-hidden="true" />
