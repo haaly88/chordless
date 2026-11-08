@@ -674,9 +674,13 @@ export const usePlayer = create((set, get) => ({
     return { enabled: Boolean(cf.enabled) && !gaplessOn && !isEmbedEngine(get()), duration, gaplessOn };
   },
 
+  // Single source of truth: the element volume ALWAYS mirrors the stored
+  // level. Mute is signalled only via the `muted` flag/property — never by
+  // writing 0 into volume. (Writing 0 here caused un-mute to restore a
+  // wrong level whenever a load/fade path ran while muted.)
   _targetVolume() {
     const s = get();
-    return s.muted ? 0 : clamp01(s.volume ?? 0.8);
+    return clamp01(s.volume ?? 0.8);
   },
 
   _fadeTo(target, ms) {
@@ -1267,11 +1271,13 @@ export const usePlayer = create((set, get) => ({
   toggleMute() {
     clearFadeTimer();
     fadingOut = false;
-    // Mute state is separate from fade volume; restore base volume on unmute.
+    // Mute state is separate from the stored volume: toggling never
+    // rewrites the level, so un-mute always returns to the same volume.
     const muted = !get().muted;
     activeAudio().muted = muted;
     inactiveAudio().muted = muted;
-    if (!muted) { activeAudio().volume = clamp01(get().volume ?? 0.8); inactiveAudio().volume = clamp01(get().volume ?? 0.8); }
+    activeAudio().volume = clamp01(get().volume ?? 0.8);
+    inactiveAudio().volume = clamp01(get().volume ?? 0.8);
     if (isEmbedEngine(get())) {
       try {
         if (muted) embedBridge.player?.setVolume(0);

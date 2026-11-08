@@ -61,8 +61,10 @@ function VolumeControl() {
         onPointerUp={(e) => { setDragging(false); e.currentTarget.releasePointerCapture?.(e.pointerId); }}
         onPointerCancel={() => setDragging(false)}
         onKeyDown={(e) => {
-          if (e.key === 'ArrowLeft') { e.preventDefault(); setVolume(effective - 0.05); }
-          if (e.key === 'ArrowRight') { e.preventDefault(); setVolume(effective + 0.05); }
+          // Adjust the STORED level (not the muted display value) so arrow
+          // keys never clobber volume to 0 / jump to 5% while muted.
+          if (e.key === 'ArrowLeft') { e.preventDefault(); setVolume(Math.max(0, volume - 0.05)); }
+          if (e.key === 'ArrowRight') { e.preventDefault(); setVolume(Math.min(1, volume + 0.05)); }
         }}
       >
         <div className="vol-fill" style={{ width: `${effective * 100}%` }} />
