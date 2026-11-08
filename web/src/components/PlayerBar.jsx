@@ -211,7 +211,7 @@ export default function PlayerBar() {
           {miniLyric}
         </div>
       )}
-    <footer className={`player-bar${miniPlayer ? ' mini' : ''}`} aria-label="Now playing bar">
+    <footer className={`player-bar${miniPlayer ? ' mini' : ''}${isPlaying ? ' is-playing' : ''}`} aria-label="Now playing bar">
       {/* left — artwork & meta */}
       <div className="pb-left">
         {track ? (
