@@ -41,7 +41,14 @@ export function createToastNavSlice(set, get) {
     setLyricsOffset(v) { set({ lyricsOffset: Math.max(-10, Math.min(10, v)) }); },
     setSettingsOpen(open) { set({ settingsOpen: open }); },
     setShortcutsOpen(open) { set({ shortcutsOpen: open }); },
-    openMenu(menu) { set({ menu }); },
+    openMenu(menu) {
+      // Client coords arrive in viewport space; inside the scaled #root
+      // (transform) fixed elements use containing-block coords, so divide
+      // by the UI scale to land the menu under the cursor.
+      const s = Number(get().settings?.uiScale) || 1;
+      if (s === 1 || !menu) { set({ menu }); return; }
+      set({ menu: { ...menu, x: menu.x / s, y: menu.y / s } });
+    },
     closeMenu() { if (get().menu) set({ menu: null }); },
     requestSearchFocus() { set((s) => ({ searchFocusTick: s.searchFocusTick + 1 })); },
     setSearchQuery(searchQuery) { set({ searchQuery }); },
