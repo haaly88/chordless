@@ -138,8 +138,6 @@ img { user-select: none; -webkit-user-drag: none; }
 .aurora span:last-child { width: 45vmax; height: 45vmax; right: -10vmax; bottom: -16vmax; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 18%, transparent), transparent 65%); animation: aurora-drift-b 34s ease-in-out infinite alternate; }
 @keyframes aurora-drift-a { from { transform: translate(0, 0) scale(1); } to { transform: translate(8vmax, 5vmax) scale(1.12); } }
 @keyframes aurora-drift-b { from { transform: translate(0, 0) scale(1.05); } to { transform: translate(-7vmax, -5vmax) scale(.95); } }
-.app > .aurora { z-index: 0; }
-.app > *:not(.aurora) { position: relative; }
 
 /* ============ sidebar ============ */
 .sidebar {
