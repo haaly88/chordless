@@ -91,18 +91,19 @@ export default function App() {
   }, [theme]);
 
   // ---------- text size + reduce motion ----------
+  // Text size scales FONTS only via the --fscale CSS variable (set on the
+  // root, multiplied into every font-size). Using the browser `zoom`
+  // property instead inflated the whole page — including the 100dvh app
+  // shell and the fixed PlayerBar — pushing bottom controls off-screen
+  // in Chromium-based browsers (Edge) while Firefox (font-size fallback)
+  // barely changed. One code path now behaves identically everywhere.
   const fontScale = usePlayer((s) => s.settings.fontScale || 1);
   const reduceMotion = usePlayer((s) => Boolean(s.settings.reduceMotion));
   useEffect(() => {
     const root = document.documentElement;
-    // Chromium/Edge honor `zoom` on the root; Firefox falls back to font-size.
-    if ('zoom' in root.style) root.style.zoom = String(fontScale);
-    else root.style.fontSize = `${16 * fontScale}px`;
+    root.style.setProperty('--fscale', String(fontScale));
     root.classList.toggle('reduce-motion', reduceMotion);
-    return () => {
-      if ('zoom' in root.style) root.style.zoom = '';
-      else root.style.fontSize = '';
-    };
+    return () => { root.style.removeProperty('--fscale'); };
   }, [fontScale, reduceMotion]);
 
   // ---------- adaptive accent from artwork ----------
