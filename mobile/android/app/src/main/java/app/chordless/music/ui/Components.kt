@@ -124,10 +124,10 @@ fun CoverCard(
     subtitle: String,
     image: String,
     onClick: () -> Unit,
-    size: Dp = 176.dp,
+    size: Dp = 190.dp,
 ) {
     Column(modifier = Modifier.width(size).clickable(onClick = onClick)) {
-        Artwork(image, size = size, radius = 22.dp)
+        Artwork(image, size = size, radius = 24.dp)
         Text(
             title,
             maxLines = 1,
@@ -220,7 +220,7 @@ fun TrackRow(
                 if (isCurrent) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
                 else Color.Transparent
             )
-            .paddingRow(),
+            .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -232,7 +232,7 @@ fun TrackRow(
                 modifier = Modifier.width(28.dp),
             )
         }
-        Artwork(track.thumbnail, size = 56.dp, radius = 14.dp)
+        Artwork(track.thumbnail, size = 60.dp, radius = 16.dp)
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (chip != null) KindBadge(chip)

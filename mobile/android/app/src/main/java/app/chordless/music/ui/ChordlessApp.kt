@@ -232,29 +232,29 @@ fun ChordlessApp() {
                 NavigationBarItem(
                     selected = currentRoute == ROUTE_HOME,
                     onClick = { nav.navigate(ROUTE_HOME) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                    icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
-                    label = { Text("Home") },
+                    icon = { Icon(Icons.Filled.Home, contentDescription = "Home", modifier = Modifier.size(28.dp)) },
+                    label = { Text("Home", style = MaterialTheme.typography.labelLarge) },
                     colors = itemColors,
                 )
                 NavigationBarItem(
                     selected = currentRoute == ROUTE_SEARCH,
                     onClick = { nav.navigate(ROUTE_SEARCH) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                    icon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
-                    label = { Text("Search") },
+                    icon = { Icon(Icons.Filled.Search, contentDescription = "Search", modifier = Modifier.size(28.dp)) },
+                    label = { Text("Search", style = MaterialTheme.typography.labelLarge) },
                     colors = itemColors,
                 )
                 NavigationBarItem(
                     selected = currentRoute == ROUTE_LIBRARY,
                     onClick = { nav.navigate(ROUTE_LIBRARY) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                    icon = { Icon(Icons.Filled.LibraryMusic, contentDescription = "Library") },
-                    label = { Text("Library") },
+                    icon = { Icon(Icons.Filled.LibraryMusic, contentDescription = "Library", modifier = Modifier.size(28.dp)) },
+                    label = { Text("Library", style = MaterialTheme.typography.labelLarge) },
                     colors = itemColors,
                 )
                 NavigationBarItem(
                     selected = currentRoute == ROUTE_SETTINGS || currentRoute == ROUTE_EQ,
                     onClick = { nav.navigate(ROUTE_SETTINGS) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
-                    label = { Text("Settings") },
+                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings", modifier = Modifier.size(28.dp)) },
+                    label = { Text("Settings", style = MaterialTheme.typography.labelLarge) },
                     colors = itemColors,
                 )
             }
@@ -325,15 +325,15 @@ private fun PlayerBar(
     val haptics = LocalHapticFeedback.current
     Box(
         modifier = modifier
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-            .shadow(16.dp, RoundedCornerShape(24.dp))
-            .clip(RoundedCornerShape(24.dp))
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .shadow(16.dp, RoundedCornerShape(26.dp))
+            .clip(RoundedCornerShape(26.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f))
             .clickable(onClick = onOpen)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Artwork(track.thumbnail, size = 56.dp, radius = 16.dp)
+            Artwork(track.thumbnail, size = 60.dp, radius = 18.dp)
             Column(modifier = Modifier.weight(1f)) {
                 MarqueeText(text = track.title, style = MaterialTheme.typography.bodyLarge)
                 androidx.compose.material3.Text(
