@@ -28,13 +28,25 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Setup Gradle (cached distribution + deps)
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses || true
 
-      - name: Build debug APK (native)
+      - name: Build debug APK (native, with retries)
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          attempt=1
+          until ./gradlew assembleDebug; do
+            echo "Build failed (attempt $attempt) — retrying in 10s"
+            attempt=$((attempt+1))
+            if [ $attempt -gt 3 ]; then
+              echo "Build failed after 3 attempts"
+              exit 1
+            fi
+            sleep 10
+          done
         working-directory: mobile/android
 
       - name: Upload APK artifact
