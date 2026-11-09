@@ -1070,7 +1070,7 @@ export default function SettingsModal() {
           <b style={{ color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Info size={13} /> {t(lang, 'settings.aboutTitle')}
           </b>
-          {t(lang, 'settings.aboutBodyPre')}<a href="https://lrclib.net" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>LRCLIB <ExternalLink size={10} style={{ verticalAlign: '-1px' }} /></a>{t(lang, 'settings.aboutBodyPost')}
+          {t(lang, 'settings.aboutBodyPre')}<a href="https://lrclib.net" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>LRCLIB <ExternalLink size={10} style={{ verticalAlign: '-1px' }} /></a>{t(lang, 'settings.aboutBodyMid')}<a href="https://lrc.red" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>LRC.red <ExternalLink size={10} style={{ verticalAlign: '-1px' }} /></a>{t(lang, 'settings.aboutBodyPost')}
         </div>
         </>)}
           </div>
