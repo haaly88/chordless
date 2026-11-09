@@ -140,28 +140,11 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
             }
 
             SectionLabel("Appearance")
-            SettingRow("Theme") {
-                ExposedDropdownMenuBox(expanded = themeOpen, onExpandedChange = { themeOpen = !themeOpen }) {
-                    OutlinedTextField(
-                        value = theme.replaceFirstChar { it.uppercase() },
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(themeOpen) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                    )
-                    ExposedDropdownMenu(expanded = themeOpen, onDismissRequest = { themeOpen = false }) {
-                        listOf("system", "dark", "light").forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option.replaceFirstChar { it.uppercase() }) },
-                                onClick = {
-                                    theme = option
-                                    scope.launch { Prefs.setTheme(ctx, option) }
-                                    themeOpen = false
-                                },
-                            )
-                        }
-                    }
-                }
+            SettingRow(
+                title = "Theme",
+                subtitle = "Dark — always on (matches the desktop app)",
+            ) {
+                // Theme is fixed to dark; nothing to choose.
             }
             SettingRow("Accent") {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

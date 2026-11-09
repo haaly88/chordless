@@ -85,11 +85,8 @@ fun ChordlessTheme(
     accentId: String? = null,
     content: @Composable () -> Unit,
 ) {
-    val dark = when (theme) {
-        "dark" -> true
-        "light" -> false
-        else -> isSystemInDarkTheme()
-    }
+    // Always dark (BitChord/desktop parity) — no light mode in this app.
+    val dark = true
     val accent = accentFor(accentId, dark)
     val base = androidx.compose.material3.Typography()
     MaterialTheme(
