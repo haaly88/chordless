@@ -45,5 +45,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Chordless-mac-${{ matrix.name }}-${{ matrix.arch }}
-          path: desktop/dist/*.{dmg,zip}
+          path: desktop/release/*.{dmg,zip}
           if-no-files-found: error

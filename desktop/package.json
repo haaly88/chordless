@@ -17,7 +17,7 @@
     "appId": "com.chordless.desktop",
     "productName": "Chordless",
     "directories": {
-      "output": "dist"
+      "output": "release"
     },
     "win": {
       "icon": "build/icon.ico"
