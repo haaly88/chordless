@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -27,10 +30,11 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -43,31 +47,41 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import app.chordless.music.data.LocalStore
 import app.chordless.music.data.PlaylistCard
 import app.chordless.music.data.Track
 import app.chordless.music.player.PlayerManager
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
 
-private sealed interface Screen {
-    data object Home : Screen
-    data object Search : Screen
-    data object Library : Screen
-    data object Settings : Screen
-    data object Eq : Screen
-    data object NowPlaying : Screen
-    data class Page(val kind: String, val rawId: String) : Screen
-}
+private const val ROUTE_HOME = "home"
+private const val ROUTE_SEARCH = "search"
+private const val ROUTE_LIBRARY = "library"
+private const val ROUTE_SETTINGS = "settings"
+private const val ROUTE_EQ = "eq"
+private const val ROUTE_NOW_PLAYING = "nowPlaying"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChordlessApp() {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
+    val haptics = LocalHapticFeedback.current
     val snackbar = remember { SnackbarHostState() }
-    var screen by remember { mutableStateOf<Screen>(Screen.Home) }
+    val nav = rememberNavController()
     var gl by remember { mutableStateOf("ID") }
     var hl by remember { mutableStateOf("en") }
     var showQueue by remember { mutableStateOf(false) }
@@ -83,7 +97,7 @@ fun ChordlessApp() {
                 message = "Chordless ${u.version} is available",
                 actionLabel = "Download",
             )
-            if (res == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+            if (res == SnackbarResult.ActionPerformed) {
                 try {
                     ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u.url)))
                 } catch (e: Exception) {
@@ -97,93 +111,57 @@ fun ChordlessApp() {
     val isPlaying by PlayerManager.isPlaying.collectAsState()
     val loading by PlayerManager.loading.collectAsState()
     val position by PlayerManager.positionMs.collectAsState()
+    val backStack by nav.currentBackStackEntryAsState()
+    val currentRoute = backStack?.destination?.route
 
-    fun play(track: Track, q: List<Track>) = PlayerManager.play(track, q)
-    fun playSingle(track: Track) = PlayerManager.play(track)
+    fun play(track: Track, q: List<Track>) {
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        PlayerManager.play(track, q)
+    }
+    fun playSingle(track: Track) {
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        PlayerManager.play(track)
+    }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbar) },
-        bottomBar = {
-            Column {
-                if (current != null && screen !is Screen.NowPlaying) {
-                    PlayerBar(
-                        track = current!!,
-                        isPlaying = isPlaying,
-                        loading = loading,
-                        positionMs = position,
-                        onOpen = { screen = Screen.NowPlaying },
-                    )
-                }
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)) {
-                    NavigationBarItem(
-                        selected = screen is Screen.Home,
-                        onClick = { screen = Screen.Home },
-                        icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
-                        label = { Text("Home") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                        ),
-                    )
-                    NavigationBarItem(
-                        selected = screen is Screen.Search,
-                        onClick = { screen = Screen.Search },
-                        icon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
-                        label = { Text("Search") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                        ),
-                    )
-                    NavigationBarItem(
-                        selected = screen is Screen.Library,
-                        onClick = { screen = Screen.Library },
-                        icon = { Icon(Icons.Filled.LibraryMusic, contentDescription = "Library") },
-                        label = { Text("Library") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                        ),
-                    )
-                    NavigationBarItem(
-                        selected = screen is Screen.Settings,
-                        onClick = { screen = Screen.Settings },
-                        icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
-                        label = { Text("Settings") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                        ),
-                    )
-                }
-            }
-        },
-    ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            when (val s = screen) {
-                is Screen.Home -> HomeScreen(
+    val hazeState = rememberHazeState()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(
+            navController = nav,
+            startDestination = ROUTE_HOME,
+            modifier = Modifier.haze(hazeState),
+        ) {
+            composable(ROUTE_HOME) {
+                HomeScreen(
                     onPlay = { t, q -> play(t, q) },
-                    onOpenPlaylist = { card: PlaylistCard -> screen = Screen.Page("playlist", card.id) },
-                    onOpenFavorites = { /* library smart */ screen = Screen.Library },
-                    onOpenHistory = { screen = Screen.Library },
-                    onOpenSmart = { screen = Screen.Library },
+                    onOpenPlaylist = { card: PlaylistCard -> nav.navigate("page/playlist/${card.id}") },
+                    onOpenFavorites = { nav.navigate(ROUTE_LIBRARY) },
+                    onOpenHistory = { nav.navigate(ROUTE_LIBRARY) },
+                    onOpenSmart = { nav.navigate(ROUTE_LIBRARY) },
                     gl = gl,
                     hl = hl,
                 )
-                is Screen.Search -> SearchScreen(
+            }
+            composable(ROUTE_SEARCH) {
+                SearchScreen(
                     onPlay = { t, q -> play(t, q) },
-                    onOpenArtist = { track: Track -> screen = Screen.Page("artist", track.browseId ?: track.id) },
-                    onOpenAlbum = { track: Track -> screen = Screen.Page("album", track.browseId ?: track.id) },
+                    onOpenArtist = { track: Track -> nav.navigate("page/artist/${track.browseId ?: track.id}") },
+                    onOpenAlbum = { track: Track -> nav.navigate("page/album/${track.browseId ?: track.id}") },
                     onTrackAction = { actionTrack = it },
                 )
-                is Screen.Library -> LibraryScreen(
+            }
+            composable(ROUTE_LIBRARY) {
+                LibraryScreen(
                     onPlay = { t, q -> play(t, q) },
                     onTrackAction = { actionTrack = it },
                 )
-                is Screen.Settings -> SettingsScreen(onOpenEq = { screen = Screen.Eq })
-                is Screen.Eq -> EqScreen()
-                is Screen.NowPlaying -> NowPlayingScreen(
+            }
+            composable(ROUTE_SETTINGS) {
+                SettingsScreen(onOpenEq = { nav.navigate(ROUTE_EQ) })
+            }
+            composable(ROUTE_EQ) { EqScreen() }
+            composable(ROUTE_NOW_PLAYING) {
+                NowPlayingScreen(
                     onOpenQueue = { showQueue = true },
                     onShareCard = { track, pos, dur ->
                         scope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -200,14 +178,91 @@ fun ChordlessApp() {
                         }
                     },
                 )
-                is Screen.Page -> PageScreen(
-                    kind = s.kind,
-                    rawId = s.rawId,
+            }
+            composable(
+                route = "page/{kind}/{rawId}",
+                arguments = listOf(
+                    navArgument("kind") { type = NavType.StringType },
+                    navArgument("rawId") { type = NavType.StringType },
+                ),
+            ) { entry ->
+                PageScreen(
+                    kind = entry.arguments?.getString("kind") ?: "",
+                    rawId = entry.arguments?.getString("rawId") ?: "",
                     onPlay = { t, q -> play(t, q) },
                     onTrackAction = { actionTrack = it },
                 )
             }
         }
+
+        // Frosted-glass bars (Haze) — mini player + bottom navigation.
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.systemBars),
+        ) {
+            if (current != null && currentRoute != ROUTE_NOW_PLAYING) {
+                PlayerBar(
+                    track = current!!,
+                    isPlaying = isPlaying,
+                    loading = loading,
+                    positionMs = position,
+                    onOpen = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        nav.navigate(ROUTE_NOW_PLAYING)
+                    },
+                    modifier = Modifier.hazeEffect(hazeState) {
+                        blurRadius = HazeDefaults.blurRadius
+                        backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
+                    },
+                )
+            }
+            NavigationBar(
+                containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                modifier = Modifier.hazeEffect(hazeState) {
+                    blurRadius = HazeDefaults.blurRadius
+                    backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
+                },
+            ) {
+                val itemColors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                )
+                NavigationBarItem(
+                    selected = currentRoute == ROUTE_HOME,
+                    onClick = { nav.navigate(ROUTE_HOME) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                    icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
+                    label = { Text("Home") },
+                    colors = itemColors,
+                )
+                NavigationBarItem(
+                    selected = currentRoute == ROUTE_SEARCH,
+                    onClick = { nav.navigate(ROUTE_SEARCH) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                    icon = { Icon(Icons.Filled.Search, contentDescription = "Search") },
+                    label = { Text("Search") },
+                    colors = itemColors,
+                )
+                NavigationBarItem(
+                    selected = currentRoute == ROUTE_LIBRARY,
+                    onClick = { nav.navigate(ROUTE_LIBRARY) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                    icon = { Icon(Icons.Filled.LibraryMusic, contentDescription = "Library") },
+                    label = { Text("Library") },
+                    colors = itemColors,
+                )
+                NavigationBarItem(
+                    selected = currentRoute == ROUTE_SETTINGS || currentRoute == ROUTE_EQ,
+                    onClick = { nav.navigate(ROUTE_SETTINGS) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
+                    label = { Text("Settings") },
+                    colors = itemColors,
+                )
+            }
+        }
+
+        SnackbarHost(
+            hostState = snackbar,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 140.dp),
+        )
     }
 
     if (showQueue) {
@@ -263,10 +318,12 @@ private fun PlayerBar(
     loading: Boolean,
     positionMs: Long,
     onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val sleepChip = PlayerManager.sleepChip()
+    val haptics = LocalHapticFeedback.current
     Box(
-        modifier = Modifier
+        modifier = modifier
             .padding(horizontal = 12.dp, vertical = 6.dp)
             .shadow(16.dp, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
@@ -285,7 +342,10 @@ private fun PlayerBar(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            IconButton(onClick = { PlayerManager.toggle() }) {
+            IconButton(onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                PlayerManager.toggle()
+            }) {
                 Icon(
                     if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     contentDescription = "Play/Pause",
@@ -330,13 +390,13 @@ private fun TrackActionSheet(
         Column(modifier = Modifier.padding(20.dp)) {
             Text(track.title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
             Text(track.artist, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            androidx.compose.foundation.layout.Spacer(Modifier.size(16.dp))
+            Spacer(Modifier.size(16.dp))
             ActionRow("Play next", onPlayNext)
             ActionRow("Add to queue", onAddToQueue)
             ActionRow("Like / Unlike", onToggleFavorite)
             ActionRow("Add to playlist", onAddToPlaylist)
-            androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
-            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancel") }
+            Spacer(Modifier.size(12.dp))
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     }
 }
