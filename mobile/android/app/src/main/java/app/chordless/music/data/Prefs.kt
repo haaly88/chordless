@@ -53,4 +53,11 @@ object Prefs {
     suspend fun setSpeed(ctx: Context, v: Float) = ctx.prefs.edit { it[K_SPEED] = v }
     suspend fun setEq(ctx: Context, v: String) = ctx.prefs.edit { it[K_EQ] = v }
     suspend fun setEqOn(ctx: Context, v: Boolean) = ctx.prefs.edit { it[K_EQON] = v }
+
+    fun themeFlow(ctx: Context): kotlinx.coroutines.flow.Flow<String> =
+        ctx.prefs.data.map { it[K_THEME] ?: "system" }
+    fun accentFlow(ctx: Context): kotlinx.coroutines.flow.Flow<String> =
+        ctx.prefs.data.map { it[K_ACCENT] ?: "red" }
+    fun uiScaleFlow(ctx: Context): kotlinx.coroutines.flow.Flow<Float> =
+        ctx.prefs.data.map { it[K_UISCALE] ?: 0.9f }
 }

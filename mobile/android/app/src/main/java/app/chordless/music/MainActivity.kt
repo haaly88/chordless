@@ -8,11 +8,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -36,14 +34,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val ctx = LocalContext.current
-            var theme by remember { mutableStateOf("system") }
-            var accent by remember { mutableStateOf("red") }
-            var uiScale by remember { mutableStateOf(0.9f) }
-            LaunchedEffect(Unit) {
-                theme = Prefs.theme(ctx)
-                accent = Prefs.accent(ctx)
-                uiScale = Prefs.uiScale(ctx)
-            }
+            val theme by remember(ctx) { Prefs.themeFlow(ctx) }.collectAsState(initial = "system")
+            val accent by remember(ctx) { Prefs.accentFlow(ctx) }.collectAsState(initial = "red")
+            val uiScale by remember(ctx) { Prefs.uiScaleFlow(ctx) }.collectAsState(initial = 0.9f)
             ChordlessTheme(theme = theme, accentId = accent) {
                 // Default UI scale 90% (user-overridable in Settings).
                 CompositionLocalProvider(LocalDensity provides Density(uiScale)) {

@@ -46,6 +46,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -94,7 +95,7 @@ fun NowPlayingScreen(
     var translated by remember { mutableStateOf<String?>(null) }
     var langTarget by remember { mutableStateOf("id") }
     var volume by remember { mutableStateOf(1f) }
-    val scope = remember { CoroutineScope(Dispatchers.Main) }
+    val scope = rememberCoroutineScope()
 
     val t = track
     if (t != null) {
@@ -345,7 +346,7 @@ fun NowPlayingScreen(
                     value = volume,
                     onValueChange = {
                         volume = it
-                        PlayerManager.player.volume = it
+                        PlayerManager.setVolume(it)
                     },
                     colors = SliderDefaults.colors(
                         activeTrackColor = MaterialTheme.colorScheme.primary,
@@ -380,11 +381,16 @@ fun NowPlayingScreen(
                         if (syncedLines.isNotEmpty()) karaoke = true
                         else scope.launch {
                             translating = true
-                            val source = lyrics?.plain ?: lyrics?.synced ?: ""
-                            if (source.isNotBlank()) {
-                                translated = TranslateRepo.translate(source, langTarget)
+                            try {
+                                val source = lyrics?.plain ?: lyrics?.synced ?: ""
+                                if (source.isNotBlank()) {
+                                    translated = TranslateRepo.translate(source, langTarget)
+                                }
+                            } catch (e: Exception) {
+                                // keep original lyrics on translation failure
+                            } finally {
+                                translating = false
                             }
-                            translating = false
                         }
                     }) {
                         Text(if (syncedLines.isNotEmpty()) "Karaoke" else if (translating) "Translating…" else "Translate")

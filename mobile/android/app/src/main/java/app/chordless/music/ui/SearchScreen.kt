@@ -61,6 +61,7 @@ fun SearchScreen(
     var recents by remember { mutableStateOf<List<String>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var retry by remember { mutableStateOf(0) }
     var gl by remember { mutableStateOf("ID") }
     var hl by remember { mutableStateOf("en") }
 
@@ -70,7 +71,7 @@ fun SearchScreen(
         recents = LocalStore.searchHistory(ctx)
     }
 
-    LaunchedEffect(query) {
+    LaunchedEffect(query, retry) {
         if (query.length < 2) {
             results = emptyList()
             loading = false
@@ -81,7 +82,7 @@ fun SearchScreen(
         try {
             results = Innertube.search(query, 40, gl, hl)
             error = null
-            scope.launch { LocalStore.pushSearch(ctx, query) }
+            scope.launch { LocalStore.pushSearch(ctx, query); recents = LocalStore.searchHistory(ctx) }
         } catch (e: Exception) {
             error = e.message
         }
@@ -138,7 +139,7 @@ fun SearchScreen(
                 )
                 when {
                     loading && results.isEmpty() -> LoadingBox()
-                    error != null && results.isEmpty() -> ErrorBox(error!!) { }
+                    error != null && results.isEmpty() -> ErrorBox(error ?: "Search failed") { retry++ }
                     query.length < 2 -> {
                         if (recents.isNotEmpty()) {
                             Row(

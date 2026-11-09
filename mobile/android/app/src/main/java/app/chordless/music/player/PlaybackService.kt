@@ -39,7 +39,7 @@ class PlaybackService : Service() {
             ACTION_NEXT -> PlayerManager.next()
             ACTION_PREV -> PlayerManager.prev()
             ACTION_STOP -> {
-                PlayerManager.player.pause()
+                PlayerManager.safePause()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY

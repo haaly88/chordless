@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -45,10 +46,10 @@ fun QueueSheet(
     val index by PlayerManager.index.collectAsState()
     val current by PlayerManager.current.collectAsState()
     val listState = rememberLazyListState()
-    val scope = remember { kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(index) {
-        listState.animateScrollToItem(index.coerceAtLeast(0))
+        if (queue.isNotEmpty() && index in queue.indices) listState.animateScrollToItem(index)
     }
 
     ModalBottomSheet(

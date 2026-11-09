@@ -22,7 +22,9 @@ object Streams {
     data class Resolved(val url: String, val mime: String = "", val bitrate: Int = 0)
 
     private val mutex = Mutex()
-    private val cache = mutableMapOf<String, Resolved>()
+    // videoId -> (resolved, resolvedAtMs). Stream URLs expire server-side,
+    // so cached entries are treated as stale after ~3 hours.
+    private val cache = mutableMapOf<String, Pair<Resolved, Long>>()
     private var init = false
 
     private val http: OkHttpClient = OkHttpClient.Builder()
@@ -66,7 +68,11 @@ object Streams {
     /** Best (highest-bitrate) audio-only stream. */
     suspend fun resolve(videoId: String): Resolved = withContext(Dispatchers.IO) {
         ensureInit()
-        mutex.withLock { cache[videoId]?.let { return@withContext it } }
+        mutex.withLock {
+            cache[videoId]?.let { (resolved, at) ->
+                if (System.currentTimeMillis() - at < 3 * 3_600_000L) return@withContext resolved
+            }
+        }
         val info = StreamInfo.getInfo("https://www.youtube.com/watch?v=$videoId")
         val streams: List<AudioStream> = info.audioStreams ?: emptyList()
         if (streams.isEmpty()) throw IllegalStateException("No audio streams for $videoId")
@@ -77,7 +83,7 @@ object Streams {
             mime = best.format?.mimeType ?: "",
             bitrate = best.averageBitrate,
         )
-        mutex.withLock { cache[videoId] = resolved }
+        mutex.withLock { cache[videoId] = resolved to System.currentTimeMillis() }
         resolved
     }
 

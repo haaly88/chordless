@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayArrow
@@ -37,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,6 +80,12 @@ fun LibraryScreen(
     }
 
     LaunchedEffect(Unit) { refresh() }
+    // refresh after external playback changes (history/favorites are written on play)
+    val currentTrack by PlayerManager.current.collectAsState()
+    val currentId = currentTrack?.id
+    LaunchedEffect(currentId) {
+        if (loaded) refresh()
+    }
 
     val smartTracks: List<Track> = when (smart) {
         "favorites" -> favorites
@@ -113,10 +121,11 @@ fun LibraryScreen(
                         onPlay = onPlay,
                         onTrackAction = onTrackAction,
                         onRemove = { track ->
-                            scope.launch {
-                                LocalStore.removeFromPlaylist(ctx, openPlaylist!!.id, track.id)
+                            val pid = openPlaylist?.id
+                            if (pid != null) scope.launch {
+                                LocalStore.removeFromPlaylist(ctx, pid, track.id)
                                 refresh()
-                                openPlaylist = playlists.firstOrNull { it.id == openPlaylist!!.id }
+                                openPlaylist = playlists.firstOrNull { it.id == pid }
                             }
                         },
                     )
@@ -219,9 +228,9 @@ fun LibraryScreen(
                                     )
                                 }
                                 IconButton(onClick = { renameTarget = p }) {
-                                    Icon(Icons.Filled.ArrowUpward, contentDescription = "Rename")
+                                    Icon(Icons.Filled.Edit, contentDescription = "Rename")
                                 }
-                                IconButton(onClick = { deleteTarget = p }) {
+                                IconButton(onClick = { p.tracks.firstOrNull()?.let { onPlay(it, p.tracks) } }) {
                                     Icon(Icons.Filled.PlayArrow, contentDescription = "Play", tint = MaterialTheme.colorScheme.primary)
                                 }
                                 TextButton(onClick = { deleteTarget = p }) { Text("Delete", color = MaterialTheme.colorScheme.error) }

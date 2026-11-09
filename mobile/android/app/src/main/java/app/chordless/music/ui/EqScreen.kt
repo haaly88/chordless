@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +35,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun EqScreen() {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     var gains by remember { mutableStateOf(listOf(0f, 0f, 0f, 0f, 0f)) }
     var enabled by remember { mutableStateOf(true) }
     var preset by remember { mutableStateOf("Custom") }
@@ -73,7 +75,7 @@ fun EqScreen() {
                 Text("Enabled", style = MaterialTheme.typography.titleSmall)
                 Switch(checked = enabled, onCheckedChange = {
                     enabled = it
-                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch { save() }
+                    scope.launch { save() }
                 })
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -83,7 +85,7 @@ fun EqScreen() {
                         onClick = {
                             preset = name
                             gains = g
-                            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch { save() }
+                            scope.launch { save() }
                         },
                         label = { Text(name) },
                     )
@@ -92,7 +94,7 @@ fun EqScreen() {
             bands(gains, bandNames) { i, v ->
                 gains = gains.toMutableList().apply { this[i] = v }
                 preset = "Custom"
-                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch { save() }
+                scope.launch { save() }
             }
         }
     }

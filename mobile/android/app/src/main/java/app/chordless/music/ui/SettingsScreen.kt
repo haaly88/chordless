@@ -2,6 +2,7 @@ package app.chordless.music.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -116,8 +117,9 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
                     OutlinedTextField(
                         value = gl,
                         onValueChange = {
-                            gl = it.uppercase().take(2)
-                            scope.launch { Prefs.setGl(ctx, gl) }
+                            val next = it.uppercase().take(2)
+                            gl = next
+                            scope.launch { Prefs.setGl(ctx, next) }
                         },
                         label = { Text("GL") },
                         modifier = Modifier.weight(1f),
@@ -126,8 +128,9 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
                     OutlinedTextField(
                         value = hl,
                         onValueChange = {
-                            hl = it.lowercase().take(2)
-                            scope.launch { Prefs.setHl(ctx, hl) }
+                            val next = it.lowercase().take(2)
+                            hl = next
+                            scope.launch { Prefs.setHl(ctx, next) }
                         },
                         label = { Text("HL") },
                         modifier = Modifier.weight(1f),
@@ -256,7 +259,7 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
 
             SectionLabel("Notifications")
             SwitchRow("Song notifications", "Show a notification for each song", notify) {
-                if (it && ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                if (it && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                     notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 } else {
                     notify = it

@@ -45,7 +45,6 @@ object ShareCard {
             val cy = 120f
             if (coverBitmap != null) {
                 val paint = Paint().apply { isAntiAlias = true }
-                canvas.drawBitmap(coverBitmap, cx, cy, paint)
                 // rounded corners via clip
                 canvas.save()
                 canvas.clipPath(android.graphics.Path().apply {
@@ -53,6 +52,7 @@ object ShareCard {
                 })
                 canvas.drawBitmap(coverBitmap, cx, cy, paint)
                 canvas.restore()
+                coverBitmap.recycle()
             }
 
             // texts
@@ -87,7 +87,7 @@ object ShareCard {
         return Intent(Intent.ACTION_SEND).apply {
             type = "image/png"
             putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         }
     }
 
@@ -101,7 +101,7 @@ object ShareCard {
 
     private suspend fun loadCover(context: Context, url: String, size: Int): Bitmap? {
         if (url.isBlank()) return null
-        val loader = ImageLoader(context)
+        val loader = ImageLoader.Builder(context).build()
         val request = ImageRequest.Builder(context).data(url).size(size).allowHardware(false).build()
         val result = loader.execute(request)
         return (result as? SuccessResult)?.drawable?.let { drawable ->

@@ -70,8 +70,11 @@ object PlayerManager {
     val sleepRemainingSec: StateFlow<Long?> = _sleepRemainingSec.asStateFlow()
 
     private var ctx: Context? = null
+    @Volatile
     private var segments: List<Pair<Long, Long>> = emptyList()
+    @Volatile
     private var sponsorSkip = true
+    @Volatile
     private var autoplay = true
     private var eq: Equalizer? = null
     private var enhancer: LoudnessEnhancer? = null
@@ -111,17 +114,17 @@ object PlayerManager {
         scope.launch {
             while (true) {
                 delay(500)
-                _positionMs.value = player.currentPosition
+                if (::player.isInitialized) _positionMs.value = player.currentPosition
                 val endsAt = _sleepEndsAt.value
                 if (endsAt != null && endsAt > 0) {
                     val remaining = ((endsAt - System.currentTimeMillis()) / 1000).coerceAtLeast(0)
                     _sleepRemainingSec.value = remaining
                     if (remaining <= 0) {
                         setSleep(null)
-                        player.pause()
+                        if (::player.isInitialized) player.pause()
                     }
                 }
-                if (sponsorSkip && segments.isNotEmpty()) {
+                if (::player.isInitialized && sponsorSkip && segments.isNotEmpty()) {
                     val pos = player.currentPosition
                     val seg = segments.firstOrNull { pos >= it.first && pos < it.second }
                     if (seg != null) player.seekTo(seg.second)
@@ -186,9 +189,17 @@ object PlayerManager {
     // ---------- playback ----------
     /** Resolve stream URL (NewPipe) and start playback for [track]. */
     fun play(track: Track, queue: List<Track> = emptyList()) {
+        if (!::player.isInitialized) return
         if (queue.isNotEmpty()) {
-            _queue.value = queue
-            _index.value = queue.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+            val found = queue.indexOfFirst { it.id == track.id }
+            if (found >= 0) {
+                _queue.value = queue
+                _index.value = found
+            } else {
+                // requested track missing from supplied queue (e.g. restored UI)
+                _queue.value = listOf(track)
+                _index.value = 0
+            }
         } else if (track.id != _current.value?.id) {
             _queue.value = listOf(track)
             _index.value = 0
@@ -214,7 +225,7 @@ object PlayerManager {
                         PlaybackService.start(it)
                     }
                 }
-                if (sponsorSkip) {
+                if (sponsorSkip && _current.value?.id == track.id) {
                     segments = SponsorBlockRepo.segments(track.id)
                 }
             } catch (e: Exception) {
@@ -239,8 +250,12 @@ object PlayerManager {
 
     fun setSpeed(v: Float) {
         _speed.value = v
-        player.setPlaybackSpeed(v)
+        if (::player.isInitialized) player.setPlaybackSpeed(v)
         ctx?.let { c -> scope.launch { Prefs.setSpeed(c, v) } }
+    }
+
+    fun setVolume(v: Float) {
+        if (::player.isInitialized) player.volume = v
     }
 
     fun setShuffle(on: Boolean) {
@@ -249,6 +264,7 @@ object PlayerManager {
 
     fun setRepeat(mode: Int) {
         _repeat.value = mode
+        if (!::player.isInitialized) return
         player.repeatMode = when (mode) {
             1 -> Player.REPEAT_MODE_ALL
             2 -> Player.REPEAT_MODE_ONE
@@ -286,15 +302,17 @@ object PlayerManager {
         if (_sleepEndsAt.value == -1L) {
             // sleep timer: end of current track
             setSleep(null)
-            player.pause()
+            if (::player.isInitialized) player.pause()
             return
         }
         when (repeatMode()) {
-            2 -> play(_current.value!!) // repeat one
+            2 -> _current.value?.let { play(it) } // repeat one
             1 -> {
-                if (_index.value < _queue.value.lastIndex) next() else {
+                val q = _queue.value
+                if (q.isEmpty()) return
+                if (_index.value < q.lastIndex) next() else {
                     _index.value = 0
-                    play(_queue.value[0], _queue.value)
+                    play(q[0], q)
                 }
             }
             else -> {
@@ -320,13 +338,16 @@ object PlayerManager {
                 val gl = Prefs.gl(c)
                 val hl = Prefs.hl(c)
                 val results = Innertube.search(query, 10, gl, hl)
-                    .filter { it.id != t.id && it.kind == "song" }
+                    .filter { it.id != t.id && (it.kind == "song" || it.kind == "track" || it.kind == "video") }
                 if (results.isEmpty()) return@launch
                 withContext(Dispatchers.Main) {
                     val cur = _queue.value.toMutableList()
                     cur.addAll(results)
+                    // cap queue growth (drop oldest, keep autoplay window)
+                    val overflow = (cur.size - 100).coerceAtLeast(0)
+                    if (overflow > 0) repeat(overflow) { cur.removeAt(0) }
                     _queue.value = cur
-                    _index.value = cur.size - results.size
+                    _index.value = (cur.size - results.size).coerceAtLeast(0)
                     play(results.first(), cur)
                 }
             } catch (e: Exception) {
@@ -354,7 +375,8 @@ object PlayerManager {
         _queue.value = cur
         if (cur.isEmpty()) {
             _index.value = 0
-            player.stop()
+            _current.value = null
+            if (::player.isInitialized) player.stop()
             ctx?.let { PlaybackService.stop(it) }
             return
         }
@@ -401,6 +423,10 @@ object PlayerManager {
                 "%d:%02d".format(s / 60, s % 60)
             }
         }
+    }
+
+    fun safePause() {
+        if (::player.isInitialized) player.pause()
     }
 
     fun durationMs(): Long = if (::player.isInitialized) player.duration.coerceAtLeast(0) else 0

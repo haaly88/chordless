@@ -86,6 +86,14 @@ fun HomeScreen(
         loading = false
     }
 
+    // keep fav/history counts fresh after playback
+    val currentTrack by PlayerManager.current.collectAsState()
+    val currentId = currentTrack?.id
+    LaunchedEffect(currentId) {
+        favCount = LocalStore.favorites(ctx).size
+        histCount = LocalStore.history(ctx).size
+    }
+
     AuroraBackground {
         if (loading && shelves.isEmpty()) {
             LoadingBox()
@@ -108,7 +116,7 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                ForYouHero(onPlay = onPlay)
+                ForYouHero(onPlay = onPlay, fallback = shelves.firstOrNull()?.items?.firstOrNull())
             }
             item {
                 QuickTiles(
@@ -167,9 +175,9 @@ fun HomeScreen(
 
 /** For You hero — desktop-style gradient card with play-all. */
 @Composable
-private fun ForYouHero(onPlay: (Track, List<Track>) -> Unit) {
+private fun ForYouHero(onPlay: (Track, List<Track>) -> Unit, fallback: Track?) {
     val current by PlayerManager.current.collectAsState()
-    val first = current
+    val playTrack = current ?: fallback
     Row(
         modifier = Modifier
             .padding(horizontal = 20.dp, vertical = 8.dp)
@@ -198,7 +206,7 @@ private fun ForYouHero(onPlay: (Track, List<Track>) -> Unit) {
             )
             Spacer(Modifier.height(14.dp))
             Button(
-                onClick = { if (first != null) onPlay(first, listOf(first)) },
+                onClick = { if (playTrack != null) onPlay(playTrack, listOf(playTrack)) },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onPrimary),
                 shape = CircleShape,
             ) {
@@ -207,7 +215,7 @@ private fun ForYouHero(onPlay: (Track, List<Track>) -> Unit) {
                 Text("Play", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             }
         }
-        if (first != null) Artwork(first.thumbnail, size = 110.dp, radius = 20.dp)
+        if (playTrack != null) Artwork(playTrack.thumbnail, size = 110.dp, radius = 20.dp)
     }
 }
 

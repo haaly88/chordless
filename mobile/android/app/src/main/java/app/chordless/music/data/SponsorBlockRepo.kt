@@ -25,7 +25,8 @@ object SponsorBlockRepo {
             val out = mutableListOf<Pair<Long, Long>>()
             for (i in 0 until arr.length()) {
                 val seg = arr.optJSONArray(i)?.optJSONArray(1) ?: continue
-                out.add(seg.optLong(0) to seg.optLong(1))
+                // SponsorBlock returns seconds; playback compares milliseconds.
+                out.add((seg.optDouble(0) * 1000).toLong() to (seg.optDouble(1) * 1000).toLong())
             }
             out
         }

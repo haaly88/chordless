@@ -49,8 +49,9 @@ fun PageScreen(
     var page by remember { mutableStateOf<PageInfo?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
+    var retry by remember { mutableStateOf(0) }
 
-    LaunchedEffect(rawId) {
+    LaunchedEffect(kind, rawId, retry) {
         loading = true
         error = null
         try {
@@ -73,7 +74,7 @@ fun PageScreen(
             return@AuroraBackground
         }
         if (page == null) {
-            ErrorBox(error ?: "Failed to load") { }
+            ErrorBox(error ?: "Failed to load") { retry++ }
             return@AuroraBackground
         }
         val p = page!!
