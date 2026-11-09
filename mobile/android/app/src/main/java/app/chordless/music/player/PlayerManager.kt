@@ -75,6 +75,8 @@ object PlayerManager {
     private var autoplay = true
     private var eq: Equalizer? = null
     private var enhancer: LoudnessEnhancer? = null
+    /** codec/bitrate of the currently playing stream (stats for nerds). */
+    private var currentFormat: String = ""
 
     fun init(app: Application) {
         if (::player.isInitialized) return
@@ -197,9 +199,13 @@ object PlayerManager {
         segments = emptyList()
         scope.launch(Dispatchers.IO) {
             try {
-                val url = app.chordless.music.data.Streams.audioUrl(track.id)
+                val resolved = app.chordless.music.data.Streams.resolve(track.id)
                 withContext(Dispatchers.Main) {
-                    player.setMediaItem(MediaItem.Builder().setUri(url).setMediaId(track.id).build())
+                    currentFormat = listOf(
+                        resolved.mime.ifBlank { null },
+                        resolved.bitrate.takeIf { it > 0 }?.let { "${it} kbps" },
+                    ).filterNotNull().joinToString(" · ")
+                    player.setMediaItem(MediaItem.Builder().setUri(resolved.url).setMediaId(track.id).build())
                     player.prepare()
                     player.play()
                     _loading.value = false
@@ -400,14 +406,8 @@ object PlayerManager {
     fun durationMs(): Long = if (::player.isInitialized) player.duration.coerceAtLeast(0) else 0
     fun positionNow(): Long = if (::player.isInitialized) player.currentPosition else 0
 
-    /** Stats-for-nerds line (BitChord parity): codec · bitrate. */
-    fun statsLine(): String {
-        if (!::player.isInitialized) return ""
-        val f = androidx.media3.common.util.Utils.getCurrentFormat(player) ?: return "Streaming"
-        val bitrate = (f.bitrate / 1000).takeIf { it > 0 }?.let { "${it} kbps" }
-        val codecs = f.codecs ?: f.mimeType ?: ""
-        return listOf(codecs, bitrate).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Streaming" }
-    }
+    /** Stats-for-nerds line (BitChord parity): codec · bitrate of the stream. */
+    fun statsLine(): String = currentFormat.ifBlank { "Streaming" }
 
     @Suppress("unused")
     private val seekWindow = C.DEFAULT_SEEK_BACK_INCREMENT_MS

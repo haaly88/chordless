@@ -19,8 +19,10 @@ import java.util.concurrent.TimeUnit
  */
 object Streams {
 
+    data class Resolved(val url: String, val mime: String = "", val bitrate: Int = 0)
+
     private val mutex = Mutex()
-    private val cache = mutableMapOf<String, String>()
+    private val cache = mutableMapOf<String, Resolved>()
     private var init = false
 
     private val http: OkHttpClient = OkHttpClient.Builder()
@@ -61,16 +63,23 @@ object Streams {
         }
     }
 
-    /** Best (highest-bitrate) audio-only stream URL. */
-    suspend fun audioUrl(videoId: String): String = withContext(Dispatchers.IO) {
+    /** Best (highest-bitrate) audio-only stream. */
+    suspend fun resolve(videoId: String): Resolved = withContext(Dispatchers.IO) {
         ensureInit()
         mutex.withLock { cache[videoId]?.let { return@withContext it } }
         val info = StreamInfo.getInfo("https://www.youtube.com/watch?v=$videoId")
         val streams: List<AudioStream> = info.audioStreams ?: emptyList()
         if (streams.isEmpty()) throw IllegalStateException("No audio streams for $videoId")
-        val url = streams.maxByOrNull { it.averageBitrate }?.url
-            ?: throw IllegalStateException("No audio stream URL for $videoId")
-        mutex.withLock { cache[videoId] = url }
-        url
+        val best = streams.maxByOrNull { it.averageBitrate } ?: streams.first()
+        val resolved = Resolved(
+            url = best.url,
+            mime = best.format?.mimeType ?: "",
+            bitrate = best.averageBitrate,
+        )
+        mutex.withLock { cache[videoId] = resolved }
+        resolved
     }
+
+    /** Backwards-compatible URL-only helper. */
+    suspend fun audioUrl(videoId: String): String = resolve(videoId).url
 }

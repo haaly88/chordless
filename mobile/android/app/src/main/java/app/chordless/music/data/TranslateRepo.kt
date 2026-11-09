@@ -53,16 +53,18 @@ object TranslateRepo {
     private fun gtx(line: String, target: String): String {
         val url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=$target&dt=t&q=${URLEncoder.encode(line, "UTF-8")}"
         val req = Request.Builder().url(url).header("User-Agent", "Chordless Android").build()
-        client.newCall(req).execute().use { res ->
-            if (!res.isSuccessful) throw IllegalStateException("gtx ${res.code}")
-            val arr = org.json.JSONArray(res.body?.string().orEmpty())
-            val first = arr.optJSONArray(0) ?: return@use line
-            val sb = StringBuilder()
-            for (i in 0 until first.length()) {
-                val seg = first.optJSONArray(i) ?: continue
-                sb.append(seg.optString(0))
-            }
-            sb.toString().ifBlank { line }
+        val response = client.newCall(req).execute()
+        val body = response.body?.string().orEmpty()
+        val ok = response.isSuccessful
+        response.close()
+        if (!ok) throw IllegalStateException("gtx failed")
+        val arr = org.json.JSONArray(body)
+        val first = arr.optJSONArray(0) ?: return line
+        val sb = StringBuilder()
+        for (i in 0 until first.length()) {
+            val seg = first.optJSONArray(i) ?: continue
+            sb.append(seg.optString(0))
         }
+        return sb.toString().ifBlank { line }
     }
 }
