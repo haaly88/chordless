@@ -92,14 +92,24 @@ export default function App() {
   }, [theme]);
 
   // ---------- UI scale (whole-layout compensation for display scaling) ----------
-  // Applied as `transform: scale()` on #root (see styles.css) because CSS
-  // `zoom` breaks media queries and viewport units. The scale factor is
+  // Web: `transform: scale()` on #root (see styles.css) because CSS `zoom`
+  // breaks media queries and viewport units. The scale factor is
   // published as --uiscale; font size keeps using --fscale.
+  // Desktop (Electron): use the native page-zoom factor instead — it
+  // re-lays-out text and stays crisp, while transform scaling rasterizes
+  // and looks blurry.
   const uiScale = usePlayer((s) => s.settings.uiScale || 1);
+  const isDesktopShell = typeof window !== 'undefined' && Boolean(window.chordless?.isDesktop);
   useEffect(() => {
-    document.documentElement.style.setProperty('--uiscale', String(uiScale));
-    return () => { document.documentElement.style.removeProperty('--uiscale'); };
-  }, [uiScale]);
+    const root = document.documentElement;
+    if (isDesktopShell && window.chordless?.setUiScale) {
+      root.style.setProperty('--uiscale', '1');
+      window.chordless.setUiScale(uiScale);
+      return () => { root.style.removeProperty('--uiscale'); };
+    }
+    root.style.setProperty('--uiscale', String(uiScale));
+    return () => { root.style.removeProperty('--uiscale'); };
+  }, [uiScale, isDesktopShell]);
 
   // ---------- text size + reduce motion ----------
   // Text size scales FONTS only via the --fscale CSS variable (set on the

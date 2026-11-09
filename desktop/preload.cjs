@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('chordless', {
   isDesktop: true,
   getPrefs: () => ipcRenderer.invoke('prefs:get'),
   setPrefs: (patch) => ipcRenderer.invoke('prefs:set', patch),
+  setUiScale: (scale) => ipcRenderer.invoke('ui:scale', scale),
   quit: () => ipcRenderer.invoke('app:quit'),
   show: () => ipcRenderer.invoke('app:show'),
   onTrayCommand: (handler) =>

@@ -151,6 +151,8 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', showWindow);
 
   app.whenReady().then(async () => {
+    // No default File/Edit/View menu bar — the app uses its own chrome.
+    Menu.setApplicationMenu(null);
     loadPrefs();
     try {
       await startServer();
@@ -161,6 +163,11 @@ if (!app.requestSingleInstanceLock()) {
     createTray();
   });
 
+  ipcMain.handle('ui:scale', (_e, scale) => {
+    const s = Math.max(0.4, Math.min(1.5, Number(scale) || 1));
+    if (win) win.webContents.setZoomFactor(s);
+    return s;
+  });
   ipcMain.handle('prefs:get', () => ({ ...prefs }));
   ipcMain.handle('prefs:set', (_e, patch) => {
     prefs = { ...prefs, ...patch };
