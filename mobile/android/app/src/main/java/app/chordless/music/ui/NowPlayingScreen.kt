@@ -115,6 +115,7 @@ fun NowPlayingScreen(
     val syncedLines = remember(lyrics) {
         (lyrics?.synced ?: "").let { if (it.isNotBlank()) LyricsRepo.parseLrc(it) else emptyList() }
     }
+    val palette = rememberArtworkColors(t?.thumbnail ?: "")
     val activeIdx = remember(syncedLines, position) {
         syncedLines.indexOfLast { it.first <= position }.coerceAtLeast(0)
     }
@@ -130,11 +131,12 @@ fun NowPlayingScreen(
         return
     }
 
+    val backdropTop = palette?.dominant ?: MaterialTheme.colorScheme.primary
     Box(
         modifier = Modifier.fillMaxSize().background(
             Brush.verticalGradient(
                 listOf(
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                    backdropTop.copy(alpha = 0.42f),
                     Color.Transparent,
                     MaterialTheme.colorScheme.background,
                 )
@@ -147,15 +149,15 @@ fun NowPlayingScreen(
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
-                alpha = 0.28f,
+                alpha = 0.30f,
             )
         }
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
                     listOf(
-                        MaterialTheme.colorScheme.background.copy(alpha = 0.35f),
-                        MaterialTheme.colorScheme.background.copy(alpha = 0.85f),
+                        backdropTop.copy(alpha = 0.18f),
+                        MaterialTheme.colorScheme.background.copy(alpha = 0.88f),
                     )
                 )
             )
@@ -173,7 +175,7 @@ fun NowPlayingScreen(
                 Box(
                     modifier = Modifier.size(360.dp).clip(CircleShape).background(
                         Brush.radialGradient(
-                            0.5f to MaterialTheme.colorScheme.primary.copy(alpha = 0.45f),
+                            0.5f to (palette?.dominant ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.45f),
                             1f to Color.Transparent,
                         )
                     )
