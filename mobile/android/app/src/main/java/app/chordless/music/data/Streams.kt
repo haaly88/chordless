@@ -71,8 +71,9 @@ object Streams {
         val streams: List<AudioStream> = info.audioStreams ?: emptyList()
         if (streams.isEmpty()) throw IllegalStateException("No audio streams for $videoId")
         val best = streams.maxByOrNull { it.averageBitrate } ?: streams.first()
+        val url = best.url ?: throw IllegalStateException("No stream URL for $videoId")
         val resolved = Resolved(
-            url = best.url,
+            url = url,
             mime = best.format?.mimeType ?: "",
             bitrate = best.averageBitrate,
         )

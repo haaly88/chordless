@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.chordless.music.data.Prefs
 import app.chordless.music.player.PlayerManager
+import kotlinx.coroutines.launch
 
 /** 5-band EQ with presets — mirrors desktop Settings → EQ. */
 @Composable
