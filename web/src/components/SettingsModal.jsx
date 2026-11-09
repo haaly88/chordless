@@ -154,6 +154,7 @@ export default function SettingsModal() {
   const setNormalize = usePlayer((s) => s.setNormalize);
   const setBalance = usePlayer((s) => s.setBalance);
   const setAdaptiveQuality = usePlayer((s) => s.setAdaptiveQuality);
+  const setSongNotification = usePlayer((s) => s.setSongNotification);
   const refreshNetworkInfo = usePlayer((s) => s.refreshNetworkInfo);
   const networkInfo = usePlayer((s) => s.networkInfo);
   const effectiveYtQuality = usePlayer((s) => s.effectiveYtQuality);
@@ -479,6 +480,34 @@ export default function SettingsModal() {
               );
             })}
           </div>
+        </div>
+
+        <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>{t(lang, 'settings.group.system')}</div>
+        <div className="setting-row">
+          <div>
+            <b>{t(lang, 'settings.songNotif')}</b>
+            <small>{t(lang, 'settings.songNotifDesc')}</small>
+          </div>
+          <button
+            className={`switch${settings.notifyBackground ? ' on' : ''}`}
+            role="switch"
+            aria-checked={Boolean(settings.notifyBackground)}
+            aria-label={t(lang, 'settings.songNotif')}
+            onClick={() => setSongNotification({ notifyBackground: !settings.notifyBackground })}
+          />
+        </div>
+        <div className="setting-row">
+          <div>
+            <b>{t(lang, 'settings.songNotifFg')}</b>
+            <small>{t(lang, 'settings.songNotifFgDesc')}</small>
+          </div>
+          <button
+            className={`switch${settings.notifyForeground ? ' on' : ''}`}
+            role="switch"
+            aria-checked={Boolean(settings.notifyForeground)}
+            aria-label={t(lang, 'settings.songNotifFg')}
+            onClick={() => setSongNotification({ notifyForeground: !settings.notifyForeground })}
+          />
         </div>
 
         </>)}

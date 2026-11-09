@@ -284,6 +284,8 @@ const persistedSettings = {
   })(),
   reduceMotion: storedSettings?.reduceMotion === true,
   reduceBlur: storedSettings?.reduceBlur === true,
+  notifyBackground: storedSettings?.notifyBackground === true,
+  notifyForeground: storedSettings?.notifyForeground === true,
   sidebarCollapsed: storedSettings?.sidebarCollapsed === true,
   lang: ['en', 'id'].includes(String(storedSettings?.lang || 'en')) ? String(storedSettings.lang) : 'en',
   homeSections: {
@@ -575,6 +577,7 @@ export const usePlayer = create((set, get) => ({
       set({ isPlaying: false });
       write('cl:queue', { queue: get().queue, index, position: 0 });
       get()._togetherPushState?.();
+      get()._notifyNowPlaying?.(track);
       return;
     }
 
@@ -600,6 +603,7 @@ export const usePlayer = create((set, get) => ({
     get()._fadeInIfEnabled();
     get()._togetherPushState?.();
     get()._togetherPushPresence?.();
+    get()._notifyNowPlaying?.(track);
   },
 
   // ---------- For You AI Mix ----------
@@ -629,6 +633,48 @@ export const usePlayer = create((set, get) => ({
     set({ forYou, forYouLoading: false });
     try { write('cl:forYou', forYou); } catch { /* storage full */ }
     return forYou;
+  },
+
+  // ---------- song notifications (Notification API) ----------
+  // Background by default; foreground needs the second toggle.
+  setSongNotification(patch) {
+    const s = get().settings || {};
+    updateSettings({ ...patch });
+    const enabled = Boolean(patch.notifyBackground || patch.notifyForeground);
+    if (enabled && typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+      const patchKeys = Object.keys(patch);
+      const revert = () => {
+        const next = { ...get().settings };
+        for (const k of patchKeys) next[k] = false;
+        usePlayer.setState({ settings: next });
+        try { write('cl:settings', next); } catch { /* ignore */ }
+      };
+      Notification.requestPermission()
+        .then((perm) => {
+          if (perm !== 'granted') {
+            revert();
+            get().toast('Notifications are blocked', 'Enable notifications to use this');
+          }
+        })
+        .catch(() => revert());
+    }
+  },
+
+  _notifyNowPlaying(track) {
+    try {
+      if (!track) return;
+      const s = get().settings || {};
+      const focused = typeof document !== 'undefined' ? document.hasFocus() : false;
+      const allowed = focused ? Boolean(s.notifyForeground) : Boolean(s.notifyBackground);
+      if (!allowed) return;
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+      new Notification(track.title || 'Chordless', {
+        body: track.artist || '',
+        icon: track.thumbnail || undefined,
+        tag: 'chordless-now-playing',
+        silent: true,
+      });
+    } catch { /* notifications are best-effort */ }
   },
 
   // ---------- network-adaptive quality ----------
