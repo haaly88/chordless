@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
             val ctx = LocalContext.current
             val theme by remember(ctx) { Prefs.themeFlow(ctx) }.collectAsState(initial = "system")
             val accent by remember(ctx) { Prefs.accentFlow(ctx) }.collectAsState(initial = "red")
-            val uiScale by remember(ctx) { Prefs.uiScaleFlow(ctx) }.collectAsState(initial = 0.9f)
+            val uiScale by remember(ctx) { Prefs.uiScaleFlow(ctx) }.collectAsState(initial = 1.0f)
             ChordlessTheme(theme = theme, accentId = accent) {
                 val dark = when (theme) {
                     "dark" -> true
@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
                     else -> androidx.compose.foundation.isSystemInDarkTheme()
                 }
                 SystemBarIcons(dark = dark)
-                // Default UI scale 90% (user-overridable in Settings).
+                // Default UI scale 100% (user-overridable in Settings).
                 CompositionLocalProvider(LocalDensity provides Density(uiScale)) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         ChordlessApp()

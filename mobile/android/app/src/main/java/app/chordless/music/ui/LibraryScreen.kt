@@ -172,7 +172,7 @@ fun LibraryScreen(
                                         subtitle = "${favorites.size} tracks",
                                         image = favorites.firstOrNull()?.thumbnail.orEmpty(),
                                         onClick = { smart = "favorites" },
-                                        size = 140.dp,
+                                        size = 152.dp,
                                     )
                                 }
                                 item {
@@ -181,7 +181,7 @@ fun LibraryScreen(
                                         subtitle = "${history.values.size} tracks",
                                         image = history.values.maxByOrNull { it.lastPlayed }?.track?.thumbnail.orEmpty(),
                                         onClick = { smart = "recent" },
-                                        size = 140.dp,
+                                        size = 152.dp,
                                     )
                                 }
                                 item {
@@ -190,7 +190,7 @@ fun LibraryScreen(
                                         subtitle = "Top repeats",
                                         image = history.values.maxByOrNull { it.count }?.track?.thumbnail.orEmpty(),
                                         onClick = { smart = "played" },
-                                        size = 140.dp,
+                                        size = 152.dp,
                                     )
                                 }
                             }
@@ -344,7 +344,7 @@ private fun PlaylistDetail(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                Artwork(LocalStore.collageUrl(playlist), size = 140.dp, radius = 24.dp)
+                Artwork(LocalStore.collageUrl(playlist), size = 152.dp, radius = 24.dp)
                 Column(modifier = Modifier.weight(1f)) {
                     Text("PLAYLIST", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     Text(playlist.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)

@@ -275,7 +275,7 @@ private fun PlayerBar(
             .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Artwork(track.thumbnail, size = 48.dp, radius = 14.dp)
+            Artwork(track.thumbnail, size = 56.dp, radius = 16.dp)
             Column(modifier = Modifier.weight(1f)) {
                 MarqueeText(text = track.title, style = MaterialTheme.typography.bodyLarge)
                 androidx.compose.material3.Text(

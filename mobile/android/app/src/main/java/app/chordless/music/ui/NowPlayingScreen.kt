@@ -181,7 +181,7 @@ fun NowPlayingScreen(
                 AsyncImage(
                     model = t.thumbnail,
                     contentDescription = null,
-                    modifier = Modifier.size(300.dp).shadow(32.dp, RoundedCornerShape(28.dp)).clip(RoundedCornerShape(28.dp)),
+                    modifier = Modifier.size(320.dp).shadow(32.dp, RoundedCornerShape(30.dp)).clip(RoundedCornerShape(30.dp)),
                     contentScale = ContentScale.Crop,
                 )
             }

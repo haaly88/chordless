@@ -215,7 +215,7 @@ private fun ForYouHero(onPlay: (Track, List<Track>) -> Unit, fallback: Track?) {
                 Text("Play", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             }
         }
-        if (playTrack != null) Artwork(playTrack.thumbnail, size = 110.dp, radius = 20.dp)
+        if (playTrack != null) Artwork(playTrack.thumbnail, size = 124.dp, radius = 22.dp)
     }
 }
 

@@ -31,7 +31,7 @@ object Prefs {
     suspend fun theme(ctx: Context): String = ctx.prefs.data.map { it[K_THEME] ?: "dark" }.first()
     suspend fun lang(ctx: Context): String = ctx.prefs.data.map { it[K_LANG] ?: "en" }.first()
     suspend fun accent(ctx: Context): String = ctx.prefs.data.map { it[K_ACCENT] ?: "red" }.first()
-    suspend fun uiScale(ctx: Context): Float = ctx.prefs.data.map { it[K_UISCALE] ?: 0.9f }.first()
+    suspend fun uiScale(ctx: Context): Float = ctx.prefs.data.map { it[K_UISCALE] ?: 1.0f }.first()
     suspend fun autoplay(ctx: Context): Boolean = ctx.prefs.data.map { it[K_AUTOPLAY] ?: true }.first()
     suspend fun normalize(ctx: Context): Boolean = ctx.prefs.data.map { it[K_NORMALIZE] ?: false }.first()
     suspend fun sponsorSkip(ctx: Context): Boolean = ctx.prefs.data.map { it[K_SPONSOR] ?: true }.first()

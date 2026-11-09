@@ -122,10 +122,10 @@ fun CoverCard(
     subtitle: String,
     image: String,
     onClick: () -> Unit,
-    size: Dp = 160.dp,
+    size: Dp = 176.dp,
 ) {
     Column(modifier = Modifier.width(size).clickable(onClick = onClick)) {
-        Artwork(image, size = size, radius = 20.dp)
+        Artwork(image, size = size, radius = 22.dp)
         Text(
             title,
             maxLines = 1,
@@ -230,7 +230,7 @@ fun TrackRow(
                 modifier = Modifier.width(28.dp),
             )
         }
-        Artwork(track.thumbnail, size = 52.dp, radius = 12.dp)
+        Artwork(track.thumbnail, size = 56.dp, radius = 14.dp)
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (chip != null) KindBadge(chip)
