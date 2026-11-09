@@ -73,7 +73,12 @@ object Streams {
                 if (System.currentTimeMillis() - at < 3 * 3_600_000L) return@withContext resolved
             }
         }
-        val info = StreamInfo.getInfo("https://www.youtube.com/watch?v=$videoId")
+        val info = runCatching { StreamInfo.getInfo("https://www.youtube.com/watch?v=$videoId") }
+            .getOrElse {
+                // transient extractor hiccup — one retry before giving up
+                kotlinx.coroutines.delay(600)
+                StreamInfo.getInfo("https://www.youtube.com/watch?v=$videoId")
+            }
         val streams: List<AudioStream> = info.audioStreams ?: emptyList()
         if (streams.isEmpty()) throw IllegalStateException("No audio streams for $videoId")
         val best = streams.maxByOrNull { it.averageBitrate } ?: streams.first()

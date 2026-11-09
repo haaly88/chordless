@@ -47,7 +47,7 @@ jobs:
       - name: Fetch bundled yt-dlp (macOS)
         run: |
           mkdir -p desktop/build/yt-dlp
-          curl -L --fail --retry 5 --retry-delay 10 --retry-all-errors -o desktop/build/yt-dlp/yt-dlp_macos https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
+          curl -L --fail --retry 10 --retry-delay 15 --retry-all-errors -o desktop/build/yt-dlp/yt-dlp_macos https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp_macos
           chmod +x desktop/build/yt-dlp/yt-dlp_macos
 
       - name: Build macOS targets
@@ -103,7 +103,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path desktop/build/yt-dlp | Out-Null
-          $url = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe'
+          $url = 'https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp.exe'
           $out = 'desktop/build/yt-dlp/yt-dlp.exe'
           $attempt = 0
           do {
@@ -113,7 +113,7 @@ jobs:
               break
             } catch {
               Write-Warning "yt-dlp fetch attempt $attempt failed: $($_.Exception.Message)"
-              if ($attempt -ge 5) { throw }
+              if ($attempt -ge 10) { throw }
               Start-Sleep 15
             }
           } while ($true)

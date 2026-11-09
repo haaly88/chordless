@@ -28,7 +28,7 @@ object Prefs {
 
     suspend fun gl(ctx: Context): String = ctx.prefs.data.map { it[K_GL] ?: "ID" }.first()
     suspend fun hl(ctx: Context): String = ctx.prefs.data.map { it[K_HL] ?: "en" }.first()
-    suspend fun theme(ctx: Context): String = ctx.prefs.data.map { it[K_THEME] ?: "system" }.first()
+    suspend fun theme(ctx: Context): String = ctx.prefs.data.map { it[K_THEME] ?: "dark" }.first()
     suspend fun lang(ctx: Context): String = ctx.prefs.data.map { it[K_LANG] ?: "en" }.first()
     suspend fun accent(ctx: Context): String = ctx.prefs.data.map { it[K_ACCENT] ?: "red" }.first()
     suspend fun uiScale(ctx: Context): Float = ctx.prefs.data.map { it[K_UISCALE] ?: 0.9f }.first()

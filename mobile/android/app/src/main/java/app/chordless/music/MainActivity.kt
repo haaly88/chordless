@@ -19,6 +19,26 @@ import app.chordless.music.data.Prefs
 import app.chordless.music.player.PlayerManager
 import app.chordless.music.ui.ChordlessApp
 import app.chordless.music.ui.theme.ChordlessTheme
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.view.WindowCompat
+
+/** Syncs status/navigation icon tones with the in-app theme (BitChord parity:
+ * enableEdgeToEdge decides from the *system* theme, which is wrong whenever
+ * the in-app theme disagrees — white icons on a white bar, invisible). */
+@Composable
+fun SystemBarIcons(dark: Boolean) {
+    val context = LocalContext.current
+    val view = androidx.compose.ui.platform.LocalView.current
+    if (view.isInEditMode) return
+    SideEffect {
+        val window = (context as? ComponentActivity)?.window ?: return@SideEffect
+        WindowCompat.getInsetsController(window, view).apply {
+            isAppearanceLightStatusBars = dark
+            isAppearanceLightNavigationBars = dark
+        }
+    }
+}
 
 /** Chordless — fully native Android (Compose + Media3). */
 class ChordlessApplication : Application() {
@@ -38,6 +58,12 @@ class MainActivity : ComponentActivity() {
             val accent by remember(ctx) { Prefs.accentFlow(ctx) }.collectAsState(initial = "red")
             val uiScale by remember(ctx) { Prefs.uiScaleFlow(ctx) }.collectAsState(initial = 0.9f)
             ChordlessTheme(theme = theme, accentId = accent) {
+                val dark = when (theme) {
+                    "dark" -> true
+                    "light" -> false
+                    else -> androidx.compose.foundation.isSystemInDarkTheme()
+                }
+                SystemBarIcons(dark = dark)
                 // Default UI scale 90% (user-overridable in Settings).
                 CompositionLocalProvider(LocalDensity provides Density(uiScale)) {
                     Box(modifier = Modifier.fillMaxSize()) {

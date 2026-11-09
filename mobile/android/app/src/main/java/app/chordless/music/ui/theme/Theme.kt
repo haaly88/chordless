@@ -25,12 +25,12 @@ val Accent = Color(0xFFFC3C44)
 val AccentSoft = Color(0xFFFF8A90)
 val AccentOn = Color(0xFF1A0505)
 
-private val BgDark = Color(0xFF0B0B0E)
-private val Bg2Dark = Color(0xFF101017)
-private val PanelDark = Color(0xFF17171E)
-private val TextDark = Color(0xFFF5F5F7)
-private val Text2Dark = Color(0xFFA6A6AE)
-private val Text3Dark = Color(0xFF9A9AA2)
+private val BgDark = Color(0xFF000000)
+private val Bg2Dark = Color(0xFF0D0D0F)
+private val PanelDark = Color(0xFF1C1C1E)
+private val TextDark = Color(0xFFFFFFFF)
+private val Text2Dark = Color(0xFF8E8E93)
+private val Text3Dark = Color(0xFF6E6E73)
 
 private val BgLight = Color(0xFFF4F4F7)
 private val Bg2Light = Color(0xFFECECF0)
@@ -63,7 +63,7 @@ private fun darkScheme(accent: Color) = darkColorScheme(
     surfaceVariant = PanelDark,
     onSurfaceVariant = Text2Dark,
     surfaceContainerHighest = PanelDark,
-    outline = Color.White.copy(alpha = 0.09f),
+    outline = Color(0xFF2C2C2E),
 )
 
 private fun lightScheme(accent: Color) = lightColorScheme(
