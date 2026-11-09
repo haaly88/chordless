@@ -35,10 +35,10 @@ jobs:
           npm run build
 
       - name: Install Android deps
-        run: npm install --prefix mobile
+        run: npm ci --prefix mobile
 
-      - name: Generate Android project & sync
-        run: npx cap add android && npx cap sync android
+      - name: Sync web UI into Android project
+        run: npx cap sync android
         working-directory: mobile
 
       - name: Build debug APK

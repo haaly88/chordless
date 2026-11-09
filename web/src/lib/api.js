@@ -13,6 +13,14 @@ export function apiBase() {
   }
 }
 
+/** Standalone mode: no backend configured AND the native InnerTube bridge
+ * is present (Android APK). Catalog requests then go through ytclient.js. */
+async function standalone() {
+  if (apiBase()) return false;
+  const { standaloneAvailable } = await import('./ytclient.js');
+  return standaloneAvailable();
+}
+
 async function json(res) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -24,6 +32,10 @@ export async function apiHealth() {
 }
 
 export async function apiSearch(query, { signal, limit = 40, gl, hl } = {}) {
+  if (await standalone()) {
+    const { searchMusic } = await import('./ytclient.js');
+    return { results: await searchMusic(query, limit, { gl, hl }) };
+  }
   const params = new URLSearchParams({ q: query, limit: String(limit) });
   if (gl) params.set('gl', gl);
   if (hl) params.set('hl', hl);
@@ -31,6 +43,10 @@ export async function apiSearch(query, { signal, limit = 40, gl, hl } = {}) {
 }
 
 export async function apiHome({ signal, gl, hl } = {}) {
+  if (await standalone()) {
+    const { homeShelves } = await import('./ytclient.js');
+    return homeShelves(gl, hl);
+  }
   const params = new URLSearchParams();
   if (gl) params.set('gl', gl);
   if (hl) params.set('hl', hl);
@@ -39,6 +55,10 @@ export async function apiHome({ signal, gl, hl } = {}) {
 }
 
 export async function apiCharts({ signal, gl, hl } = {}) {
+  if (await standalone()) {
+    const { getCharts } = await import('./ytclient.js');
+    return getCharts(gl, hl);
+  }
   const params = new URLSearchParams();
   if (gl) params.set('gl', gl);
   if (hl) params.set('hl', hl);
@@ -47,21 +67,43 @@ export async function apiCharts({ signal, gl, hl } = {}) {
 }
 
 export async function apiPlaylist(id, { signal } = {}) {
+  if (await standalone()) {
+    const { getPlaylist } = await import('./ytclient.js');
+    return getPlaylist(id);
+  }
   const params = new URLSearchParams({ id });
   return json(await fetch(`${apiBase()}/api/playlist?${params}`, { signal }));
 }
 
 export async function apiArtist(id, { signal } = {}) {
+  if (await standalone()) {
+    const { getArtist } = await import('./ytclient.js');
+    return getArtist(id);
+  }
   const params = new URLSearchParams({ id });
   return json(await fetch(`${apiBase()}/api/artist?${params}`, { signal }));
 }
 
 export async function apiAlbum(id, { signal } = {}) {
+  if (await standalone()) {
+    const { getAlbum } = await import('./ytclient.js');
+    return getAlbum(id);
+  }
   const params = new URLSearchParams({ id });
   return json(await fetch(`${apiBase()}/api/album?${params}`, { signal }));
 }
 
 export async function apiLyrics({ artist, track, album, duration }, { signal } = {}) {
+  if (await standalone()) {
+    // LRCLIB is CORS-enabled — query it directly in standalone mode.
+    const params = new URLSearchParams({ artist_name: artist || '', track_name: track || '' });
+    if (album) params.set('album_name', album);
+    if (duration) params.set('duration', String(Math.round(duration)));
+    const res = await fetch(`https://lrclib.net/api/get?${params}`, { signal });
+    if (!res.ok) throw new Error('no lyrics');
+    const data = await res.json().catch(() => ({}));
+    return { syncedLyrics: data.syncedLyrics || '', plainLyrics: data.plainLyrics || '' };
+  }
   const params = new URLSearchParams({ artist: artist || '', track: track || '' });
   if (album) params.set('album', album);
   if (duration) params.set('duration', String(Math.round(duration)));
@@ -79,6 +121,12 @@ export async function apiTranslate(text, target = 'id', { signal } = {}) {
 
 /** Crowdsourced skip segments for a track (sponsor/selfpromo/non-music…). */
 export async function apiSponsorBlock(id, categories, { signal } = {}) {
+  if (await standalone()) {
+    const cats = (categories || []).join(',');
+    const res = await fetch(`https://sponsor.ajay.app/api/skipSegments?videoID=${encodeURIComponent(id)}&categories=${encodeURIComponent(cats)}`, { signal });
+    if (res.status === 404) return [];
+    return json(res);
+  }
   const cats = (categories || []).join(',');
   const params = new URLSearchParams({ id });
   if (cats) params.set('categories', cats);
@@ -112,9 +160,12 @@ export function addonTrackUrl(base, id, quality) {
   return `${apiBase()}/api/addon/track?base=${encodeURIComponent(base)}&id=${encodeURIComponent(id)}&quality=${encodeURIComponent(quality || 'LOSSLESS')}`;
 }
 
-/** Route a remote artwork URL through the local proxy (canvas-safe). */
+/** Route a remote artwork URL through the local proxy (canvas-safe).
+ * Only in standalone native mode (no backend at all) use the direct URL. */
 export function coverProxy(url) {
-  return url ? `${apiBase()}/api/cover?url=${encodeURIComponent(url)}` : '';
+  if (!url) return '';
+  const isStandalone = !apiBase() && Boolean(window.Capacitor?.Plugins?.InnerTube);
+  return isStandalone ? url : `${apiBase()}/api/cover?url=${encodeURIComponent(url)}`;
 }
 
 /** Import a YouTube/Deezer/Spotify link as a playable playlist. */
