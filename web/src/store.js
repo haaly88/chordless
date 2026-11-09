@@ -48,7 +48,7 @@ export function getActiveSlot() { return activeSlot; }
 let preloaded = null; // { forIndex, trackId, url, slot }
 let preloadBusy = { forIndex: null }; // guards async offline-resolve spawns
 let translateToken = 0; // guards lyric-translation races per track
-let lastAltRetryId = null; // guards once-per-track alternate-upload retries
+let altChain = null; // { rootId, candidates, cursor, tried } — alternate-upload chain for embed-blocked tracks
 
 let audioCtx = null;
 let analyserNode = null;
@@ -2374,36 +2374,56 @@ export const usePlayer = create((set, get) => ({
       150: 'The owner of this video disabled embedding.',
     };
     const track = get().currentTrack();
-    // Embedding is prohibited by the owner (101/150) — find another upload
-    // of the same song with embedding allowed and retry once.
-    if ((code === 101 || code === 150) && track?.id && lastAltRetryId !== track.id) {
-      lastAltRetryId = track.id;
-      set({ trackLoading: true });
-      const q = `${track.title || ''} ${track.artist || ''}`.trim();
-      if (q) {
-        apiSearch(q, { limit: 10 })
-          .then((res) => {
-            const list = (res?.results || []).filter((t) => t?.id && t.id !== track.id);
-            const match = list.find((t) => t.kind === 'song') || list[0];
-            if (match) {
-              get().playTrack(match, list.map((t) => t));
-              return;
-            }
-            const msg = messages[code];
-            set({ streamError: msg, trackLoading: false, isPlaying: false });
-            get().toast('Can’t play this video', msg);
-          })
-          .catch(() => {
-            const msg = messages[code];
-            set({ streamError: msg, trackLoading: false, isPlaying: false });
-            get().toast('Can’t play this video', msg);
-          });
+    const dead = () => {
+      const msg = messages[code] || 'The provider refused to play this video.';
+      altChain = null;
+      set({ streamError: msg, trackLoading: false, isPlaying: false });
+      get().toast('Can’t play this video', msg);
+    };
+    // Embedding is prohibited by the owner (101/150) — walk the alternate
+    // uploads of the same song (up to 3) until one actually plays.
+    if ((code !== 101 && code !== 150) || !track?.id) { dead(); return; }
+
+    // This failing track was one of our alternates → try the next candidate.
+    if (altChain && altChain.tried.has(track.id)) {
+      const next = altChain.candidates[altChain.cursor++];
+      if (next) {
+        altChain.tried.add(next.id);
+        set({ trackLoading: true, streamError: '' });
+        get().playTrack(next, altChain.candidates.slice(altChain.cursor - 1));
         return;
       }
+      dead();
+      return;
     }
-    const msg = messages[code] || 'The provider refused to play this video.';
-    set({ streamError: msg, trackLoading: false, isPlaying: false });
-    get().toast('Can’t play this video', msg);
+
+    // New embed-blocked song → search for alternates, best first.
+    altChain = { rootId: track.id, candidates: [], cursor: 0, tried: new Set([track.id]) };
+    set({ trackLoading: true, streamError: '' });
+    const q = `${track.title || ''} ${track.artist || ''}`.trim();
+    if (!q) { dead(); return; }
+    apiSearch(q, { limit: 15 })
+      .then((res) => {
+        const pool = (res?.results || []).filter((t) => t?.id && !altChain.tried.has(t.id));
+        // Rank: audio/lyric uploads usually allow embedding; official music
+        // videos and VEVO are almost always blocked.
+        const score = (t) => {
+          const title = String(t.title || '').toLowerCase();
+          let s = 0;
+          if (t.kind === 'song') s += 1;
+          if (/audio|lyric|lyrics/.test(title)) s += 2;
+          if (/official music video|music video|official video/.test(title)) s -= 3;
+          if (/vevo/.test(String(t.artist || '').toLowerCase())) s -= 2;
+          return s;
+        };
+        const candidates = pool.sort((a, b) => score(b) - score(a)).slice(0, 3);
+        if (!candidates.length) { dead(); return; }
+        altChain.candidates = candidates;
+        altChain.cursor = 1;
+        altChain.tried.add(candidates[0].id);
+        get().playTrack(candidates[0], candidates);
+      })
+      .catch(() => dead());
   },
 
   setEmbedTime(t, d) {
