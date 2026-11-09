@@ -124,6 +124,7 @@ function spawnServer(port) {
     });
     proc.on('exit', (code, signal) => {
       logServer(`server exited (code=${code}, signal=${signal})`);
+      if (serverProc === proc) serverProc = null;
       if (!quitting) console.error(`[desktop] server exited with code ${code}`);
     });
     resolve(proc);
@@ -197,12 +198,14 @@ function createWindow() {
     win.loadURL(`http://${HOST}:${activePort}/`);
   };
   // External links (license pages, etc.) open in the system browser.
+  // Allow any 127.0.0.1 port (the active port is only known after the
+  // async server spawn; the default is BASE_PORT before that).
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (!url.startsWith(`http://${HOST}:${activePort}/`)) {
-      shell.openExternal(url);
-      return { action: 'deny' };
+    if (/^http:\/\/127\.0\.0\.1:\d+\//.test(url)) {
+      return { action: 'allow' };
     }
-    return { action: 'allow' };
+    shell.openExternal(url);
+    return { action: 'deny' };
   });
 
   win.on('close', (e) => {

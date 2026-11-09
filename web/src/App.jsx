@@ -10,6 +10,7 @@ import ContextMenu from './components/ContextMenu.jsx';
 import Toasts from './components/Toasts.jsx';
 import { extractPalette } from './lib/palette.js';
 import { apiBase, apiHealth, coverProxy, addonTrackUrl } from './lib/api.js';
+import { checkForUpdate } from './lib/updateCheck.js';
 
 // Lazy views — split out of the initial bundle (Home/shell stay eager).
 const SearchView = lazy(() => import('./components/SearchView.jsx'));
@@ -255,6 +256,20 @@ export default function App() {
         usePlayer.getState().toast('Backend offline', 'Start the API server: npm run dev:server (port 3001).');
       }
     })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ---------- update notifier (GitHub Releases) ----------
+  const [update, setUpdate] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    checkForUpdate()
+      .then((r) => {
+        if (cancelled || !r?.available) return;
+        setUpdate(r);
+        usePlayer.getState().toast('Update available', `Chordless ${r.version} is ready — open the releases page to download it.`);
+      })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 

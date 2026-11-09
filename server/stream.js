@@ -250,8 +250,14 @@ export function pipeUpstream(req, res, upstream, contentType) {
   nodeStream.pipe(res);
 }
 
+let ytDlpCache = null; // { value, at }
+let ytDlpInflight = null;
+const YTDLP_TTL_MS = 30 * 1000;
 export async function ytDlpAvailable() {
-  return new Promise((resolve) => {
+  const now = Date.now();
+  if (ytDlpCache && now - ytDlpCache.at < YTDLP_TTL_MS) return ytDlpCache.value;
+  if (ytDlpInflight) return ytDlpInflight;
+  const p = new Promise((resolve) => {
     const { cmd, prefix } = ytDlpCommand();
     const child = spawn(cmd, [...prefix, '--version'], { windowsHide: true });
     let out = '';
@@ -262,5 +268,11 @@ export async function ytDlpAvailable() {
     child.stdout.on('data', (d) => { out += d; });
     child.on('error', () => { clearTimeout(timer); resolve(null); });
     child.on('close', (code) => { clearTimeout(timer); resolve(code === 0 ? out.trim() : null); });
+  }).then((value) => {
+    ytDlpCache = { value, at: Date.now() };
+    ytDlpInflight = null;
+    return value;
   });
+  ytDlpInflight = p;
+  return p;
 }

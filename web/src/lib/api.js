@@ -28,6 +28,9 @@ async function json(res) {
 }
 
 export async function apiHealth() {
+  // Standalone native mode has no backend — report healthy so callers
+  // don't flash a spurious "Backend offline" toast.
+  if (await standalone()) return { ok: true, app: 'Chordless', ytDlp: false, node: 'native', time: Date.now() };
   return json(await fetch(`${apiBase()}/api/health`));
 }
 
@@ -111,6 +114,16 @@ export async function apiLyrics({ artist, track, album, duration }, { signal } =
 }
 
 export async function apiTranslate(text, target = 'id', { signal } = {}) {
+  if (await standalone()) {
+    // No backend in standalone native mode — use the same free Google
+    // endpoint the server uses (server/lyrics.js translateLyrics).
+    const params = new URLSearchParams({ client: 'gtx', sl: 'auto', tl: target || 'id', dt: 't', q: String(text || '') });
+    const res = await fetch(`https://translate.googleapis.com/translate_a/single?${params}`, { signal });
+    if (!res.ok) throw new Error(`Translation failed: HTTP ${res.status}`);
+    const data = await res.json().catch(() => null);
+    const translated = Array.isArray(data?.[0]) ? data[0].map((seg) => seg?.[0] || '').join('') : '';
+    return { translated, target: target || 'id' };
+  }
   return json(await fetch(`${apiBase()}/api/translate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -135,6 +148,9 @@ export async function apiSponsorBlock(id, categories, { signal } = {}) {
 
 /** YouTube video chapters (click-to-seek). */
 export async function apiChapters(id, { signal } = {}) {
+  // No backend in standalone native mode — chapters need yt-dlp on the
+  // server, so report none instead of a fetch error.
+  if (await standalone()) return { chapters: [] };
   const params = new URLSearchParams({ id });
   return json(await fetch(`${apiBase()}/api/chapters?${params}`, { signal }));
 }
