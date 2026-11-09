@@ -72,10 +72,25 @@ fun ChordlessApp() {
     var hl by remember { mutableStateOf("en") }
     var showQueue by remember { mutableStateOf(false) }
     var actionTrack by remember { mutableStateOf<Track?>(null) }
+    var update by remember { mutableStateOf<app.chordless.music.data.UpdateRepo.Update?>(null) }
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
         gl = app.chordless.music.data.Prefs.gl(ctx)
         hl = app.chordless.music.data.Prefs.hl(ctx)
+        update = app.chordless.music.data.UpdateRepo.check()
+        update?.let { u ->
+            val res = snackbar.showSnackbar(
+                message = "Chordless ${u.version} is available",
+                actionLabel = "Download",
+            )
+            if (res == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                try {
+                    ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u.url)))
+                } catch (e: Exception) {
+                    // ignore
+                }
+            }
+        }
     }
 
     val current by PlayerManager.current.collectAsState()
