@@ -62,9 +62,9 @@ import app.chordless.music.data.PlaylistCard
 import app.chordless.music.data.Track
 import app.chordless.music.player.PlayerManager
 import dev.chrisbanes.haze.HazeDefaults
-import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.rememberHazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 
 private const val ROUTE_HOME = "home"
@@ -123,13 +123,13 @@ fun ChordlessApp() {
         PlayerManager.play(track)
     }
 
-    val hazeState = rememberHazeState()
+    val hazeState = remember { HazeState() }
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
             navController = nav,
             startDestination = ROUTE_HOME,
-            modifier = Modifier.haze(hazeState),
+            modifier = Modifier.hazeSource(hazeState),
         ) {
             composable(ROUTE_HOME) {
                 HomeScreen(
