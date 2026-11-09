@@ -9,3 +9,4 @@ bitchord-*.json
 desktop/build/yt-dlp/*
 !desktop/build/yt-dlp/README.txt
 desktop/release/
+test-build-*/
