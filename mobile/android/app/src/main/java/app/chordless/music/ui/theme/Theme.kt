@@ -91,13 +91,26 @@ fun ChordlessTheme(
         else -> isSystemInDarkTheme()
     }
     val accent = accentFor(accentId, dark)
-    androidx.compose.runtime.CompositionLocalProvider(
-        androidx.compose.ui.text.LocalTextStyle provides
-            androidx.compose.ui.text.LocalTextStyle.current.copy(fontFamily = Inter),
-    ) {
-        MaterialTheme(
-            colorScheme = if (dark) darkScheme(accent) else lightScheme(accent),
-            content = content,
-        )
-    }
+    val base = androidx.compose.material3.Typography()
+    MaterialTheme(
+        colorScheme = if (dark) darkScheme(accent) else lightScheme(accent),
+        typography = androidx.compose.material3.Typography(
+            displayLarge = base.displayLarge.copy(fontFamily = Inter),
+            displayMedium = base.displayMedium.copy(fontFamily = Inter),
+            displaySmall = base.displaySmall.copy(fontFamily = Inter),
+            headlineLarge = base.headlineLarge.copy(fontFamily = Inter),
+            headlineMedium = base.headlineMedium.copy(fontFamily = Inter),
+            headlineSmall = base.headlineSmall.copy(fontFamily = Inter),
+            titleLarge = base.titleLarge.copy(fontFamily = Inter),
+            titleMedium = base.titleMedium.copy(fontFamily = Inter),
+            titleSmall = base.titleSmall.copy(fontFamily = Inter),
+            bodyLarge = base.bodyLarge.copy(fontFamily = Inter),
+            bodyMedium = base.bodyMedium.copy(fontFamily = Inter),
+            bodySmall = base.bodySmall.copy(fontFamily = Inter),
+            labelLarge = base.labelLarge.copy(fontFamily = Inter),
+            labelMedium = base.labelMedium.copy(fontFamily = Inter),
+            labelSmall = base.labelSmall.copy(fontFamily = Inter),
+        ),
+        content = content,
+    )
 }
