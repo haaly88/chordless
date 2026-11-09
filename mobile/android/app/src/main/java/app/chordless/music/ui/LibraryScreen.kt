@@ -83,7 +83,9 @@ fun LibraryScreen(
         "favorites" -> favorites
         "recent" -> history.values.sortedByDescending { it.lastPlayed }.map { it.track }
         "played" -> history.values.sortedByDescending { it.count }.map { it.track }
-        "rated" -> history.values.sortedWith(compareByDescending<LocalStore.HistoryEntry> { it.count }).thenByDescending { it.lastPlayed }.map { it.track }
+        "rated" -> history.values.sortedWith(
+            compareByDescending<LocalStore.HistoryEntry> { it.count }.thenByDescending { it.lastPlayed }
+        ).map { it.track }
         else -> emptyList()
     }
 
@@ -291,8 +293,11 @@ fun LibraryScreen(
 @Composable
 private fun StatsRow(history: Map<String, LocalStore.HistoryEntry>) {
     val total = history.values.sumOf { it.count }
-    val artists = history.values.groupBy { it.track.artist.ifBlank { "Unknown" } }
-        .entries.sortedByDescending { it.second.sumOf { e -> e.count } }.take(1).firstOrNull()
+    val artists = history.values
+        .groupBy { it.track.artist.ifBlank { "Unknown" } }
+        .mapValues { (_, list) -> list.sumOf { e -> e.count } }
+        .entries
+        .maxByOrNull { it.value }
     Row(
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),

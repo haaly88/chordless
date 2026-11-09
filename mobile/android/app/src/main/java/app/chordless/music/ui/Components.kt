@@ -8,7 +8,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -141,7 +143,7 @@ fun CoverCard(
     }
 }
 
-private fun Modifier.paddingTop() = this.then(androidx.compose.foundation.layout.padding(this, top = 10.dp))
+private fun Modifier.paddingTop() = this.then(padding(top = 10.dp))
 
 // ---------- marquee title (desktop player-bar behaviour) ----------
 @Composable
@@ -189,6 +191,7 @@ fun MarqueeText(
 }
 
 // ---------- track row ----------
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TrackRow(
     track: Track,
@@ -268,7 +271,7 @@ fun TrackRow(
     }
 }
 
-private fun Modifier.paddingRow() = this.then(androidx.compose.foundation.layout.padding(this, horizontal = 8.dp, vertical = 6.dp))
+private fun Modifier.paddingRow() = this.then(padding(horizontal = 8.dp, vertical = 6.dp))
 
 @Composable
 fun KindBadge(kind: String) {
@@ -282,7 +285,7 @@ fun KindBadge(kind: String) {
     }
 }
 
-private fun Modifier.paddingRow2() = this.then(androidx.compose.foundation.layout.padding(this, horizontal = 7.dp, vertical = 2.dp))
+private fun Modifier.paddingRow2() = this.then(padding(horizontal = 7.dp, vertical = 2.dp))
 
 private fun kindChip(kind: String): String? = when (kind) {
     "song" -> "Song"
