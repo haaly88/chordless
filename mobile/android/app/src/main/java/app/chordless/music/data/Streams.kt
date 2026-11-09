@@ -40,14 +40,14 @@ object Streams {
             }
             val response = http.newCall(builder.build()).execute()
             return response.use { res ->
-                val body = res.body?.bytes() ?: ByteArray(0)
+                val bodyString = res.body?.string() ?: ""
                 val headers = mutableMapOf<String, List<String>>()
                 res.headers.forEach { (name, value) -> headers[name] = listOf(value) }
                 org.schabi.newpipe.extractor.downloader.Response(
                     res.code,
                     res.message,
                     headers,
-                    body,
+                    bodyString,
                     request.url(),
                 )
             }
