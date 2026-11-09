@@ -5,7 +5,7 @@
  * settings — all persisted to localStorage where appropriate.
  */
 import { create } from 'zustand';
-import { apiSponsorBlock, apiChapters, apiAddonSearch, apiTranslate, apiSearch, addonTrackUrl, apiTogetherCreate, apiTogetherJoin, apiTogetherState, apiTogetherPush, apiTogetherChat, apiTogetherPresence, apiTogetherLeave, apiShareCreate, apiShareGet } from './lib/api.js';
+import { apiBase, apiSponsorBlock, apiChapters, apiAddonSearch, apiTranslate, apiSearch, addonTrackUrl, apiTogetherCreate, apiTogetherJoin, apiTogetherState, apiTogetherPush, apiTogetherChat, apiTogetherPresence, apiTogetherLeave, apiShareCreate, apiShareGet } from './lib/api.js';
 import { upgradeTracks } from './lib/thumb.js';
 import { translateToastTitle, translateToastSub } from './lib/i18n.js';
 import { totalDuration, formatTotalDuration } from './lib/format.js';
@@ -269,6 +269,7 @@ const persistedSettings = {
   },
   ytQuality: ['high', 'medium', 'low'].includes(String(storedSettings?.ytQuality || 'high')) ? String(storedSettings.ytQuality) : 'high',
   adaptiveQuality: storedSettings?.adaptiveQuality !== false,
+  serverUrl: String(storedSettings?.serverUrl || '').trim(),
   normalize: Boolean(storedSettings?.normalize),
   balance: Math.max(-1, Math.min(1, Number(storedSettings?.balance) || 0)),
   region: String(storedSettings?.region || 'auto').toUpperCase() === 'AUTO' ? 'auto' : String(storedSettings?.region || 'auto').toUpperCase(),
@@ -732,7 +733,7 @@ export const usePlayer = create((set, get) => ({
         const onChange = () => get().refreshNetworkInfo('connection');
         conn.addEventListener('change', onChange);
         // best-effort RTT probe against our own backend
-        fetch(`/api/health?probe=${Date.now()}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => {});
+        fetch(`${apiBase()}/api/health?probe=${Date.now()}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => {});
       }
     } catch { /* Network Information API unavailable */ }
     // Probe interval: every 60s re-check (cheap, keeps rtt/downlink fresh)

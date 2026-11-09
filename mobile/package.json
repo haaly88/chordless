@@ -1,0 +1,19 @@
+{
+  "name": "chordless-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chordless for Android (Capacitor shell over the Chordless web app).",
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android",
+    "add": "cap add android",
+    "build:debug": "cd android && gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/cli": "^6.1.0"
+  }
+}

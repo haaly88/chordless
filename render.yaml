@@ -1,0 +1,22 @@
+# Chordless — one-click public deployment (Render free tier).
+# Deploy from https://dashboard.render.com/blueprint — it reads this file.
+# The Android app then points to this URL in Settings → General → Backend server.
+
+services:
+  - type: web
+    name: chordless
+    runtime: node
+    plan: free
+    buildCommand: npm ci --prefix web && npm run build
+    startCommand: HOST=0.0.0.0 node server/index.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: YT_HL
+        value: en
+      - key: YT_GL
+        value: ID

@@ -7,17 +7,19 @@
 export function streamSrc(id, qualityOverride) {
   let client = 'auto';
   let quality = 'high';
+  let base = '';
   try {
     const s = JSON.parse(localStorage.getItem('cl:settings') || '{}');
     client = s.ytClient || 'auto';
     quality = s.ytQuality || 'high';
+    base = String(s.serverUrl || '').trim().replace(/\/+$/, '');
   } catch { /* keep defaults */ }
   if (qualityOverride && ['high', 'medium', 'low'].includes(qualityOverride)) quality = qualityOverride;
   const params = new URLSearchParams();
   if (client !== 'auto') params.set('client', client);
   if (quality !== 'high') params.set('quality', quality);
   const qs = params.toString() ? `?${params}` : '';
-  return `/api/stream/${id}${qs}`;
+  return `${base}/api/stream/${id}${qs}`;
 }
 
 /* ---------- network-adaptive quality ---------- */

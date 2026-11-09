@@ -348,6 +348,21 @@ export default function SettingsModal() {
           </div>
         </div>
 
+        <div className="setting-row">
+          <div>
+            <b>{t(lang, 'settings.serverUrl')}</b>
+            <small>{t(lang, 'settings.serverUrlDesc')}</small>
+          </div>
+          <input
+            type="url"
+            value={settings.serverUrl || ''}
+            placeholder="https://chordless.onrender.com"
+            onChange={(e) => updateSettings({ serverUrl: e.target.value.trim() })}
+            style={{ width: 230, padding: '8px 10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+            aria-label="Backend server URL"
+          />
+        </div>
+
         </>)}
 
         {tab === 'appearance' && (<> {/* text size + motion */}
