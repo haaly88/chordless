@@ -48,6 +48,7 @@ export function getActiveSlot() { return activeSlot; }
 let preloaded = null; // { forIndex, trackId, url, slot }
 let preloadBusy = { forIndex: null }; // guards async offline-resolve spawns
 let translateToken = 0; // guards lyric-translation races per track
+let lastAltRetryId = null; // guards once-per-track alternate-upload retries
 
 let audioCtx = null;
 let analyserNode = null;
@@ -2371,6 +2372,34 @@ export const usePlayer = create((set, get) => ({
       101: 'The owner of this video disabled embedding.',
       150: 'The owner of this video disabled embedding.',
     };
+    const track = get().currentTrack();
+    // Embedding is prohibited by the owner (101/150) — find another upload
+    // of the same song with embedding allowed and retry once.
+    if ((code === 101 || code === 150) && track?.id && lastAltRetryId !== track.id) {
+      lastAltRetryId = track.id;
+      set({ trackLoading: true });
+      const q = `${track.title || ''} ${track.artist || ''}`.trim();
+      if (q) {
+        apiSearch(q, { limit: 10 })
+          .then((res) => {
+            const list = (res?.results || []).filter((t) => t?.id && t.id !== track.id);
+            const match = list.find((t) => t.kind === 'song') || list[0];
+            if (match) {
+              get().playTrack(match, list.map((t) => t));
+              return;
+            }
+            const msg = messages[code];
+            set({ streamError: msg, trackLoading: false, isPlaying: false });
+            get().toast('Can’t play this video', msg);
+          })
+          .catch(() => {
+            const msg = messages[code];
+            set({ streamError: msg, trackLoading: false, isPlaying: false });
+            get().toast('Can’t play this video', msg);
+          });
+        return;
+      }
+    }
     const msg = messages[code] || 'The provider refused to play this video.';
     set({ streamError: msg, trackLoading: false, isPlaying: false });
     get().toast('Can’t play this video', msg);
