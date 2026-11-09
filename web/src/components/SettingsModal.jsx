@@ -1010,9 +1010,9 @@ export default function SettingsModal() {
         {/* about */}
         <div style={{ marginTop: 18, padding: '14px 16px', background: 'var(--hover)', borderRadius: 14, fontSize: 11.5, color: 'var(--text-2)', lineHeight: 1.6 }}>
           <b style={{ color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Info size={13} /> About Chordless
+            <Info size={13} /> {t(lang, 'settings.aboutTitle')}
           </b>
-          A free, ad-free music client for the browser — audio only, never video. Streams via your local backend; lyrics from <a href="https://lrclib.net" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>LRCLIB <ExternalLink size={10} style={{ verticalAlign: '-1px' }} /></a>. Not affiliated with Google or any streaming provider. Made with <Heart size={11} style={{ fill: 'var(--accent)', stroke: 'none', verticalAlign: '-1px' }} /> for personal use.
+          {t(lang, 'settings.aboutBodyPre')}<a href="https://lrclib.net" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>LRCLIB <ExternalLink size={10} style={{ verticalAlign: '-1px' }} /></a>{t(lang, 'settings.aboutBodyPost')}
         </div>
       </div>
     </div>
