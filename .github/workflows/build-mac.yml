@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - { name: Apple Silicon (arm64), runner: macos-14, arch: arm64 }
+          - { name: Apple Silicon (arm64), runner: macos-15, arch: arm64 }
           - { name: Intel (x64), runner: macos-15-intel, arch: x64 }
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
