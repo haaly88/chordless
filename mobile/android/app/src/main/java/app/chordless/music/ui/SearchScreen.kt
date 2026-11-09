@@ -160,7 +160,7 @@ fun SearchScreen(
                                 items(recents) { r ->
                                     androidx.compose.foundation.layout.Box(
                                         modifier = Modifier
-                                            .clip2()
+                                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(percent = 50))
                                             .clickable { query = r }
                                             .padding(horizontal = 14.dp, vertical = 8.dp),
                                     ) {
@@ -209,10 +209,6 @@ fun SearchScreen(
         }
     }
 }
-
-private fun Modifier.clip2() = this.then(
-    androidx.compose.foundation.shape.RoundedCornerShape(percent = 50)
-)
 
 private fun launchVoiceSearch(launcher: androidx.activity.result.ActivityResultLauncher<Intent>) {
     try {

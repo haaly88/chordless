@@ -246,7 +246,7 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
             }
 
             SectionLabel("Audio")
-            SettingRow(
+            SettingActionRow(
                 title = "Equalizer",
                 subtitle = "5-band EQ + presets",
                 action = {
@@ -301,7 +301,7 @@ private fun SettingRow(title: String, subtitle: String? = null, content: @Compos
 }
 
 @Composable
-private fun SettingRow(title: String, subtitle: String? = null, action: @Composable () -> Unit) {
+private fun SettingActionRow(title: String, subtitle: String? = null, action: @Composable () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
