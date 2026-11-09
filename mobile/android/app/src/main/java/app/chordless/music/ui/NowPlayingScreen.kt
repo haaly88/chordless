@@ -161,17 +161,17 @@ fun NowPlayingScreen(
             )
         )
         Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp).verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
             if (t == null) {
                 Text("Nothing playing", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 return@Column
             }
             Box(contentAlignment = Alignment.Center) {
                 Box(
-                    modifier = Modifier.size(340.dp).clip(CircleShape).background(
+                    modifier = Modifier.size(360.dp).clip(CircleShape).background(
                         Brush.radialGradient(
                             0.5f to MaterialTheme.colorScheme.primary.copy(alpha = 0.45f),
                             1f to Color.Transparent,
@@ -181,11 +181,11 @@ fun NowPlayingScreen(
                 AsyncImage(
                     model = t.thumbnail,
                     contentDescription = null,
-                    modifier = Modifier.size(320.dp).shadow(32.dp, RoundedCornerShape(30.dp)).clip(RoundedCornerShape(30.dp)),
+                    modifier = Modifier.size(340.dp).shadow(32.dp, RoundedCornerShape(32.dp)).clip(RoundedCornerShape(32.dp)),
                     contentScale = ContentScale.Crop,
                 )
             }
-            Spacer(Modifier.height(26.dp))
+            Spacer(Modifier.height(32.dp))
             MarqueeText(
                 text = t.title,
                 style = MaterialTheme.typography.headlineSmall.copy(fontSize = 26.sp, fontWeight = FontWeight.Bold),

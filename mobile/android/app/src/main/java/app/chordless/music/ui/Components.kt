@@ -56,11 +56,13 @@ import coil.compose.AsyncImage
 fun AuroraBackground(content: @Composable () -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         val scheme = MaterialTheme.colorScheme
+        val dark = scheme.background.red < 0.5f
+        val tint = scheme.primary.copy(alpha = if (dark) 0.16f else 0.08f)
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.linearGradient(
                     listOf(
-                        scheme.primary.copy(alpha = 0.16f),
+                        tint,
                         scheme.background,
                         scheme.background,
                     ),
@@ -70,7 +72,7 @@ fun AuroraBackground(content: @Composable () -> Unit) {
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.radialGradient(
-                    0.5f to scheme.primary.copy(alpha = 0.10f),
+                    0.5f to tint.copy(alpha = if (dark) 0.10f else 0.06f),
                     1.2f to Color.Transparent,
                     center = androidx.compose.ui.geometry.Offset(0.5f, 0.0f),
                     radius = 1200f,
@@ -315,14 +317,22 @@ fun LoadingBox() {
 
 @Composable
 fun EmptyState(title: String, subtitle: String? = null) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Box(
+        modifier = Modifier.fillMaxSize().padding(32.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Spacer(Modifier.size(56.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        if (!subtitle.isNullOrBlank()) {
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("♪", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.size(12.dp))
+            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            if (!subtitle.isNullOrBlank()) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
         }
     }
 }
