@@ -22,6 +22,14 @@
     "win": {
       "icon": "build/icon.ico"
     },
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.music",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
+      ]
+    },
     "files": [
       "main.js",
       "preload.cjs",
