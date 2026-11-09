@@ -232,18 +232,30 @@ export default function App() {
 
   // ---------- backend health / yt-dlp check ----------
   // Skipped entirely in standalone native mode (no backend to check).
+  // Retries a few times so a slow-starting server does not produce a
+  // spurious "Backend offline" toast on the desktop app.
   useEffect(() => {
     const standaloneNative = !apiBase() && Boolean(window.Capacitor?.Plugins?.InnerTube);
     if (standaloneNative) return undefined;
-    apiHealth()
-      .then((h) => {
-        if (!h.ytDlp) {
-          usePlayer.getState().toast('yt-dlp not found', 'Audio streaming needs it — run: pip install -U yt-dlp');
+    let cancelled = false;
+    (async () => {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        if (cancelled) return;
+        try {
+          const h = await apiHealth();
+          if (!h.ytDlp) {
+            usePlayer.getState().toast('yt-dlp not found', 'Audio streaming needs it — run: pip install -U yt-dlp');
+          }
+          return;
+        } catch {
+          if (attempt < 3) await new Promise((r) => setTimeout(r, 1200));
         }
-      })
-      .catch(() => {
+      }
+      if (!cancelled) {
         usePlayer.getState().toast('Backend offline', 'Start the API server: npm run dev:server (port 3001).');
-      });
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // ---------- shared playlist link (/share/:id) ----------

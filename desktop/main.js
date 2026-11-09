@@ -6,8 +6,10 @@
  * - System tray with Show / Play-Pause / Next / Quit.
  * - "Close to tray" and "Launch on startup" (Windows login items).
  *
- * Dev mode (repo checkout):  npm start          (run `npm run build` first)
- * Packaged:                  npm run dist     (electron-builder)
+ * v2 startup: the window opens immediately; the server spawns in parallel
+ * and the page loads once the server is healthy (or after a short deadline).
+ * If port 3001 is already held by an orphaned server process, a healthy
+ * existing server is reused; otherwise the next free port is tried.
  */
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, shell } = require('electron');
 const { spawn } = require('node:child_process');
@@ -15,17 +17,21 @@ const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 
-const PORT = 3001;
+const BASE_PORT = 3001;
 const HOST = '127.0.0.1';
 const APP_ROOT = app.isPackaged
   ? path.join(process.resourcesPath)
   : path.join(__dirname, '..');
 const SERVER_ENTRY = path.join(APP_ROOT, 'server', 'index.js');
-const ICON_PATH = path.join(APP_ROOT, 'web', 'public', 'icon.png');
+const ICON_PATH = [
+  path.join(APP_ROOT, 'web', 'dist', 'icon.png'),
+  path.join(APP_ROOT, 'web', 'public', 'icon.png'),
+].find((p) => fs.existsSync(p)) || path.join(APP_ROOT, 'web', 'dist', 'icon.png');
 
 let win = null;
 let tray = null;
 let serverProc = null;
+let activePort = BASE_PORT;
 let quitting = false;
 let prefs = { closeToTray: true, openAtLogin: false };
 
@@ -50,42 +56,102 @@ function applyLoginItem() {
   } catch { /* unsupported platform */ }
 }
 
-function startServer() {
-  return new Promise((resolve, reject) => {
-    serverProc = spawn(process.execPath, [SERVER_ENTRY], {
-      cwd: APP_ROOT,
-      env: {
-        ...process.env,
-        ELECTRON_RUN_AS_NODE: '1',
-        NODE_ENV: 'production',
-        PORT: String(PORT),
-        HOST,
-      },
-      stdio: ['ignore', 'inherit', 'inherit'],
-      windowsHide: true,
+function logServer(msg) {
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    const line = `[${new Date().toISOString()}] ${msg}\n`;
+    fs.appendFileSync(path.join(app.getPath('userData'), 'chordless-server.log'), line);
+    // keep the log bounded (~200 KB)
+    const logPath = path.join(app.getPath('userData'), 'chordless-server.log');
+    const size = fs.statSync(logPath).size;
+    if (size > 200 * 1024) {
+      const data = fs.readFileSync(logPath);
+      fs.writeFileSync(logPath, data.subarray(data.length - 100 * 1024));
+    }
+  } catch { /* ignore */ }
+}
+
+function checkHealth(port) {
+  return new Promise((resolve) => {
+    const req = http.get(`http://${HOST}:${port}/api/health`, (res) => {
+      res.resume();
+      resolve(res.statusCode === 200);
     });
-    serverProc.on('error', reject);
-    serverProc.on('exit', (code) => {
-      if (!quitting) {
-        // Keep the window usable: reload shows backend-offline toasts.
-        console.error(`[desktop] server exited with code ${code}`);
-      }
+    req.on('error', () => resolve(false));
+    req.setTimeout(1500, () => {
+      req.destroy();
+      resolve(false);
     });
-    // Wait for the server's health endpoint before loading the window.
-    const deadline = Date.now() + 30000;
-    const tryHealth = () => {
-      const req = http.get(`http://${HOST}:${PORT}/api/health`, (res) => {
-        if (res.statusCode === 200) resolve();
-        else if (Date.now() < deadline) setTimeout(tryHealth, 400);
-        else reject(new Error('server health check failed'));
-      });
-      req.on('error', () => {
-        if (Date.now() < deadline) setTimeout(tryHealth, 400);
-        else reject(new Error('server health check failed'));
-      });
-    };
-    tryHealth();
   });
+}
+
+async function waitHealth(port, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await checkHealth(port)) return true;
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  return false;
+}
+
+function spawnServer(port) {
+  return new Promise((resolve) => {
+    let proc;
+    try {
+      proc = spawn(process.execPath, [SERVER_ENTRY], {
+        cwd: APP_ROOT,
+        env: {
+          ...process.env,
+          ELECTRON_RUN_AS_NODE: '1',
+          NODE_ENV: 'production',
+          PORT: String(port),
+          HOST,
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      });
+    } catch (e) {
+      logServer(`spawn failed: ${e.message}`);
+      resolve(null);
+      return;
+    }
+    serverProc = proc;
+    proc.stdout.on('data', (d) => logServer(`[server:out] ${String(d).trim()}`));
+    proc.stderr.on('data', (d) => logServer(`[server:err] ${String(d).trim()}`));
+    proc.on('error', (e) => {
+      logServer(`spawn error: ${e.message}`);
+      resolve(null);
+    });
+    proc.on('exit', (code, signal) => {
+      logServer(`server exited (code=${code}, signal=${signal})`);
+      if (!quitting) console.error(`[desktop] server exited with code ${code}`);
+    });
+    resolve(proc);
+  });
+}
+
+async function startServer() {
+  // 1) Reuse a healthy orphaned server on the default port if one exists.
+  if (await checkHealth(BASE_PORT)) {
+    logServer('reusing healthy server already on ' + BASE_PORT);
+    activePort = BASE_PORT;
+    return true;
+  }
+  // 2) Otherwise spawn, trying a few ports in case of a stuck process.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const port = BASE_PORT + attempt;
+    logServer(`starting server on port ${port}`);
+    const proc = await spawnServer(port);
+    if (!proc) continue;
+    if (await waitHealth(port, 12000)) {
+      activePort = port;
+      return true;
+    }
+    try { proc.kill(); } catch { /* ignore */ }
+    serverProc = null;
+  }
+  logServer('all server start attempts failed');
+  return false;
 }
 
 function showWindow() {
@@ -117,6 +183,7 @@ function createWindow() {
     minHeight: 600,
     icon: fs.existsSync(ICON_PATH) ? ICON_PATH : undefined,
     backgroundColor: '#0b0b0e',
+    show: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -125,10 +192,13 @@ function createWindow() {
     },
   });
 
-  win.loadURL(`http://${HOST}:${PORT}/`);
+  const loadPage = () => {
+    if (!win) return;
+    win.loadURL(`http://${HOST}:${activePort}/`);
+  };
   // External links (license pages, etc.) open in the system browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (!url.startsWith(`http://${HOST}:${PORT}/`)) {
+    if (!url.startsWith(`http://${HOST}:${activePort}/`)) {
       shell.openExternal(url);
       return { action: 'deny' };
     }
@@ -142,6 +212,13 @@ function createWindow() {
     }
   });
   win.on('closed', () => { win = null; });
+
+  // The window is already on screen — load the app as soon as the server
+  // is healthy (or after a short deadline so the user still sees the UI).
+  startServer().then((ok) => {
+    logServer(`server ready: ${ok} on port ${activePort}`);
+    loadPage();
+  });
 }
 
 // Prevent a second instance from opening its own window/server.
@@ -150,15 +227,10 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on('second-instance', showWindow);
 
-  app.whenReady().then(async () => {
+  app.whenReady().then(() => {
     // No default File/Edit/View menu bar — the app uses its own chrome.
     Menu.setApplicationMenu(null);
     loadPrefs();
-    try {
-      await startServer();
-    } catch (e) {
-      console.error('[desktop] server failed to start:', e.message);
-    }
     createWindow();
     createTray();
   });
