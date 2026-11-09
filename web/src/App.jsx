@@ -254,6 +254,7 @@ export default function App() {
   useEffect(() => {
     try { usePlayer.getState().initNetworkAdaptive?.(); } catch { /* ignore */ }
     try { usePlayer.getState().refreshOffline?.(); } catch { /* ignore */ }
+    try { usePlayer.getState()._initDesktop?.(); } catch { /* ignore */ }
     const onOnline = () => { usePlayer.setState({ isOnline: true }); usePlayer.getState().toast('Back online', 'Streaming restored.'); };
     const onOffline = () => { usePlayer.setState({ isOnline: false }); usePlayer.getState().toast('You’re offline', 'Playing downloads and local library.'); };
     const onInstall = (e) => { e.preventDefault(); setPendingInstallPrompt(e); usePlayer.getState().setInstallAvailable(true); };

@@ -286,6 +286,8 @@ const persistedSettings = {
   reduceBlur: storedSettings?.reduceBlur === true,
   notifyBackground: storedSettings?.notifyBackground === true,
   notifyForeground: storedSettings?.notifyForeground === true,
+  closeToTray: storedSettings?.closeToTray !== false,
+  openAtLogin: storedSettings?.openAtLogin === true,
   sidebarCollapsed: storedSettings?.sidebarCollapsed === true,
   lang: ['en', 'id'].includes(String(storedSettings?.lang || 'en')) ? String(storedSettings.lang) : 'en',
   homeSections: {
@@ -633,6 +635,27 @@ export const usePlayer = create((set, get) => ({
     set({ forYou, forYouLoading: false });
     try { write('cl:forYou', forYou); } catch { /* storage full */ }
     return forYou;
+  },
+
+  // ---------- desktop shell (Electron only) ----------
+  // Sync the two desktop-only prefs with the Electron main process, and
+  // wire tray menu commands (Play/Pause, Next) into the player.
+  _initDesktop() {
+    if (typeof window === 'undefined' || !window.chordless?.isDesktop) return;
+    const s = get();
+    window.chordless.getPrefs().then((prefs) => {
+      if (!prefs) return;
+      const next = { ...(get().settings || {}) };
+      if (typeof prefs.closeToTray === 'boolean') next.closeToTray = prefs.closeToTray;
+      if (typeof prefs.openAtLogin === 'boolean') next.openAtLogin = prefs.openAtLogin;
+      usePlayer.setState({ settings: next });
+      try { write('cl:settings', next); } catch { /* ignore */ }
+    }).catch(() => { /* non-desktop context */ });
+    window.chordless.onTrayCommand((command) => {
+      const st = get();
+      if (command === 'togglePlay') st.togglePlay();
+      if (command === 'next') st.next(true);
+    });
   },
 
   // ---------- song notifications (Notification API) ----------

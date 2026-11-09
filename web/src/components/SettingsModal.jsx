@@ -483,6 +483,44 @@ export default function SettingsModal() {
         </div>
 
         <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>{t(lang, 'settings.group.system')}</div>
+        {typeof window !== 'undefined' && window.chordless?.isDesktop && (
+          <>
+            <div className="setting-row">
+              <div>
+                <b>{t(lang, 'settings.tray')}</b>
+                <small>{t(lang, 'settings.trayDesc')}</small>
+              </div>
+              <button
+                className={`switch${settings.closeToTray !== false ? ' on' : ''}`}
+                role="switch"
+                aria-checked={settings.closeToTray !== false}
+                aria-label={t(lang, 'settings.tray')}
+                onClick={async () => {
+                  const v = !(settings.closeToTray !== false);
+                  updateSettings({ closeToTray: v });
+                  try { await window.chordless.setPrefs({ closeToTray: v }); } catch { /* ignore */ }
+                }}
+              />
+            </div>
+            <div className="setting-row">
+              <div>
+                <b>{t(lang, 'settings.autostart')}</b>
+                <small>{t(lang, 'settings.autostartDesc')}</small>
+              </div>
+              <button
+                className={`switch${settings.openAtLogin ? ' on' : ''}`}
+                role="switch"
+                aria-checked={Boolean(settings.openAtLogin)}
+                aria-label={t(lang, 'settings.autostart')}
+                onClick={async () => {
+                  const v = !settings.openAtLogin;
+                  updateSettings({ openAtLogin: v });
+                  try { await window.chordless.setPrefs({ openAtLogin: v }); } catch { /* ignore */ }
+                }}
+              />
+            </div>
+          </>
+        )}
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.songNotif')}</b>
