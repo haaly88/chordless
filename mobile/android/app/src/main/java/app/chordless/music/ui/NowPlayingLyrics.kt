@@ -27,7 +27,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AndroidTextTools
 import androidx.compose.ui.text.KeyboardActions
 import androidx.compose.ui.text.SoftKeyboardController
-import androidx.compose.ui.text.SoftKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,7 +36,13 @@ import app.chordless.music.data.Track
 import app.chordless.music.player.PlayerManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectAsState
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.text.font.FontWeight
 
 @Composable
 fun NowPlayingLyrics(
@@ -74,7 +79,6 @@ fun NowPlayingLyrics(
 
     // TRANSLATING MODE
     if (translating) {
-        // Show translation progress with "Translating…" and cancel option
         Column(
             modifier = Modifier.fillMaxSize().padding(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -95,7 +99,11 @@ fun NowPlayingLyrics(
         return
     }
 
-    // NORMAL LYRICS MODE
+    // NORMAL LYRICS MODE WITH KINETIC SCROLL
+    val scrollState = rememberScrollState()
+    val position by PlayerManager.positionMs.collectAsState()
+    val progress = position.toFloat() / PlayerManager.durationMs.value.coerceAtLeast(1f)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -103,7 +111,7 @@ fun NowPlayingLyrics(
             .background(MaterialTheme.colorScheme.background),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Header row
+        // Header: close button
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             IconButton(onClick = onCloseLyrics) {
                 Icon(Icons.Filled.Close, contentDescription = "Close lyrics")
@@ -111,91 +119,79 @@ fun NowPlayingLyrics(
         }
         Spacer(Modifier.height(24.dp))
 
-        // Active line highlighted
+        // Active line highlighted - larger font
         val line = syncedLines.getOrNull(activeIdx)?.second.orEmpty()
         Text(
             line,
             style = MaterialTheme.typography.displaySmall.copy(
-                fontSize = 34.sp,
+                fontSize = 36.sp,
                 fontWeight = FontWeight.Bold,
             ),
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
-        // Next line preview
+        // Next line preview (faded)
         Text(
             syncedLines.getOrNull(activeIdx + 1)?.second.orEmpty(),
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.weight(1f))
-        Text(
-            "Tap a line to seek",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
 
-        // Lyrics list with kinetic scroll
-        ScrollableLyricsList(
+        // Kinetic scrollable lyrics list
+        KineticLyricsList(
             lines = syncedLines,
             activeIdx = activeIdx,
             onSeek = onSeek,
+            progress = progress,
         )
 
-        // Translate button if we have source lyrics
-        if (lyrics?.plain?.isNotBlank() == true || lyrics?.synced?.isNotBlank() == true) {
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Language selector pills
+        // Mode control at bottom
+        Spacer(Modifier.height(16.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Language selector
+            if (lyrics?.plain?.isNotBlank() == true || lyrics?.synced?.isNotBlank() == true) {
                 LangPill("id", langTarget = langTarget, onSelect = { langTarget = it }, isTarget = true)
                 LangPill("en", langTarget = langTarget, onSelect = { langTarget = it }, isTarget = false)
-
-                // Translate/Karaoke action
-                if (syncedLines.isNotEmpty()) {
-                    Button(onClick = { karaoke = true }) {
-                        Text("Karaoke", style = MaterialTheme.typography.labelMedium)
-                    }
-                } else if (translating) {
-                    Button(onClick = { translating = false }) {
-                        Text("Done", style = MaterialTheme.typography.labelMedium)
-                    }
-                } else {
-                    Button(onClick = onTranslate) {
-                        if (syncedLines.isNotEmpty()) {
-                            Text("Karaoke", style = MaterialTheme.typography.labelMedium)
-                        } else {
-                            Text("Translate…", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                }
             }
 
-            // Status lines
-            if (lyricsLoading) {
-                Text("Loading lyrics…", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else if (syncedLines.isNotEmpty()) {
-                syncedLines.forEachIndexed { i, (time, text) ->
-                    Text(
-                        text,
-                        color = if (i == activeIdx) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                        style = if (i == activeIdx)
-                            MaterialTheme.typography.titleMedium
-                            else MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (i == activeIdx) FontWeight.SemiBold else FontWeight.Normal,
-                        modifier = Modifier.clickable { onSeek(time) },
-                    )
+            // Translate/Karaoke action
+            if (syncedLines.isNotEmpty()) {
+                Button(onClick = { karaoke = true }) {
+                    Text("Karaoke", style = MaterialTheme.typography.labelMedium)
                 }
-            } else if (translated != null) {
-                Text(translated!!)
-            } else if (lyrics?.plain?.isNotBlank() == true) {
-                Text(lyrics!!.plain)
+            } else if (translating) {
+                Button(onClick = { translating = false }) {
+                    Text("Done", style = MaterialTheme.typography.labelMedium)
+                }
             } else {
-                Text("No lyrics found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Button(onClick = onTranslate) {
+                    if (syncedLines.isNotEmpty()) {
+                        Text("Karaoke", style = MaterialTheme.typography.labelMedium)
+                    } else {
+                        Text("Translate…", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
             }
+        }
+
+        // Status
+        if (lyricsLoading) {
+            Text("Loading lyrics…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else if (syncedLines.isNotEmpty()) {
+            // Already rendered above in the kinetic list
+        } else if (translated != null) {
+            Spacer(Modifier.height(8.dp))
+            Text(translated!!)
+        } else if (lyrics?.plain?.isNotBlank() == true) {
+            Spacer(Modifier.height(8.dp))
+            Text(lyrics!!.plain)
+        } else {
+            Spacer(Modifier.height(8.dp))
+            Text("No lyrics found", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -226,34 +222,69 @@ fun LangPill(
     }
 }
 
-// ---------- Helper: scrollable lyrics list with kinetic feel ----------
+// ---------- Helper: kinetic lyrics list with auto-scroll ----------
 @Composable
-fun ScrollableLyricsList(
+fun KineticLyricsList(
     lines: List<Pair<Long, String>>,
     activeIdx: Int,
     onSeek: (Long) -> Unit,
+    progress: Float,
 ) {
     val scrollState = rememberScrollState()
+    val viewportHeight = (400.dp).toPx() // approximate visible area
+
+    // Calculate scrolled position based on progress
+    // Each line gets its Y position based on its index and the progress
+    val totalLines = lines.size
+    var accumulatedY: Float = 0f
+
     Column(
         modifier = Modifier.verticalScroll(scrollState),
         horizontalAlignment = Alignment.CenterHorizontally,
+        // Adjust padding based on progress for smooth auto-scroll
+        contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp),
     ) {
         lines.forEachIndexed { i, (time, text) ->
+            // Calculate this line's base Y position (from top)
+            val lineBaseY = accumulatedY
+
+            // Apply progress-based offset for auto-scroll
+            // As song progresses, lines above the current one scroll up
+            val scrollOffset = if (i < activeIdx) {
+                // Already passed lines move up quickly
+                (activeIdx - i).coerceAtLeast(1).toFloat() * 24.dp.toPx()
+            } else if (i == activeIdx) {
+                // Current line stays relatively centered
+                0f
+            } else {
+                // Future lines stay below
+                0f
+            }
+
+            // Final Y position
+            val finalY = lineBaseY + scrollOffset
+
+            // Clickable box for this line
             androidx.compose.foundation.layout.Box(
                 modifier = Modifier
+                    .align(Alignment.Center it finalY)  // approximate centering
                     .clickable { onSeek(time) }
-                    .padding(vertical = 4.dp),
+                    .padding(vertical = 3.dp),
             ) {
                 Text(
                     text,
                     color = if (i == activeIdx) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
                     style = if (i == activeIdx)
                         MaterialTheme.typography.titleMedium
                         else MaterialTheme.typography.bodyMedium,
                     fontWeight = if (i == activeIdx) FontWeight.SemiBold else FontWeight.Normal,
+                    textAlign = TextAlign.Center,
                 )
             }
+
+            // Track accumulated height for next line
+            accumulatedY += 48.dp.toPx() // each line ~48px including spacing
         }
     }
 }
@@ -301,4 +332,10 @@ private fun KaraokeView(
             )
         }
     }
+}
+
+// ---------- fmtMs helper moved here ----------
+private fun fmtMs(ms: Long): String {
+    val s = (ms / 1000).toInt().coerceAtLeast(0)
+    return "%d:%02d".format(s / 60, s % 60)
 }
