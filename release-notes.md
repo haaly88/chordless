@@ -1,6 +1,6 @@
-## Chordless 1.0.3
+## Chordless 1.1.0
 
-Every song, beautifully — desktop app (Windows & macOS) **and** a **fully standalone Android app**.
+Every song, beautifully — desktop app (Windows & macOS) **and** a **fully native Android app** (Kotlin + Compose + Media3, BitChord-grade).
 
 ### Download
 
@@ -12,11 +12,19 @@ Every song, beautifully — desktop app (Windows & macOS) **and** a **fully stan
 | `Chordless-1.0.0.dmg` | macOS Intel |
 | `Chordless-1.0.0-arm64-mac.zip` | macOS Apple Silicon (zip) |
 | `Chordless-1.0.0-mac.zip` | macOS Intel (zip) |
-| `app-debug.apk` | Android APK (debug build) |
+| `app-debug.apk` | Android native APK |
 
-### Requirements
+### Android (fully native, standalone)
 
-- **Android (standalone)**: install `app-debug.apk` and allow unknown sources. **No server needed at all** — a native InnerTube bridge in the app powers search, home, charts, artist/album/playlist pages; playback runs on the embedded YouTube player; lyrics and skip segments come directly from LRCLIB and SponsorBlock. Optionally point Settings → General → **Backend server (Android)** at a Chordless server for stream playback and Listen Together.
+- **No server, no WebView, no yt-dlp, no Python.** Everything runs natively on the phone.
+- Search, Home shelves, Charts, Artist / Album / Playlist pages powered by a native InnerTube client (OkHttp).
+- Playback uses real stream URLs resolved via NewPipeExtractor (no YouTube IFrame) in Media3 ExoPlayer.
+- Synced lyrics via LRCLIB, SponsorBlock skip segments, favorites library (DataStore), theme + region (GL/HL) settings.
+- UI scale defaults to **90%** density.
+- Install `app-debug.apk` and allow unknown sources. Debug-signed build for personal use.
+
+### Requirements (desktop)
+
 - **Python 3 + yt-dlp** (`pip install -U yt-dlp`) for stream playback. Without it, use Settings → Playback → Engine → Embedded.
 - macOS unsigned: right-click the app and choose **Open** (or `xattr -dr com.apple.quarantine /Applications/Chordless.app`).
 - Unsigned Windows installer: accept the SmartScreen prompt (“More info” → “Run anyway”).
