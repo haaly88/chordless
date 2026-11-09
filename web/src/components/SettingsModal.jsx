@@ -553,18 +553,12 @@ export default function SettingsModal() {
           />
         </div>
         <div style={{ padding: '4px 4px 14px', display: settings.sb?.enabled === false ? 'none' : 'block' }}>
-          <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>SKIP CATEGORIES</div>
+          <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8 }}>{t(lang, 'settings.section.skip')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {[
-              ['sponsor', 'Sponsors'],
-              ['selfpromo', 'Self-promo'],
-              ['interaction', 'Subscribe reminders'],
-              ['music_offtopic', 'Non-music'],
-              ['intro', 'Intros'],
-              ['outro', 'Outros'],
-              ['filler', 'Filler'],
-              ['preview', 'Previews'],
-            ].map(([key, label]) => {
+              'sponsor', 'selfpromo', 'interaction', 'music_offtopic',
+              'intro', 'outro', 'filler', 'preview',
+            ].map((key) => {
               const on = settings.sb?.categories?.[key] ?? { sponsor: true, selfpromo: true, interaction: true, music_offtopic: true }[key] ?? false;
               return (
                 <button
@@ -579,7 +573,7 @@ export default function SettingsModal() {
                     },
                   })}
                 >
-                  {label}
+                  {t(lang, `sb.cat.${key}`)}
                 </button>
               );
             })}
