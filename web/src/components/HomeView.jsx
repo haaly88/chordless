@@ -120,6 +120,7 @@ function Shelf({ title, icon, items, onPlayAll }) {
   const rowRef = useRef(null);
   const playTrack = usePlayer((s) => s.playTrack);
   const setView = usePlayer((s) => s.setView);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   const activeId = usePlayer((s) => (s.index >= 0 ? s.queue[s.index]?.id : null));
   const isPlaying = usePlayer((s) => s.isPlaying);
   if (!items?.length) return null;
