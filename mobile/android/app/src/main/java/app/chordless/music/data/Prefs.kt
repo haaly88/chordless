@@ -25,6 +25,7 @@ object Prefs {
     private val K_SPEED = floatPreferencesKey("speed")
     private val K_EQ = stringPreferencesKey("eq")
     private val K_EQON = booleanPreferencesKey("eqOn")
+    private val K_CROSSFADE = floatPreferencesKey("crossfade")
 
     suspend fun gl(ctx: Context): String = ctx.prefs.data.map { it[K_GL] ?: "ID" }.first()
     suspend fun hl(ctx: Context): String = ctx.prefs.data.map { it[K_HL] ?: "en" }.first()
@@ -39,6 +40,7 @@ object Prefs {
     suspend fun speed(ctx: Context): Float = ctx.prefs.data.map { it[K_SPEED] ?: 1f }.first()
     suspend fun eq(ctx: Context): String = ctx.prefs.data.map { it[K_EQ] ?: "0,0,0,0,0" }.first()
     suspend fun eqOn(ctx: Context): Boolean = ctx.prefs.data.map { it[K_EQON] ?: true }.first()
+    suspend fun crossfade(ctx: Context): Float = ctx.prefs.data.map { it[K_CROSSFADE] ?: 0.5f }.first()
 
     suspend fun setGl(ctx: Context, v: String) = ctx.prefs.edit { it[K_GL] = v }
     suspend fun setHl(ctx: Context, v: String) = ctx.prefs.edit { it[K_HL] = v }
@@ -53,6 +55,7 @@ object Prefs {
     suspend fun setSpeed(ctx: Context, v: Float) = ctx.prefs.edit { it[K_SPEED] = v }
     suspend fun setEq(ctx: Context, v: String) = ctx.prefs.edit { it[K_EQ] = v }
     suspend fun setEqOn(ctx: Context, v: Boolean) = ctx.prefs.edit { it[K_EQON] = v }
+    suspend fun setCrossfade(ctx: Context, v: Float) = ctx.prefs.edit { it[K_CROSSFADE] = v }
 
     fun themeFlow(ctx: Context): kotlinx.coroutines.flow.Flow<String> =
         ctx.prefs.data.map { it[K_THEME] ?: "system" }
@@ -60,4 +63,6 @@ object Prefs {
         ctx.prefs.data.map { it[K_ACCENT] ?: "red" }
     fun uiScaleFlow(ctx: Context): kotlinx.coroutines.flow.Flow<Float> =
         ctx.prefs.data.map { it[K_UISCALE] ?: 1.0f }
+    fun crossfadeFlow(ctx: Context): kotlinx.coroutines.flow.Flow<Float> =
+        ctx.prefs.data.map { it[K_CROSSFADE] ?: 0.5f }
 }

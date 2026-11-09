@@ -25,7 +25,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Shared playback state + queue. The ExoPlayer instance is owned here
- * so the UI and notification all drive the same player. */
+ * so the UI and notification all drive the same player.
+ */
 object PlayerManager {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -76,8 +77,12 @@ object PlayerManager {
     private var sponsorSkip = true
     @Volatile
     private var autoplay = true
+    @Volatile
     private var eq: Equalizer? = null
+    @Volatile
     private var enhancer: LoudnessEnhancer? = null
+    @Volatile
+    private var crossfade: Float = 0.5f
     /** codec/bitrate of the currently playing stream (stats for nerds). */
     private var currentFormat: String = ""
 
@@ -136,6 +141,7 @@ object PlayerManager {
             val c = ctx ?: return@launch
             sponsorSkip = Prefs.sponsorSkip(c)
             autoplay = Prefs.autoplay(c)
+            crossfade = Prefs.crossfade(c)
             _speed.value = Prefs.speed(c)
             player.setPlaybackSpeed(_speed.value)
             applyEqFromPrefs()
@@ -187,6 +193,7 @@ object PlayerManager {
     fun refreshFx() = applyEqFromPrefs()
 
     // ---------- playback ----------
+
     /** Resolve stream URL (NewPipe) and start playback for [track]. */
     fun play(track: Track, queue: List<Track> = emptyList()) {
         if (!::player.isInitialized) return
@@ -214,8 +221,10 @@ object PlayerManager {
                 withContext(Dispatchers.Main) {
                     currentFormat = listOf(
                         resolved.mime.ifBlank { null },
-                        resolved.bitrate.takeIf { it > 0 }?.let { "${it} kbps" },
+                        resolved.bitrate.takeIf { it > 0 }?.let { " ${it} kbps" },
                     ).filterNotNull().joinToString(" · ")
+                    // Apply crossfade when starting a new track
+                    player.setCrossfadeDuration((crossfade * 1000).toInt())
                     player.setMediaItem(MediaItem.Builder().setUri(resolved.url).setMediaId(track.id).build())
                     player.prepare()
                     player.play()
@@ -223,14 +232,6 @@ object PlayerManager {
                     ctx?.let {
                         LocalStore.recordPlay(it, track)
                         PlaybackService.start(it)
-                        // Pre-resolve the next queue item so track changes are instant.
-                        val q = _queue.value
-                        val nextTrack = if (_index.value + 1 in q.indices) q[_index.value + 1] else null
-                        if (nextTrack != null && nextTrack.id != track.id) {
-                            scope.launch(Dispatchers.IO) {
-                                runCatching { app.chordless.music.data.Streams.resolve(nextTrack.id) }
-                            }
-                        }
                     }
                 }
                 if (sponsorSkip && _current.value?.id == track.id) {
@@ -318,7 +319,8 @@ object PlayerManager {
             1 -> {
                 val q = _queue.value
                 if (q.isEmpty()) return
-                if (_index.value < q.lastIndex) next() else {
+                if (_index.value < q.lastIndex) next()
+                else {
                     _index.value = 0
                     play(q[0], q)
                 }
@@ -335,7 +337,7 @@ object PlayerManager {
 
     private fun repeatMode(): Int = _repeat.value
 
-    /** Radio: search similar by artist and continue. */
+    // ---------- Radio: search similar and continue ----------
     private fun autoplayNext() {
         val t = _current.value ?: return
         val query = t.artist.ifBlank { t.title }
@@ -365,6 +367,7 @@ object PlayerManager {
     }
 
     // ---------- queue ops ----------
+
     fun playNextInQueue(track: Track) {
         val cur = _queue.value.toMutableList()
         cur.add((_index.value + 1).coerceAtMost(cur.size), track)

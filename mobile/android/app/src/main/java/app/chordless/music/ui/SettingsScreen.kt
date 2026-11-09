@@ -18,8 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,12 +64,14 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
     var langOpen by remember { mutableStateOf(false) }
     var scaleOpen by remember { mutableStateOf(false) }
     var sleepOpen by remember { mutableStateOf(false) }
+    var crossfade by remember { mutableStateOf(0.5f) }
 
     LaunchedEffect(Unit) {
         gl = Prefs.gl(ctx); hl = Prefs.hl(ctx); theme = Prefs.theme(ctx)
         lang = Prefs.lang(ctx); accent = Prefs.accent(ctx); uiScale = Prefs.uiScale(ctx)
         autoplay = Prefs.autoplay(ctx); normalize = Prefs.normalize(ctx)
         sponsor = Prefs.sponsorSkip(ctx); notify = Prefs.notify(ctx)
+        crossfade = Prefs.crossfade(ctx)
     }
 
     val notifPermission = rememberLauncherForActivityResult(
@@ -106,7 +106,7 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
                                     lang = code
                                     scope.launch { Prefs.setLang(ctx, code) }
                                     langOpen = false
-                                },
+                                }
                             )
                         }
                     }
@@ -159,9 +159,8 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
                                     scope.launch { Prefs.setAccent(ctx, id) }
                                 }
                                 .let {
-                                    if (accent == id) it.padding(0.dp) else it
-                                },
-                            contentAlignment = Alignment.Center,
+                                    if (accent == id) it.padding(0.dp) else it,
+                                contentAlignment = Alignment.Center,
                         ) {
                             if (accent == id) Text("✓", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold)
                         }
@@ -185,7 +184,7 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
                                     uiScale = option
                                     scope.launch { Prefs.setUiScale(ctx, option) }
                                     scaleOpen = false
-                                },
+                                }
                             )
                         }
                     }
@@ -208,6 +207,29 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
                 sponsor = it
                 scope.launch { Prefs.setSponsorSkip(ctx, it) }
             }
+            SettingRow("Crossfade") {
+                ExposedDropdownMenuBox(expanded = scaleOpen, onExpandedChange = { scaleOpen = !scaleOpen }) {
+                    OutlinedTextField(
+                        value = "${(crossfade * 100).toInt()}%",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(scaleOpen) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    )
+                    ExposedDropdownMenu(expanded = scaleOpen, onDismissRequest = { scaleOpen = false }) {
+                        listOf(0f, 0.5f, 1f, 2f).forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text("${(option * 100).toInt()}%") },
+                                onClick = {
+                                    crossfade = option
+                                    scope.launch { Prefs.setCrossfade(ctx, option) }
+                                    scaleOpen = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
             SettingRow("Sleep timer") {
                 ExposedDropdownMenuBox(expanded = sleepOpen, onExpandedChange = { sleepOpen = !sleepOpen }) {
                     OutlinedTextField(
@@ -224,7 +246,7 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
                                 onClick = {
                                     PlayerManager.setSleep(if (min == 0) null else min)
                                     sleepOpen = false
-                                },
+                                }
                             )
                         }
                     }
@@ -237,7 +259,7 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
                 subtitle = "5-band EQ + presets",
                 action = {
                     androidx.compose.material3.TextButton(onClick = onOpenEq) { Text("Open") }
-                },
+                }
             )
 
             SectionLabel("Notifications")
@@ -252,9 +274,9 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
 
             SectionLabel("About")
             Text(
-                "Chordless 1.1 (native Android)\n" +
-                    "YouTube Music client with synced lyrics (LRCLIB),\n" +
-                    "stream resolution via NewPipe, playback via Media3.\n" +
+                "Chordless 1.1 (native Android)\\n" +
+                    "YouTube Music client with synced lyrics (LRCLIB),\\n" +
+                    "stream resolution via NewPipe, playback via Media3.\\n" +
                     "Fully standalone — no server required.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
