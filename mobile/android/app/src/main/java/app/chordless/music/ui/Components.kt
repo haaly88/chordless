@@ -1,5 +1,6 @@
 package app.chordless.music.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,7 +10,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,28 +26,36 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import app.chordless.music.data.Track
 import coil.compose.AsyncImage
 
 @Composable
-fun Artwork(url: String, size: androidx.compose.ui.unit.Dp = 56.dp) {
-    AsyncImage(
-        model = url,
-        contentDescription = null,
-        modifier = Modifier.size(size).clip(RoundedCornerShape(8.dp)),
-        contentScale = ContentScale.Crop,
-    )
+fun Artwork(url: String, size: androidx.compose.ui.unit.Dp = 56.dp, radius: androidx.compose.ui.unit.Dp = 12.dp) {
+    if (url.isBlank()) {
+        Box(
+            modifier = Modifier.size(size).clip(RoundedCornerShape(radius)).background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("♪", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    } else {
+        AsyncImage(
+            model = url,
+            contentDescription = null,
+            modifier = Modifier.size(size).clip(RoundedCornerShape(radius)),
+            contentScale = ContentScale.Crop,
+        )
+    }
 }
 
 @Composable
 fun TrackRow(
     track: Track,
     onClick: () -> Unit,
+    index: Int = -1,
     isFavorite: Boolean = false,
     onToggleFavorite: (() -> Unit)? = null,
     isCurrent: Boolean = false,
@@ -50,16 +63,30 @@ fun TrackRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .let { if (isCurrent) it else it },
+            .background(
+                if (isCurrent) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                else MaterialTheme.colorScheme.surface.copy(alpha = 0f)
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Artwork(track.thumbnail)
+        Spacer(Modifier.width(4.dp))
+        if (index >= 0) {
+            Text(
+                "%02d".format(index + 1),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.width(28.dp),
+            )
+        }
+        Artwork(track.thumbnail, size = 52.dp, radius = 12.dp)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 track.title,
                 style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
@@ -88,6 +115,7 @@ fun TrackRow(
                 )
             }
         }
+        Spacer(Modifier.width(4.dp))
     }
 }
 
@@ -107,7 +135,7 @@ fun ErrorBox(message: String, onRetry: () -> Unit) {
 fun LoadingBox() {
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Spacer(Modifier.size(48.dp))
-        CircularProgressIndicator()
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
     }
 }
 

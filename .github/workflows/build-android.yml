@@ -1,8 +1,11 @@
 name: Build Android & publish APK
 
 on:
+  # Build (artifact only) on every push to main so iterations can be tested.
+  # Publishing to GitHub Release happens on tag pushes only.
   push:
     tags: ['v*']
+    branches: [main]
   workflow_dispatch:
 
 permissions:
