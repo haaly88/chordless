@@ -62,7 +62,7 @@ object TranslateRepo {
                 val seg = first.optJSONArray(i) ?: continue
                 sb.append(seg.optString(0))
             }
-            return@use sb.toString().ifBlank { line }
+            sb.toString().ifBlank { line }
         }
     }
 }

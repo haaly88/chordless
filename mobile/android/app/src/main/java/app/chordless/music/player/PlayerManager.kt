@@ -168,7 +168,7 @@ object PlayerManager {
                         for (i in 0 until bands) {
                             val g = gains.getOrNull(i) ?: 0f
                             val mb = (g * 100).toInt().coerceIn(fx.bandLevelRange[0].toInt(), fx.bandLevelRange[1].toInt())
-                            fx.setBandGain(i.toShort(), mb.toShort())
+                            fx.setBandLevel(i.toShort(), mb.toShort())
                         }
                     }
                     enhancer?.enabled = normalize
@@ -366,7 +366,6 @@ object PlayerManager {
     }
 
     // ---------- sleep timer ----------
-    private var sleepTimer: Timer? = null
 
     /** minutes: null = off, -1 = end of current track, >0 = minutes. */
     fun setSleep(minutes: Int?) {
@@ -404,7 +403,7 @@ object PlayerManager {
     /** Stats-for-nerds line (BitChord parity): codec · bitrate. */
     fun statsLine(): String {
         if (!::player.isInitialized) return ""
-        val f = player.currentTrackFormat ?: return "Streaming"
+        val f = androidx.media3.common.util.Utils.getCurrentFormat(player) ?: return "Streaming"
         val bitrate = (f.bitrate / 1000).takeIf { it > 0 }?.let { "${it} kbps" }
         val codecs = f.codecs ?: f.mimeType ?: ""
         return listOf(codecs, bitrate).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Streaming" }

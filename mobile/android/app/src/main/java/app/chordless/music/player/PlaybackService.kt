@@ -56,10 +56,10 @@ class PlaybackService : Service() {
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        fun action(icon: Int, title: String, action: String): android.app.Notification.Action {
+        fun action(icon: Int, title: String, actionName: String): NotificationCompat.Action {
             val pi = PendingIntent.getService(
-                this, action.hashCode(),
-                Intent(this, PlaybackService::class.java).setAction(action),
+                this, actionName.hashCode(),
+                Intent(this, PlaybackService::class.java).setAction(actionName),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             return NotificationCompat.Action(icon, title, pi)
