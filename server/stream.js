@@ -152,6 +152,21 @@ export async function resolveStream(id, pref = 'auto', quality = 'high') {
         lastError = e;
       }
     }
+    // Fallback: youtubei.js (InnerTube) when yt-dlp is unavailable or
+    // refuses this video. Shared fail cache still applies afterwards.
+    try {
+      const { resolveWithYoutubei } = await import('./streamFallback.js');
+      const info = await resolveWithYoutubei(id, normalizedQuality);
+      if (await verifyAudioUrl(info.url)) {
+        urlCache.set(cacheKey, info);
+        console.warn('[stream] youtubei fallback resolved %s', id);
+        return info;
+      }
+      throw new Error('youtubei returned a URL YouTube refused (403)');
+    } catch (e) {
+      console.warn('[stream] youtubei fallback failed for %s: %s', id, e.message);
+      lastError = e;
+    }
     const message = lastError?.message || 'Could not resolve a playable stream';
     failCache.set(cacheKey, message);
     throw lastError || new Error(message);

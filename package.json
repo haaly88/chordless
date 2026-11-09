@@ -13,7 +13,8 @@
     "setup": "npm --prefix web install && pip install -U yt-dlp"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "youtubei.js": "^18.3.0"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
