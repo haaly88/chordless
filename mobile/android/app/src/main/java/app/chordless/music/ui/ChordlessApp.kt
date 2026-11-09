@@ -123,6 +123,7 @@ fun ChordlessApp() {
         PlayerManager.play(track)
     }
 
+    val hazeBarTint = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
     val hazeState = remember { HazeState() }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -213,7 +214,7 @@ fun ChordlessApp() {
                     },
                     modifier = Modifier.hazeEffect(hazeState) {
                         blurRadius = HazeDefaults.blurRadius
-                        backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
+                        backgroundColor = hazeBarTint
                     },
                 )
             }
@@ -221,7 +222,7 @@ fun ChordlessApp() {
                 containerColor = androidx.compose.ui.graphics.Color.Transparent,
                 modifier = Modifier.hazeEffect(hazeState) {
                     blurRadius = HazeDefaults.blurRadius
-                    backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
+                    backgroundColor = hazeBarTint
                 },
             ) {
                 val itemColors = NavigationBarItemDefaults.colors(

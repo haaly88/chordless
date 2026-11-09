@@ -29,15 +29,32 @@ jobs:
           cache: npm
 
       - name: Build web UI
+        shell: bash
         run: |
           npm ci --prefix web --fetch-retries=5 --fetch-retry-mintimeout=20000
           npm run build
 
       - name: Install root deps (server — bundled into the app)
-        run: npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000
+        shell: bash
+        run: |
+          attempt=1
+          until npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000; do
+            echo "root npm ci attempt $attempt failed"
+            attempt=$((attempt+1))
+            if [ $attempt -gt 3 ]; then exit 1; fi
+            sleep 15
+          done
 
       - name: Install desktop deps
-        run: npm ci --prefix desktop --fetch-retries=5 --fetch-retry-mintimeout=20000
+        shell: bash
+        run: |
+          attempt=1
+          until npm ci --prefix desktop --fetch-retries=5 --fetch-retry-mintimeout=20000; do
+            echo "desktop npm ci attempt $attempt failed"
+            attempt=$((attempt+1))
+            if [ $attempt -gt 3 ]; then exit 1; fi
+            sleep 15
+          done
 
       - name: Regenerate icons
         run: |
@@ -84,15 +101,32 @@ jobs:
           cache: npm
 
       - name: Build web UI
+        shell: bash
         run: |
           npm ci --prefix web --fetch-retries=5 --fetch-retry-mintimeout=20000
           npm run build
 
       - name: Install root deps (server — bundled into the app)
-        run: npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000
+        shell: bash
+        run: |
+          attempt=1
+          until npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000; do
+            echo "root npm ci attempt $attempt failed"
+            attempt=$((attempt+1))
+            if [ $attempt -gt 3 ]; then exit 1; fi
+            sleep 15
+          done
 
       - name: Install desktop deps
-        run: npm ci --prefix desktop --fetch-retries=5 --fetch-retry-mintimeout=20000
+        shell: bash
+        run: |
+          attempt=1
+          until npm ci --prefix desktop --fetch-retries=5 --fetch-retry-mintimeout=20000; do
+            echo "desktop npm ci attempt $attempt failed"
+            attempt=$((attempt+1))
+            if [ $attempt -gt 3 ]; then exit 1; fi
+            sleep 15
+          done
 
       - name: Regenerate icons
         run: |
