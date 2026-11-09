@@ -9,7 +9,7 @@ import EmbedEngine from './components/EmbedEngine.jsx';
 import ContextMenu from './components/ContextMenu.jsx';
 import Toasts from './components/Toasts.jsx';
 import { extractPalette } from './lib/palette.js';
-import { apiHealth, coverProxy, addonTrackUrl } from './lib/api.js';
+import { apiBase, apiHealth, coverProxy, addonTrackUrl } from './lib/api.js';
 
 // Lazy views — split out of the initial bundle (Home/shell stay eager).
 const SearchView = lazy(() => import('./components/SearchView.jsx'));
@@ -231,7 +231,10 @@ export default function App() {
   }, []);
 
   // ---------- backend health / yt-dlp check ----------
+  // Skipped entirely in standalone native mode (no backend to check).
   useEffect(() => {
+    const standaloneNative = !apiBase() && Boolean(window.Capacitor?.Plugins?.InnerTube);
+    if (standaloneNative) return undefined;
     apiHealth()
       .then((h) => {
         if (!h.ytDlp) {

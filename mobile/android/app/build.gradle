@@ -1,4 +1,6 @@
 apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 
 android {
     namespace "app.chordless.music"
@@ -11,8 +13,6 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
@@ -22,34 +22,54 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-}
-
-repositories {
-    flatDir{
-        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+    buildFeatures {
+        compose = true
     }
 }
 
 dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
-    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
-    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
-    implementation project(':capacitor-android')
+    // Compose
+    def composeBom = platform('androidx.compose:compose-bom:2024.09.00')
+    implementation composeBom
+    androidTestImplementation composeBom
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.activity:activity-compose:1.9.2'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.4'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4'
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-core'
+    implementation 'androidx.compose.material:material-icons-extended'
+
+    // Coroutines
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+
+    // Networking + JSON
     implementation "com.squareup.okhttp3:okhttp:4.12.0"
-    testImplementation "junit:junit:$junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
-    implementation project(':capacitor-cordova-android-plugins')
-}
+    implementation 'org.json:json:20240303'
 
-apply from: 'capacitor.build.gradle'
+    // Image loading
+    implementation 'io.coil-kt:coil-compose:2.6.0'
 
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
-        apply plugin: 'com.google.gms.google-services'
-    }
-} catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+    // Preferences / favorites
+    implementation 'androidx.datastore:datastore-preferences:1.1.1'
+
+    // Media3 player
+    implementation 'androidx.media3:media3-exoplayer:1.5.1'
+    implementation 'androidx.media3:media3-session:1.5.1'
+    implementation 'androidx.media3:media3-ui:1.5.1'
+
+    // NewPipe extractor (YouTube stream resolution: formats + decipher)
+    implementation 'com.github.TeamNewPipe:NewPipeExtractor:v0.24.3'
+
+    testImplementation 'junit:junit:4.13.2'
+    debugImplementation 'androidx.compose.ui:ui-tooling'
 }
