@@ -494,7 +494,7 @@ export default function SettingsModal() {
         </div>
         <div style={{ padding: '4px 4px 14px' }}>
           {addons.length === 0 && (
-            <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 10 }}>No addons yet. Add one below.</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 10 }}>{t(lang, 'settings.noAddons')}</div>
           )}
           {addons.map((a, i) => (
             <div key={`${a.manifest?.base || a.url}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--stroke)', borderRadius: 12, marginBottom: 8, background: a.enabled ? 'var(--hover)' : 'transparent' }}>
@@ -503,18 +503,18 @@ export default function SettingsModal() {
                 <b style={{ fontSize: 13, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.manifest?.name || a.url}</b>
                 <small style={{ fontSize: 11, color: 'var(--text-3)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.manifest?.version ? `v${a.manifest.version} · ` : ''}{a.manifest?.defaultQuality || ''}</small>
               </div>
-              <button className="icon-btn" onClick={() => moveAddon(i, -1)} disabled={i === 0} title="Move up (higher priority)" aria-label="Move up">↑</button>
-              <button className="icon-btn" onClick={() => moveAddon(i, 1)} disabled={i === addons.length - 1} title="Move down" aria-label="Move down">↓</button>
+              <button className="icon-btn" onClick={() => moveAddon(i, -1)} disabled={i === 0} title={t(lang, 'settings.moveUp')} aria-label={t(lang, 'settings.moveUp')}>↑</button>
+              <button className="icon-btn" onClick={() => moveAddon(i, 1)} disabled={i === addons.length - 1} title={t(lang, 'settings.moveDown')} aria-label={t(lang, 'settings.moveDown')}>↓</button>
               <button className={`switch${a.enabled ? ' on' : ''}`} role="switch" aria-checked={Boolean(a.enabled)} aria-label={`Enable ${a.manifest?.name}`} onClick={() => toggleAddon(i)} />
-              <button className="icon-btn" onClick={() => removeAddon(i)} title="Remove" aria-label="Remove addon"><Trash2 size={16} /></button>
+              <button className="icon-btn" onClick={() => removeAddon(i)} title={t(lang, 'btn.remove')} aria-label={t(lang, 'btn.remove')}><Trash2 size={16} /></button>
             </div>
           ))}
-          <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8, marginTop: 6 }}>ADD PRESET</div>
+          <div className="section-label" style={{ paddingLeft: 0, marginBottom: 8, marginTop: 6 }}>{t(lang, 'settings.addPreset')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-            <button className="pill" onClick={() => { setAddonUrl('https://deezer.nom.deno.net/manifest.json'); setAddonStatus(null); }} title="Deezer — full FLAC with a personal URL">Deezer</button>
+            <button className="pill" onClick={() => { setAddonUrl('https://deezer.nom.deno.net/manifest.json'); setAddonStatus(null); }} title={t(lang, 'settings.deezerTitle')}>Deezer</button>
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--text-3)', lineHeight: 1.5, marginBottom: 10 }}>
-            <b style={{ color: 'var(--text-2)' }}>Deezer:</b> create a free personal URL at <span style={{ color: 'var(--text-2)' }}>deezer.nom.deno.net</span> (Discord login) for full audio.
+            {t(lang, 'settings.deezerHelp')}
           </div>
           <div className="sb-url-row">
             <input
@@ -529,11 +529,11 @@ export default function SettingsModal() {
             />
             <button className="btn primary" onClick={runAddonTest} disabled={addonTesting || !addonUrl.trim()} style={{ gap: 8 }}>
               {addonTesting ? <Loader2 size={15} style={{ animation: 'spin .8s linear infinite' }} /> : <Plug size={15} />}
-              {addonTesting ? 'Testing…' : 'Add'}
+              {addonTesting ? t(lang, 'settings.testing') : t(lang, 'settings.add')}
             </button>
           </div>
           {addonStatus?.ok && (
-            <div className="addon-status ok"><Check size={14} /><span><b>{addonStatus.manifest?.name}</b> added · plays {addonStatus.manifest?.defaultQuality}</span></div>
+            <div className="addon-status ok"><Check size={14} /><span>{t(lang, 'settings.addonAdded').replace('{name}', addonStatus.manifest?.name).replace('{q}', addonStatus.manifest?.defaultQuality)}</span></div>
           )}
           {addonStatus && !addonStatus.ok && <div className="addon-status err">{addonStatus.error}</div>}
         </div>
