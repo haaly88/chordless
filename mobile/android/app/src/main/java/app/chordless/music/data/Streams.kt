@@ -9,8 +9,6 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.downloader.Downloader
-import org.schabi.newpipe.extractor.downloader.Request
-import org.schabi.newpipe.extractor.downloader.Response
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import java.util.concurrent.TimeUnit
@@ -31,7 +29,7 @@ object Streams {
         .build()
 
     private object OkDownloader : Downloader() {
-        override fun execute(request: Request): Response {
+        override fun execute(request: org.schabi.newpipe.extractor.downloader.Request): org.schabi.newpipe.extractor.downloader.Response {
             val builder = Request.Builder()
                 .url(request.url())
                 .header("User-Agent", "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
@@ -44,7 +42,7 @@ object Streams {
                 val body = res.body?.bytes() ?: ByteArray(0)
                 val headers = mutableMapOf<String, List<String>>()
                 res.headers.forEach { (name, value) -> headers[name] = listOf(value) }
-                Response(
+                org.schabi.newpipe.extractor.downloader.Response(
                     res.code,
                     res.message,
                     headers,
