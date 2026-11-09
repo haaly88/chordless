@@ -10,6 +10,7 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - { name: Apple Silicon (arm64), runner: macos-15, arch: arm64 }
@@ -45,5 +46,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Chordless-mac-${{ matrix.name }}-${{ matrix.arch }}
-          path: desktop/release/*.{dmg,zip}
+          path: |
+            desktop/release/*.dmg
+            desktop/release/*.zip
           if-no-files-found: error
