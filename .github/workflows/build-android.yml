@@ -38,9 +38,9 @@ jobs:
 
       - name: Build debug APK (native, with retries)
         run: |
-          chmod +x gradlew
+          gradle --version
           attempt=1
-          until ./gradlew assembleDebug; do
+          until gradle assembleDebug; do
             echo "Build failed (attempt $attempt) — retrying in 20s"
             attempt=$((attempt+1))
             if [ $attempt -gt 5 ]; then
