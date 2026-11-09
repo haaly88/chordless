@@ -2,6 +2,7 @@ package app.chordless.music.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -37,7 +38,7 @@ fun LibraryScreen(onPlay: (Track) -> Unit) {
         return
     }
     if (favIds.isEmpty()) {
-        Column(modifier = Modifier.paddingDp()) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text("No favorites yet", style = MaterialTheme.typography.titleMedium)
             Text("Tap the heart on any song to save it here.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -63,7 +64,3 @@ fun LibraryScreen(onPlay: (Track) -> Unit) {
         }
     }
 }
-
-private fun Modifier.paddingDp() = this.then(
-    androidx.compose.foundation.layout.padding(16.dp)
-)

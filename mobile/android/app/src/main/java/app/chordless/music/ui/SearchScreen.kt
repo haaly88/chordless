@@ -49,7 +49,8 @@ fun SearchScreen(
     LaunchedEffect(query) {
         if (query.length < 2) {
             results = emptyList()
-            return
+            loading = false
+            return@LaunchedEffect
         }
         loading = true
         delay(400) // debounce

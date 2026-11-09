@@ -59,7 +59,8 @@ fun NowPlayingScreen() {
     val scope = remember { CoroutineScope(Dispatchers.Main) }
 
     // load favorites + lyrics when track changes
-    track?.let { t ->
+    val t = track
+    if (t != null) {
         androidx.compose.runtime.LaunchedEffect(t.id) {
             favIds = Prefs.favorites(ctx)
             lyricsLoading = true
@@ -77,7 +78,6 @@ fun NowPlayingScreen() {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(16.dp))
-        val t = track
         if (t == null) {
             Text("Nothing playing", color = MaterialTheme.colorScheme.onSurfaceVariant)
             return

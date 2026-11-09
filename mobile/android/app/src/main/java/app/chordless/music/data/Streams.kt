@@ -34,8 +34,9 @@ object Streams {
                 .url(request.url())
                 .header("User-Agent", "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
             request.headers().forEach { (name, values) -> values.forEach { builder.header(name, it) } }
-            if (request.method() == "POST") {
-                builder.post((request.dataToSend() ?: ByteArray(0)).toRequestBody())
+            val data = request.dataToSend()
+            if (data != null) {
+                builder.post(data.toRequestBody())
             }
             val response = http.newCall(builder.build()).execute()
             return response.use { res ->

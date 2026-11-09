@@ -7,8 +7,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
 import app.chordless.music.data.Track
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -147,24 +145,6 @@ object PlayerManager {
 
     fun durationMs(): Long = if (::player.isInitialized) player.duration.coerceAtLeast(0) else 0
     fun positionNow(): Long = if (::player.isInitialized) player.currentPosition else 0
-
-    val session: MediaSession? = null
-    private var _mediaSession: MediaSession? = null
-
-    class Service : MediaSessionService() {
-        private var session: MediaSession? = null
-        override fun onGetSession(controllerInfo: androidx.media3.session.SessionInfo): MediaSession? {
-            if (session == null && ::PlayerManager.player.isInitialized) {
-                session = MediaSession.Builder(this, PlayerManager.player).build()
-            }
-            return session
-        }
-        override fun onDestroy() {
-            session?.release()
-            session = null
-            super.onDestroy()
-        }
-    }
 
     // keep C import used (seek window)
     @Suppress("unused")
