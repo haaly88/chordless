@@ -51,12 +51,14 @@ export function detectRegion() {
   return normalizeRegion('ID', hl, true);
 }
 
+/** Derive a sensible HL from GL for a region override. */
+export const HL_BY_GL = { ID: 'id', MY: 'ms', SG: 'en', TH: 'th', VN: 'vi', PH: 'fil', JP: 'ja', KR: 'ko', CN: 'zh', HK: 'zh', TW: 'zh', IN: 'en', AE: 'ar', AU: 'en', NZ: 'en', GB: 'en', US: 'en', CA: 'en', FR: 'fr', DE: 'de', ES: 'es', IT: 'it', NL: 'nl', BR: 'pt', MX: 'es', AR: 'es', EG: 'ar', NG: 'en', ZA: 'en' };
+
 /** Resolve effective region from a settings override ('auto' or GL code). */
 export function resolveRegion(override) {
   if (override && override !== 'auto' && /^[A-Z]{2}$/.test(String(override).toUpperCase())) {
     const gl = String(override).toUpperCase();
     // Derive a sensible HL from GL for the override.
-    const HL_BY_GL = { ID: 'id', MY: 'ms', SG: 'en', TH: 'th', VN: 'vi', PH: 'fil', JP: 'ja', KR: 'ko', CN: 'zh', HK: 'zh', TW: 'zh', IN: 'en', AE: 'ar', AU: 'en', NZ: 'en', GB: 'en', US: 'en', CA: 'en', FR: 'fr', DE: 'de', ES: 'es', IT: 'it', NL: 'nl', BR: 'pt', MX: 'es', AR: 'es', EG: 'ar', NG: 'en', ZA: 'en' };
     return normalizeRegion(gl, HL_BY_GL[gl] || 'en', false);
   }
   return detectRegion();

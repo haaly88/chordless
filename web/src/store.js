@@ -5,7 +5,7 @@
  * settings — all persisted to localStorage where appropriate.
  */
 import { create } from 'zustand';
-import { apiBase, apiSponsorBlock, apiChapters, apiAddonSearch, apiTranslate, apiSearch, addonTrackUrl, apiTogetherCreate, apiTogetherJoin, apiTogetherState, apiTogetherPush, apiTogetherChat, apiTogetherPresence, apiTogetherLeave, apiShareCreate, apiShareGet } from './lib/api.js';
+import { apiBase, apiSponsorBlock, apiChapters, apiAddonSearch, apiTranslate, apiSearch, addonTrackUrl, apiShareCreate, apiShareGet } from './lib/api.js';
 import { upgradeTracks } from './lib/thumb.js';
 import { translateToastTitle, translateToastSub } from './lib/i18n.js';
 import { totalDuration, formatTotalDuration } from './lib/format.js';
@@ -15,8 +15,10 @@ import { streamSrc, qualityFromConnection, connectionSnapshot, lowerQuality } fr
 import { SB_LABELS, DEFAULT_SB_CATEGORIES, sbCategories } from './lib/sb.js';
 import { uid, shuffled, sameTrack, smartShuffle } from './lib/shuffle.js';
 import { embedBridge, isEmbedEngine } from './lib/embed.js';
+import { HL_BY_GL, resolveRegion } from './lib/region.js';
 import { hasOffline, listOfflineIds, getOfflineUrl, saveOffline, removeOffline, clearOffline } from './lib/offline.js';
 import { createToastNavSlice } from './store/toastNav.js';
+import { createTogetherSlice } from './store/together.js';
 
 // Re-exported so existing imports from './store.js' keep working.
 export { read, write, readString, writeString, readMigrated };
@@ -429,6 +431,13 @@ export const usePlayer = create((set, get) => ({
 
   // Core slice (toast + navigation) — behavior in `store/toastNav.js`.
   ...createToastNavSlice(set, get),
+  // Listen Together slice — behavior in `store/together.js`.
+  ...createTogetherSlice(set, get, {
+    activeAudio,
+    loadAndPlay: (index, list) => get()._loadAndPlay(index, list),
+    write,
+    toast: (title, sub, action) => get().toast(title, sub, action),
+  }),
 
   setInstallAvailable(v) { set({ installAvailable: Boolean(v) }); },
   async promptInstall() {
@@ -990,163 +999,6 @@ export const usePlayer = create((set, get) => ({
     return true;
   },
 
-  // ---------- Listen Together (host-authoritative sync) ----------
-  async createTogetherRoom(name) {
-    const clean = String(name || 'Host').trim().slice(0, 40) || 'Host';
-    try {
-      const res = await apiTogetherCreate(clean);
-      set({ together: { code: res.code, memberId: res.memberId, name: clean, isHost: true, members: res.room?.members || [], messages: res.room?.messages || [], remoteVersion: res.room?.state?.version || 0, lastSyncAt: Date.now() } });
-      get().toast('Room created', `Share code ${res.code} — others join with the same code.`);
-      get()._togetherPushState();
-      return res;
-    } catch (e) {
-      get().toast('Could not create room', e.message || 'Check the backend connection.');
-      return null;
-    }
-  },
-  async joinTogetherRoom(code, name) {
-    const cleanName = String(name || 'Guest').trim().slice(0, 40) || 'Guest';
-    const cleanCode = String(code || '').trim().toUpperCase();
-    if (!cleanCode) { get().toast('Missing code', 'Enter the 5-letter room code.'); return null; }
-    try {
-      const res = await apiTogetherJoin(cleanCode, cleanName);
-      set({ together: { code: res.code, memberId: res.memberId, name: cleanName, isHost: false, members: res.room?.members || [], messages: res.room?.messages || [], remoteVersion: res.room?.state?.version || 0, lastSyncAt: Date.now() } });
-      get().toast('Joined room', `Room ${res.code} — following the host.`);
-      get()._togetherPollOnce();
-      return res;
-    } catch (e) {
-      get().toast('Could not join room', e.message || 'Check the code and try again.');
-      return null;
-    }
-  },
-  async leaveTogetherRoom() {
-    const { together } = get();
-    if (!together?.code) return;
-    try { await apiTogetherPresence(together.code, together.memberId, null); } catch { /* best-effort */ }
-    try { await apiTogetherLeave(together.code, together.memberId); } catch { /* best-effort */ }
-    set({ together: { code: null, memberId: null, name: '', isHost: false, members: [], messages: [], remoteVersion: 0, lastSyncAt: 0 } });
-    get().toast('Left room', 'Back to solo listening.');
-  },
-  async sendTogetherChat(text) {
-    const msg = String(text || '').trim().slice(0, 200);
-    const { together } = get();
-    if (!together?.code || !msg) return;
-    try {
-      const room = await apiTogetherChat(together.code, together.memberId, msg);
-      if (room?.messages) set((prev) => ({ together: { ...prev.together, messages: room.messages } }));
-    } catch { /* poll will retry on next heartbeat */ }
-  },
-  _togetherPushPresence() {
-    const { together } = get();
-    if (!together?.code) return;
-    const track = get().currentTrack();
-    apiTogetherPresence(together.code, together.memberId, track || null)
-      .then((room) => {
-        if (room?.members) set((prev) => ({ together: { ...prev.together, members: room.members } }));
-      })
-      .catch(() => {});
-  },
-  _togetherPushState() {
-    const { together } = get();
-    if (!together?.code || !together?.isHost) return;
-    const s = get();
-    const state = {
-      track: s.currentTrack() || null,
-      queue: s.queue || [],
-      index: s.index,
-      isPlaying: s.isPlaying,
-      currentTime: s.currentTime || 0,
-    };
-    apiTogetherPush(together.code, together.memberId, state)
-      .then((room) => {
-        if (room?.members) set((prev) => ({ together: { ...prev.together, members: room.members, remoteVersion: room.state?.version ?? prev.together.remoteVersion, lastSyncAt: Date.now() } }));
-      })
-      .catch(() => { /* host push is best-effort; next heartbeat retries */ });
-  },
-  async _togetherPollOnce() {
-    const { together } = get();
-    if (!together?.code) return;
-    try {
-      const room = await apiTogetherState(together.code, together.memberId);
-      const remote = room.state || {};
-      const version = remote.version || 0;
-      const wasHost = together.isHost;
-      const isHostNow = room.hostId === together.memberId;
-      const members = room.members || [];
-      const messages = room.messages || [];
-
-      get()._togetherSyncMessages(messages, together);
-      get()._togetherSyncHost(room, together, wasHost, isHostNow, members, version);
-      get()._togetherCorrectDrift(remote);
-    } catch (e) {
-      if (String(e || '').includes('404')) {
-        set({ together: { code: null, memberId: null, name: '', isHost: false, members: [], messages: [], remoteVersion: 0, lastSyncAt: 0 } });
-        get().toast('Room closed', 'The host left — back to solo listening.');
-      }
-    }
-  },
-
-  _togetherSyncMessages(messages, together) {
-    if (messages.length !== (together.messages || [])) {
-      set((prev) => ({ together: { ...prev.together, messages } }));
-    }
-  },
-
-  _togetherSyncHost(room, together, wasHost, isHostNow, members, version) {
-    if (version !== together.remoteVersion || (!wasHost && isHostNow)) {
-      set((prev) => ({ together: { ...prev.together, members, isHost: isHostNow, remoteVersion: version, lastSyncAt: Date.now() } }));
-      if (!isHostNow && !get().togetherApplyingRemote) {
-        get()._togetherApplyRemote(room);
-      } else {
-        set((prev) => ({ together: { ...prev.together, members, isHost: isHostNow } }));
-      }
-    } else if (members.length !== together.members.length) {
-      set((prev) => ({ together: { ...prev.together, members, lastSyncAt: Date.now() } }));
-    }
-  },
-
-  _togetherApplyRemote(room) {
-    const remote = room.state || {};
-    const track = remote.track;
-    const queue = Array.isArray(remote.queue) ? remote.queue : [];
-    const index = Number.isInteger(remote.index) ? remote.index : -1;
-    const current = get().currentTrack();
-    if (track && queue.length && (current?.id !== track.id || get().index !== index)) {
-      set({ togetherApplyingRemote: true });
-      set({ queue: queue.slice(), index, shuffleBackup: null, shuffle: false });
-      get()._loadAndPlay(index, queue.slice());
-      set({ togetherApplyingRemote: false });
-    } else if (track && current?.id === track.id) {
-      // Same song: correct play/pause drift only.
-      if (Boolean(remote.isPlaying) !== get().isPlaying) {
-        set({ togetherApplyingRemote: true });
-        if (remote.isPlaying) {
-          const el = activeAudio();
-          if (!el.src) get()._loadAndPlay(get().index, get().queue);
-          else { el.play().catch(() => {}); set({ isPlaying: true }); }
-        } else {
-          activeAudio().pause();
-          set({ isPlaying: false });
-        }
-        set({ togetherApplyingRemote: false });
-      }
-    }
-  },
-
-  _togetherCorrectDrift(remote) {
-    const { together } = get();
-    if (!together?.isHost && remote.track && get().currentTrack()?.id === remote.track.id && remote.isPlaying) {
-      const anchor = remote.updatedAt || Date.now();
-      const hostTime = (remote.currentTime || 0) + (Date.now() - anchor) / 1000;
-      const local = get().currentTime || 0;
-      if (Math.abs(hostTime - local) > 1.5 && hostTime >= 0) {
-        set({ togetherApplyingRemote: true });
-        try { activeAudio().currentTime = hostTime; set({ currentTime: hostTime }); } catch { /* ignore */ }
-        set({ togetherApplyingRemote: false });
-      }
-    }
-  },
-
   // ---------- SponsorBlock ----------
   async _fetchChapters(track) {
     if (!track?.id || track.isAddon) {
@@ -1309,17 +1161,8 @@ export const usePlayer = create((set, get) => ({
   // Resolve current region for search (used by radio + failover).
   _regionForSearch() {
     try {
-      const override = get().settings?.region || 'auto';
-      // Inline (no import to keep store dependency-light): reuse persisted logic.
-      if (override && override !== 'auto') {
-        const HL_BY_GL = { ID: 'id', MY: 'ms', SG: 'en', TH: 'th', VN: 'vi', PH: 'fil', JP: 'ja', KR: 'ko', CN: 'zh', HK: 'zh', TW: 'zh', IN: 'en', AE: 'ar', AU: 'en', NZ: 'en', GB: 'en', US: 'en', CA: 'en', FR: 'fr', DE: 'de', ES: 'es', IT: 'it', NL: 'nl', BR: 'pt', MX: 'es', AR: 'es', EG: 'ar', NG: 'en', ZA: 'en' };
-        return { gl: String(override).toUpperCase(), hl: HL_BY_GL[String(override).toUpperCase()] || 'en' };
-      }
-      const lang = String(navigator.language || 'en-US');
-      const parts = lang.split('-');
-      const gl = (parts[1] || 'ID').toUpperCase();
-      const hl = (parts[0] || 'en').toLowerCase();
-      return { gl: /^[A-Z]{2}$/.test(gl) ? gl : 'ID', hl: /^[a-z]{2}$/.test(hl) ? hl : 'en' };
+      const { gl, hl } = resolveRegion(get().settings?.region || 'auto');
+      return { gl, hl };
     } catch {
       return { gl: 'ID', hl: 'id' };
     }
