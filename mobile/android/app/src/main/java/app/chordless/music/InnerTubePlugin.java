@@ -3,6 +3,7 @@ package app.chordless.music;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.IOException;
 import okhttp3.MediaType;
@@ -32,7 +33,7 @@ public class InnerTubePlugin extends Plugin {
         .build();
 
     /** call: { endpoint: "search" | "browse", body: "<json object string>", gl: "ID", hl: "en" } */
-    @com.getcapacitor.annotation.PluginMethod
+    @PluginMethod
     public void post(PluginCall call) {
         String endpoint = call.getString("endpoint", "search");
         String body = call.getString("body", "{}");
