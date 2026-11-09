@@ -11,6 +11,7 @@
  */
 import { spawn } from 'node:child_process';
 import { withYtDlpSlot } from './pool.js';
+import { ytDlpCommand } from './ytdlp.js';
 import { getPlaylist, searchMusic, normalizeLocale } from './innertube.js';
 
 const MAX_TRACKS = 50;
@@ -151,12 +152,13 @@ async function importSpotifyTrack(id, locale) {
 /** Dump a Spotify playlist via yt-dlp flat playlist → resolve each on YouTube. */
 function ytDlpFlatPlaylist(url) {
   return withYtDlpSlot(() => new Promise((resolve, reject) => {
+    const { cmd, prefix } = ytDlpCommand();
     const args = [
-      '-m', 'yt_dlp', '--no-warnings', '--flat-playlist',
+      ...prefix, '--no-warnings', '--flat-playlist',
       '--print', '%(title)s ||| %(uploader)s',
       '--max-downloads', '0', url,
     ];
-    const child = spawn('python', args, {
+    const child = spawn(cmd, args, {
       env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
       windowsHide: true,
     });

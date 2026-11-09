@@ -41,6 +41,12 @@ jobs:
           node desktop/scripts/make-ico.cjs
           node desktop/scripts/make-icns.cjs
 
+      - name: Fetch bundled yt-dlp (macOS)
+        run: |
+          mkdir -p desktop/build/yt-dlp
+          curl -L --fail -o desktop/build/yt-dlp/yt-dlp_macos https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
+          chmod +x desktop/build/yt-dlp/yt-dlp_macos
+
       - name: Build macOS targets
         working-directory: desktop
         run: npx electron-builder --mac dmg zip --x64 --arm64
@@ -86,6 +92,12 @@ jobs:
         run: |
           node desktop/scripts/make-ico.cjs
           node desktop/scripts/make-icns.cjs
+
+      - name: Fetch bundled yt-dlp (Windows)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path desktop/build/yt-dlp | Out-Null
+          Invoke-WebRequest -Uri 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe' -OutFile 'desktop/build/yt-dlp/yt-dlp.exe'
 
       - name: Build Windows targets
         working-directory: desktop

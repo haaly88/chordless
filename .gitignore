@@ -6,3 +6,5 @@ Thumbs.db
 bitchord-*.json
 .env
 .env.local
+desktop/build/yt-dlp/*
+!desktop/build/yt-dlp/README.txt

@@ -14,6 +14,7 @@ import { spawn } from 'node:child_process';
 import { Readable } from 'node:stream';
 import { createCache } from './cache.js';
 import { withYtDlpSlot } from './pool.js';
+import { ytDlpCommand } from './ytdlp.js';
 
 const urlCache = createCache({ max: 300, ttlMs: 4 * 60 * 60 * 1000 });
 const failCache = createCache({ max: 300, ttlMs: 45 * 1000 });
@@ -60,8 +61,9 @@ function formatForQuality(quality) {
 function runYtDlpOnce(id, playerClient, quality) {
   const format = formatForQuality(quality);
   return new Promise((resolve, reject) => {
+    const { cmd, prefix } = ytDlpCommand();
     const args = [
-      '-m', 'yt_dlp',
+      ...prefix,
       '--js-runtimes', 'node',
       '--no-playlist',
       '--no-warnings',
@@ -71,7 +73,7 @@ function runYtDlpOnce(id, playerClient, quality) {
       '--print', '%(url)s',
       `https://www.youtube.com/watch?v=${id}`,
     ];
-    const child = spawn('python', args, {
+    const child = spawn(cmd, args, {
       env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
       windowsHide: true,
     });
@@ -250,7 +252,8 @@ export function pipeUpstream(req, res, upstream, contentType) {
 
 export async function ytDlpAvailable() {
   return new Promise((resolve) => {
-    const child = spawn('python', ['-m', 'yt_dlp', '--version'], { windowsHide: true });
+    const { cmd, prefix } = ytDlpCommand();
+    const child = spawn(cmd, [...prefix, '--version'], { windowsHide: true });
     let out = '';
     const timer = setTimeout(() => {
       child.kill('SIGKILL');

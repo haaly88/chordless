@@ -45,6 +45,10 @@
         "to": "node_modules"
       },
       {
+        "from": "build/yt-dlp",
+        "to": "yt-dlp"
+      },
+      {
         "from": "../web/dist",
         "to": "web/dist"
       }

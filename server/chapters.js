@@ -6,21 +6,23 @@ import { spawn } from 'node:child_process';
 import { createCache } from './cache.js';
 import { isValidVideoId } from './stream.js';
 import { withYtDlpSlot } from './pool.js';
+import { ytDlpCommand } from './ytdlp.js';
 
 const cache = createCache({ max: 200, ttlMs: 6 * 60 * 60 * 1000 });
 const inflight = new Map(); // id -> Promise (dedup concurrent spawns)
 
 function fetchChaptersOnce(id) {
   return withYtDlpSlot(() => new Promise((resolve, reject) => {
+    const { cmd, prefix } = ytDlpCommand();
     const args = [
-      '-m', 'yt_dlp',
+      ...prefix,
       '--js-runtimes', 'node',
       '--no-playlist',
       '--no-warnings',
       '--print', '%(chapters)j',
       `https://www.youtube.com/watch?v=${id}`,
     ];
-    const child = spawn('python', args, {
+    const child = spawn(cmd, args, {
       env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
       windowsHide: true,
     });
