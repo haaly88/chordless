@@ -82,7 +82,7 @@ function runYtDlpOnce(id, playerClient, quality) {
     const timer = setTimeout(() => {
       child.kill('SIGKILL');
       reject(new Error('yt-dlp timed out while resolving the stream'));
-    }, 60000);
+    }, 25000);
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { err += d; });
     child.on('error', (e) => { clearTimeout(timer); reject(e); });
@@ -131,41 +131,54 @@ export async function resolveStream(id, pref = 'auto', quality = 'high') {
   const flightKey = cacheKey;
   if (inflight.has(flightKey)) return inflight.get(flightKey);
 
+  // Race the preferred yt-dlp clients against the youtubei.js fallback:
+  // the first VERIFIED URL wins, so a slow client can no longer stall a
+  // track change for up to a minute. Losers are abandoned (their subprocess
+  // slots free when the children finish; the shared cache takes the winner).
+  const attempts = [];
+  for (const client of clientOrder(pref)) {
+    attempts.push((async () => {
+      const info = await runYtDlp(id, client, normalizedQuality);
+      if (client === 'default') {
+        // default client historically 403s; verify before trusting it
+        if (!(await verifyAudioUrl(info.url))) {
+          throw new Error('default client returned a URL YouTube refused (403)');
+        }
+      } else if (!(await verifyAudioUrl(info.url))) {
+        console.warn('[stream] %s URL rejected for %s', client, id);
+        throw new Error(`${client} returned a URL YouTube refused (403)`);
+      }
+      return info;
+    })());
+  }
+  attempts.push((async () => {
+    const { resolveWithYoutubei } = await import('./streamFallback.js');
+    const info = await resolveWithYoutubei(id, normalizedQuality);
+    if (await verifyAudioUrl(info.url)) {
+      console.warn('[stream] youtubei fallback resolved %s', id);
+      return info;
+    }
+    throw new Error('youtubei returned a URL YouTube refused (403)');
+  })());
+
   const p = (async () => {
     let lastError = null;
-    for (const client of clientOrder(pref)) {
+    const pending = new Set(attempts);
+    while (pending.size) {
       try {
-        const info = await runYtDlp(id, client, normalizedQuality);
-        if (client === 'default') {
-          // default client historically 403s; verify before trusting it
-          if (!(await verifyAudioUrl(info.url))) {
-            throw new Error('default client returned a URL YouTube refused (403)');
-          }
-        } else if (!(await verifyAudioUrl(info.url))) {
-          console.warn('[stream] %s URL rejected for %s, trying next client', client, id);
-          throw new Error(`${client} returned a URL YouTube refused (403)`);
-        }
-        urlCache.set(cacheKey, info);
-        return info;
+        const winner = await Promise.any([...pending]);
+        urlCache.set(cacheKey, winner);
+        return winner;
       } catch (e) {
-        console.warn('[stream] %s failed for %s: %s', client, id, e.message);
+        if (e instanceof AggregateError) {
+          lastError = e.errors[e.errors.length - 1] || lastError;
+          pending.clear();
+          break;
+        }
+        // Promise.any only rejects on AggregateError (all failed); any other
+        // rejection means... keep waiting for the rest.
         lastError = e;
       }
-    }
-    // Fallback: youtubei.js (InnerTube) when yt-dlp is unavailable or
-    // refuses this video. Shared fail cache still applies afterwards.
-    try {
-      const { resolveWithYoutubei } = await import('./streamFallback.js');
-      const info = await resolveWithYoutubei(id, normalizedQuality);
-      if (await verifyAudioUrl(info.url)) {
-        urlCache.set(cacheKey, info);
-        console.warn('[stream] youtubei fallback resolved %s', id);
-        return info;
-      }
-      throw new Error('youtubei returned a URL YouTube refused (403)');
-    } catch (e) {
-      console.warn('[stream] youtubei fallback failed for %s: %s', id, e.message);
-      lastError = e;
     }
     const message = lastError?.message || 'Could not resolve a playable stream';
     failCache.set(cacheKey, message);

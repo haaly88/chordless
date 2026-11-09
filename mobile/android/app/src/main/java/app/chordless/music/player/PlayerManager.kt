@@ -223,6 +223,14 @@ object PlayerManager {
                     ctx?.let {
                         LocalStore.recordPlay(it, track)
                         PlaybackService.start(it)
+                        // Pre-resolve the next queue item so track changes are instant.
+                        val q = _queue.value
+                        val nextTrack = if (_index.value + 1 in q.indices) q[_index.value + 1] else null
+                        if (nextTrack != null && nextTrack.id != track.id) {
+                            scope.launch(Dispatchers.IO) {
+                                runCatching { app.chordless.music.data.Streams.resolve(nextTrack.id) }
+                            }
+                        }
                     }
                 }
                 if (sponsorSkip && _current.value?.id == track.id) {
