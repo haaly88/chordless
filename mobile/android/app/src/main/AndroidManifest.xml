@@ -35,6 +35,11 @@
             android:foregroundServiceType="mediaPlayback"
             android:exported="false" />
 
+        <service
+            android:name=".download.DownloadService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
