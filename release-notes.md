@@ -1,6 +1,6 @@
-## Chordless 1.0.2
+## Chordless 1.0.3
 
-Every song, beautifully — now as a desktop app (Windows & macOS) **and** an Android app.
+Every song, beautifully — desktop app (Windows & macOS) **and** a **fully standalone Android app**.
 
 ### Download
 
@@ -16,7 +16,7 @@ Every song, beautifully — now as a desktop app (Windows & macOS) **and** an An
 
 ### Requirements
 
-- **Android**: install `app-debug.apk` and allow unknown sources. Playback works fully offline of any server via the embedded YouTube player. For search/browse in the Android app, deploy the backend once to a free public host (Render Blueprint — see `render.yaml` in the repo) and paste the URL into Settings → General → **Backend server (Android)**. Your own PC is not involved.
+- **Android (standalone)**: install `app-debug.apk` and allow unknown sources. **No server needed at all** — a native InnerTube bridge in the app powers search, home, charts, artist/album/playlist pages; playback runs on the embedded YouTube player; lyrics and skip segments come directly from LRCLIB and SponsorBlock. Optionally point Settings → General → **Backend server (Android)** at a Chordless server for stream playback and Listen Together.
 - **Python 3 + yt-dlp** (`pip install -U yt-dlp`) for stream playback. Without it, use Settings → Playback → Engine → Embedded.
 - macOS unsigned: right-click the app and choose **Open** (or `xattr -dr com.apple.quarantine /Applications/Chordless.app`).
 - Unsigned Windows installer: accept the SmartScreen prompt (“More info” → “Run anyway”).
