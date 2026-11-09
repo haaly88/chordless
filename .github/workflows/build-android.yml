@@ -26,7 +26,8 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses || true
 
       - name: Build web UI
         run: |
@@ -34,7 +35,7 @@ jobs:
           npm run build
 
       - name: Install Android deps
-        run: npm ci --prefix mobile
+        run: npm install --prefix mobile
 
       - name: Generate Android project & sync
         run: npx cap add android && npx cap sync android
