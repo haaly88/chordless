@@ -57,7 +57,7 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
     var theme by remember { mutableStateOf("system") }
     var lang by remember { mutableStateOf("en") }
     var accent by remember { mutableStateOf("red") }
-    var uiScale by remember { mutableStateOf(0.9f) }
+    var uiScale by remember { mutableStateOf(1.0f) }
     var autoplay by remember { mutableStateOf(true) }
     var normalize by remember { mutableStateOf(false) }
     var sponsor by remember { mutableStateOf(true) }

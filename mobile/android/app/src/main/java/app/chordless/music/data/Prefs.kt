@@ -59,5 +59,5 @@ object Prefs {
     fun accentFlow(ctx: Context): kotlinx.coroutines.flow.Flow<String> =
         ctx.prefs.data.map { it[K_ACCENT] ?: "red" }
     fun uiScaleFlow(ctx: Context): kotlinx.coroutines.flow.Flow<Float> =
-        ctx.prefs.data.map { it[K_UISCALE] ?: 0.9f }
+        ctx.prefs.data.map { it[K_UISCALE] ?: 1.0f }
 }
