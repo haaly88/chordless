@@ -1,0 +1,8 @@
+{
+  "appId": "app.chordless.music",
+  "appName": "Chordless",
+  "webDir": "../web/dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
