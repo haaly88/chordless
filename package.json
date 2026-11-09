@@ -1,6 +1,6 @@
 {
   "name": "chordless",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Chordless - a YouTube Music client for the browser. Audio only, synced lyrics, no video.",
   "type": "module",
