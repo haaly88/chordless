@@ -22,21 +22,30 @@ import app.chordless.music.ui.ChordlessApp
 import app.chordless.music.ui.theme.ChordlessTheme
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-/** Syncs status/navigation icon tones with the in-app theme (BitChord parity:
- * enableEdgeToEdge decides from the *system* theme, which is wrong whenever
- * the in-app theme disagrees — white icons on a white bar, invisible). */
+/** Syncs status/navigation icon tones with the in-app theme (BitChord parity). */
 @Composable
 fun SystemBarIcons(dark: Boolean) {
-    val context = LocalContext.current
-    val view = androidx.compose.ui.platform.LocalView.current
+    val view = LocalView.current
     if (view.isInEditMode) return
     SideEffect {
-        val window = (context as? ComponentActivity)?.window ?: return@SideEffect
-        WindowCompat.getInsetsController(window, view).apply {
-            isAppearanceLightStatusBars = dark
-            isAppearanceLightNavigationBars = dark
+        var current: android.view.View? = view
+        var window: android.view.Window? = null
+        while (current != null) {
+            val ctx = current.context
+            if (ctx is ComponentActivity) {
+                window = ctx.window
+                break
+            }
+            current = current.parent as? android.view.View
+        }
+        if (window != null) {
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = dark
+                isAppearanceLightNavigationBars = dark
+            }
         }
     }
 }
