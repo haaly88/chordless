@@ -1,14 +1,20 @@
 package app.chordless.music.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
+import android.app.Activity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import app.chordless.music.R
 
 /** Inter — same typeface as the desktop app. */
@@ -30,14 +36,12 @@ private val Bg2Dark = Color(0xFF0D0D0F)
 private val PanelDark = Color(0xFF1C1C1E)
 private val TextDark = Color(0xFFFFFFFF)
 private val Text2Dark = Color(0xFF8E8E93)
-private val Text3Dark = Color(0xFF6E6E73)
 
 private val BgLight = Color(0xFFF4F4F7)
 private val Bg2Light = Color(0xFFECECF0)
 private val PanelLight = Color(0xFFFFFFFF)
 private val TextLight = Color(0xFF1C1C1E)
 private val Text2Light = Color(0xFF5B5B63)
-private val Text3Light = Color(0xFF6B6B72)
 
 /** Accent swatches (mirrors desktop Settings → Accent). */
 val Accents: Map<String, Color> = mapOf(
@@ -79,6 +83,20 @@ private fun lightScheme(accent: Color) = lightColorScheme(
     outline = Color.Black.copy(alpha = 0.08f),
 )
 
+/** Status/navigation bar icon colors for the (always dark) app shell. */
+@Composable
+fun SystemBarIcons(dark: Boolean) {
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            val controller = WindowCompat.getInsetsController(window, view)
+            controller.isAppearanceLightStatusBars = !dark
+            controller.isAppearanceLightNavigationBars = !dark
+        }
+    }
+}
+
 @Composable
 fun ChordlessTheme(
     theme: String = "system",
@@ -89,25 +107,25 @@ fun ChordlessTheme(
     val dark = true
     val accent = accentFor(accentId, dark)
     SystemBarIcons(dark = dark)
-    val base = androidx.compose.material3.Typography()
+    val base = Typography()
     MaterialTheme(
         colorScheme = if (dark) darkScheme(accent) else lightScheme(accent),
-        typography = androidx.compose.material3.Typography(
-            displayLarge = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W800, fontSize = androidx.compose.ui.unit.sp(36), letterSpacing = androidx.compose.ui.unit.sp(-0.5)),
-            displayMedium = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W800, fontSize = androidx.compose.ui.unit.sp(30), letterSpacing = androidx.compose.ui.unit.sp(-0.4)),
-            displaySmall = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W800, fontSize = androidx.compose.ui.unit.sp(28), letterSpacing = androidx.compose.ui.unit.sp(-0.3)),
-            headlineLarge = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W800, fontSize = androidx.compose.ui.unit.sp(28), letterSpacing = androidx.compose.ui.unit.sp(-0.4)),
-            headlineMedium = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W700, fontSize = androidx.compose.ui.unit.sp(24), letterSpacing = androidx.compose.ui.unit.sp(-0.3)),
-            headlineSmall = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W700, fontSize = androidx.compose.ui.unit.sp(22), letterSpacing = androidx.compose.ui.unit.sp(-0.2)),
-            titleLarge = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W700, fontSize = androidx.compose.ui.unit.sp(20), letterSpacing = androidx.compose.ui.unit.sp(-0.2)),
-            titleMedium = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W600, fontSize = androidx.compose.ui.unit.sp(17), letterSpacing = androidx.compose.ui.unit.sp(0.1)),
-            titleSmall = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W600, fontSize = androidx.compose.ui.unit.sp(15), letterSpacing = androidx.compose.ui.unit.sp(0.1)),
-            bodyLarge = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W400, fontSize = androidx.compose.ui.unit.sp(16), letterSpacing = androidx.compose.ui.unit.sp(0.15)),
-            bodyMedium = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W400, fontSize = androidx.compose.ui.unit.sp(14.5), letterSpacing = androidx.compose.ui.unit.sp(0.2)),
-            bodySmall = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W400, fontSize = androidx.compose.ui.unit.sp(13), letterSpacing = androidx.compose.ui.unit.sp(0.2)),
-            labelLarge = base.labelLarge.copy(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W600),
-            labelMedium = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W600, fontSize = androidx.compose.ui.unit.sp(12), letterSpacing = androidx.compose.ui.unit.sp(0.25)),
-            labelSmall = androidx.compose.ui.text.TextStyle(fontFamily = Inter, fontWeight = androidx.compose.ui.text.font.FontWeight.W600, fontSize = androidx.compose.ui.unit.sp(11.5), letterSpacing = androidx.compose.ui.unit.sp(0.3)),
+        typography = Typography(
+            displayLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 36.sp, letterSpacing = (-0.5f).sp),
+            displayMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 30.sp, letterSpacing = (-0.4f).sp),
+            displaySmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 28.sp, letterSpacing = (-0.3f).sp),
+            headlineLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 28.sp, letterSpacing = (-0.4f).sp),
+            headlineMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 24.sp, letterSpacing = (-0.3f).sp),
+            headlineSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 22.sp, letterSpacing = (-0.2f).sp),
+            titleLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 20.sp, letterSpacing = (-0.2f).sp),
+            titleMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W600, fontSize = 17.sp, letterSpacing = 0.1f.sp),
+            titleSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W600, fontSize = 15.sp, letterSpacing = 0.1f.sp),
+            bodyLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W400, fontSize = 16.sp, letterSpacing = 0.15f.sp),
+            bodyMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W400, fontSize = 14.5f.sp, letterSpacing = 0.2f.sp),
+            bodySmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W400, fontSize = 13.sp, letterSpacing = 0.2f.sp),
+            labelLarge = base.labelLarge.copy(fontFamily = Inter, fontWeight = FontWeight.W600),
+            labelMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W600, fontSize = 12.sp, letterSpacing = 0.25f.sp),
+            labelSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W600, fontSize = 11.5f.sp, letterSpacing = 0.3f.sp),
         ),
         content = content,
     )
