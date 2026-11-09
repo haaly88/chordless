@@ -21,7 +21,6 @@ import app.chordless.music.data.Prefs
 import app.chordless.music.player.PlayerManager
 import app.chordless.music.ui.ChordlessApp
 import app.chordless.music.ui.theme.ChordlessTheme
-import kotlinx.coroutines.delay
 
 /** Chordless — fully native Android (Compose + Media3). */
 class ChordlessApplication : Application() {
@@ -38,12 +37,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             val ctx = LocalContext.current
             var theme by remember { mutableStateOf("system") }
+            var accent by remember { mutableStateOf("red") }
+            var uiScale by remember { mutableStateOf(0.9f) }
             LaunchedEffect(Unit) {
                 theme = Prefs.theme(ctx)
+                accent = Prefs.accent(ctx)
+                uiScale = Prefs.uiScale(ctx)
             }
-            ChordlessTheme(theme = theme) {
-                // Default UI scale 90%.
-                CompositionLocalProvider(LocalDensity provides Density(0.9f)) {
+            ChordlessTheme(theme = theme, accentId = accent) {
+                // Default UI scale 90% (user-overridable in Settings).
+                CompositionLocalProvider(LocalDensity provides Density(uiScale)) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         ChordlessApp()
                     }
