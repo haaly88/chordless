@@ -1229,7 +1229,9 @@ export function translateToastSub(lang, sub) {
     .replace(/^Allow clipboard access or check browser permissions\.$/, 'Izinkan akses clipboard atau periksa izin browser.')
     .replace(/^(\d+)\/(\d+) tracks saved for offline$/, '$1/$2 lagu disimpan untuk offline')
     .replace(/^“([^”]+)” has no chapters\.$/, '“$1” tidak punya chapter.')
-    .replace(/^Could not load chapters\.$/, 'Tidak bisa memuat chapter.');
+    .replace(/^Could not load chapters\.$/, 'Tidak bisa memuat chapter.')
+    .replace(/^Your queue was restored — press play\.$/, 'Antreanmu dipulihkan — tekan putar.')
+    .replace(/^Your addon track needs its addon — enable it in Settings to play\.$/, 'Lagu addon-mu butuh addon-nya — aktifkan di Pengaturan untuk memutar.');
 }
 
 export const SUPPORTED_LANGS = [
