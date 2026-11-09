@@ -24,31 +24,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-
-/** Syncs status/navigation icon tones with the in-app theme (BitChord parity). */
-@Composable
-fun SystemBarIcons(dark: Boolean) {
-    val view = LocalView.current
-    if (view.isInEditMode) return
-    SideEffect {
-        var current: android.view.View? = view
-        var window: android.view.Window? = null
-        while (current != null) {
-            val ctx = current.context
-            if (ctx is ComponentActivity) {
-                window = ctx.window
-                break
-            }
-            current = current.parent as? android.view.View
-        }
-        if (window != null) {
-            WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = dark
-                isAppearanceLightNavigationBars = dark
-            }
-        }
-    }
-}
+import android.app.Activity
 
 /** Chordless — fully native Android (Compose + Media3). */
 class ChordlessApplication : Application() {

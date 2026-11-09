@@ -67,9 +67,27 @@ jobs:
           curl -L --fail --retry 10 --retry-delay 15 --retry-all-errors -o desktop/build/yt-dlp/yt-dlp_macos https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp_macos
           chmod +x desktop/build/yt-dlp/yt-dlp_macos
 
+      - name: Cache Electron downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/Library/Caches/electron
+            ~\AppData\Local\electron\Cache
+          key: electron-${{ runner.os }}-33.4.11
+          restore-keys: |
+            electron-${{ runner.os }}-
+
       - name: Build macOS targets
         working-directory: desktop
-        run: npx electron-builder --mac dmg zip --x64 --arm64 --publish never
+        run: |
+          attempt=1
+          until npx electron-builder --mac dmg zip --x64 --arm64 --publish never; do
+            echo "electron-builder attempt $attempt failed — retrying"
+            attempt=$((attempt+1))
+            if [ $attempt -gt 3 ]; then exit 1; fi
+            sleep 15
+          done
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -152,9 +170,28 @@ jobs:
             }
           } while ($true)
 
+      - name: Cache Electron downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/Library/Caches/electron
+            ~\AppData\Local\electron\Cache
+          key: electron-${{ runner.os }}-33.4.11
+          restore-keys: |
+            electron-${{ runner.os }}-
+
       - name: Build Windows targets
         working-directory: desktop
-        run: npx electron-builder --win nsis portable --publish never
+        shell: bash
+        run: |
+          attempt=1
+          until npx electron-builder --win nsis portable --publish never; do
+            echo "electron-builder attempt $attempt failed — retrying"
+            attempt=$((attempt+1))
+            if [ $attempt -gt 3 ]; then exit 1; fi
+            sleep 15
+          done
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

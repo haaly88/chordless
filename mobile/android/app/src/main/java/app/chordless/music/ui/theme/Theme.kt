@@ -88,6 +88,7 @@ fun ChordlessTheme(
     // Always dark (BitChord/desktop parity) — no light mode in this app.
     val dark = true
     val accent = accentFor(accentId, dark)
+    SystemBarIcons(dark = dark)
     val base = androidx.compose.material3.Typography()
     MaterialTheme(
         colorScheme = if (dark) darkScheme(accent) else lightScheme(accent),
