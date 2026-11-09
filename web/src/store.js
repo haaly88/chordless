@@ -101,6 +101,15 @@ export function applyBalance(pan) {
   } catch { /* context closed */ }
 }
 
+/** Set volume on the embedded YouTube player (0-1 scale). */
+export function setEmbedVolume(volume) {
+  if (!isEmbedEngine({ settings: { engine: 'auto' } })) return;
+  try {
+    if (volume === 0) embedBridge.player?.setVolume(0);
+    else embedBridge.player?.setVolume(Math.round(volume * 100));
+  } catch { /* player not ready */ }
+}
+
 // ---------- crossfade (single-element fade transition) ----------
 // No async/await here by design — the previous implementation hit a TDZ
 // error from an async pattern. All timers are plain setInterval/setTimeout
@@ -1065,57 +1074,75 @@ export const usePlayer = create((set, get) => ({
       const isHostNow = room.hostId === together.memberId;
       const members = room.members || [];
       const messages = room.messages || [];
-      if (messages.length !== (together.messages || []).length) {
-        set((prev) => ({ together: { ...prev.together, messages } }));
-      }
-      if (version !== together.remoteVersion || !wasHost && isHostNow) {
-        set((prev) => ({ together: { ...prev.together, members, isHost: isHostNow, remoteVersion: version, lastSyncAt: Date.now() } }));
-        if (!isHostNow && !get().togetherApplyingRemote) {
-          const track = remote.track;
-          const queue = Array.isArray(remote.queue) ? remote.queue : [];
-          const index = Number.isInteger(remote.index) ? remote.index : -1;
-          const current = get().currentTrack();
-          if (track && queue.length && (current?.id !== track.id || get().index !== index)) {
-            set({ togetherApplyingRemote: true });
-            set({ queue: queue.slice(), index, shuffleBackup: null, shuffle: false });
-            get()._loadAndPlay(index, queue.slice());
-            set({ togetherApplyingRemote: false });
-          } else if (track && current?.id === track.id) {
-            // Same song: correct play/pause drift only.
-            if (Boolean(remote.isPlaying) !== get().isPlaying) {
-              set({ togetherApplyingRemote: true });
-              if (remote.isPlaying) {
-                const el = activeAudio();
-                if (!el.src) get()._loadAndPlay(get().index, get().queue);
-                else { el.play().catch(() => {}); set({ isPlaying: true }); }
-              } else {
-                activeAudio().pause();
-                set({ isPlaying: false });
-              }
-              set({ togetherApplyingRemote: false });
-            }
-          }
-        } else {
-          set((prev) => ({ together: { ...prev.together, members, isHost: isHostNow } }));
-        }
-      } else if (members.length !== together.members.length) {
-        set((prev) => ({ together: { ...prev.together, members, lastSyncAt: Date.now() } }));
-      }
-      // Drift correction for guests already on the right track.
-      if (!get().together?.isHost && remote.track && get().currentTrack()?.id === remote.track.id && remote.isPlaying) {
-        const anchor = remote.updatedAt || Date.now();
-        const hostTime = (remote.currentTime || 0) + (Date.now() - anchor) / 1000;
-        const local = get().currentTime || 0;
-        if (Math.abs(hostTime - local) > 1.5 && hostTime >= 0) {
-          set({ togetherApplyingRemote: true });
-          try { activeAudio().currentTime = hostTime; set({ currentTime: hostTime }); } catch { /* ignore */ }
-          set({ togetherApplyingRemote: false });
-        }
-      }
+
+      get()._togetherSyncMessages(messages, together);
+      get()._togetherSyncHost(room, together, wasHost, isHostNow, members, version);
+      get()._togetherCorrectDrift(remote);
     } catch (e) {
-      if (e.message && e.message.includes('404')) {
+      if (String(e || '').includes('404')) {
         set({ together: { code: null, memberId: null, name: '', isHost: false, members: [], messages: [], remoteVersion: 0, lastSyncAt: 0 } });
         get().toast('Room closed', 'The host left — back to solo listening.');
+      }
+    }
+  },
+
+  _togetherSyncMessages(messages, together) {
+    if (messages.length !== (together.messages || [])) {
+      set((prev) => ({ together: { ...prev.together, messages } }));
+    }
+  },
+
+  _togetherSyncHost(room, together, wasHost, isHostNow, members, version) {
+    if (version !== together.remoteVersion || (!wasHost && isHostNow)) {
+      set((prev) => ({ together: { ...prev.together, members, isHost: isHostNow, remoteVersion: version, lastSyncAt: Date.now() } }));
+      if (!isHostNow && !get().togetherApplyingRemote) {
+        get()._togetherApplyRemote(room);
+      } else {
+        set((prev) => ({ together: { ...prev.together, members, isHost: isHostNow } }));
+      }
+    } else if (members.length !== together.members.length) {
+      set((prev) => ({ together: { ...prev.together, members, lastSyncAt: Date.now() } }));
+    }
+  },
+
+  _togetherApplyRemote(room) {
+    const remote = room.state || {};
+    const track = remote.track;
+    const queue = Array.isArray(remote.queue) ? remote.queue : [];
+    const index = Number.isInteger(remote.index) ? remote.index : -1;
+    const current = get().currentTrack();
+    if (track && queue.length && (current?.id !== track.id || get().index !== index)) {
+      set({ togetherApplyingRemote: true });
+      set({ queue: queue.slice(), index, shuffleBackup: null, shuffle: false });
+      get()._loadAndPlay(index, queue.slice());
+      set({ togetherApplyingRemote: false });
+    } else if (track && current?.id === track.id) {
+      // Same song: correct play/pause drift only.
+      if (Boolean(remote.isPlaying) !== get().isPlaying) {
+        set({ togetherApplyingRemote: true });
+        if (remote.isPlaying) {
+          const el = activeAudio();
+          if (!el.src) get()._loadAndPlay(get().index, get().queue);
+          else { el.play().catch(() => {}); set({ isPlaying: true }); }
+        } else {
+          activeAudio().pause();
+          set({ isPlaying: false });
+        }
+        set({ togetherApplyingRemote: false });
+      }
+    }
+  },
+
+  _togetherCorrectDrift(remote) {
+    const { together } = get();
+    if (!together?.isHost && remote.track && get().currentTrack()?.id === remote.track.id && remote.isPlaying) {
+      const anchor = remote.updatedAt || Date.now();
+      const hostTime = (remote.currentTime || 0) + (Date.now() - anchor) / 1000;
+      const local = get().currentTime || 0;
+      if (Math.abs(hostTime - local) > 1.5 && hostTime >= 0) {
+        set({ togetherApplyingRemote: true });
+        try { activeAudio().currentTime = hostTime; set({ currentTime: hostTime }); } catch { /* ignore */ }
+        set({ togetherApplyingRemote: false });
       }
     }
   },
@@ -1216,7 +1243,7 @@ export const usePlayer = create((set, get) => ({
           clearFadeTimer();
           activeAudio().volume = get()._targetVolume();
         }
-        activeAudio().play().catch(() => {});
+        activeAudio().play().catch(() => { set({ isPlaying: false, trackLoading: false }); });
       }
       set({ isPlaying: true });
     }
@@ -1397,14 +1424,10 @@ export const usePlayer = create((set, get) => ({
     const volume = Math.max(0, Math.min(1, v));
     activeAudio().volume = volume;
     inactiveAudio().volume = volume;
-    if (isEmbedEngine(get())) {
-      try {
-        if (volume === 0) embedBridge.player?.setVolume(0);
-        else embedBridge.player?.setVolume(Math.round(volume * 100));
-      } catch { /* player not ready */ }
-    }
-    if (volume > 0) { activeAudio().muted = false; inactiveAudio().muted = false; }
-    set({ volume, muted: volume === 0 ? get().muted : false });
+    setEmbedVolume(volume);
+    activeAudio().muted = volume === 0;
+    inactiveAudio().muted = volume === 0;
+    set({ volume, muted: volume === 0 });
     write('cl:volume', volume);
   },
 
@@ -1414,16 +1437,12 @@ export const usePlayer = create((set, get) => ({
     // Mute state is separate from the stored volume: toggling never
     // rewrites the level, so un-mute always returns to the same volume.
     const muted = !get().muted;
+    const volume = clamp01(get().volume ?? 0.8);
     activeAudio().muted = muted;
     inactiveAudio().muted = muted;
-    activeAudio().volume = clamp01(get().volume ?? 0.8);
-    inactiveAudio().volume = clamp01(get().volume ?? 0.8);
-    if (isEmbedEngine(get())) {
-      try {
-        if (muted) embedBridge.player?.setVolume(0);
-        else embedBridge.player?.setVolume(Math.round(get().volume * 100));
-      } catch { /* player not ready */ }
-    }
+    activeAudio().volume = volume;
+    inactiveAudio().volume = volume;
+    setEmbedVolume(muted ? 0 : volume);
     set({ muted });
   },
 
@@ -2209,42 +2228,49 @@ export const usePlayer = create((set, get) => ({
     const t = activeAudio().currentTime || 0;
     const prev = get().currentTime;
     if (Math.abs(t - prev) >= 0.2 || t === 0) set({ currentTime: t });
-    // AB loop: jump back to A once B is reached.
-    const ab = get().abLoop;
-    if (ab?.a != null && ab?.b != null && ab.b > ab.a && t >= ab.b) {
-      get().seekTo(ab.a);
-      return;
-    }
-    // Skip silence: seek forward past long quiet gaps.
+    if (get()._handleTimeUpdateABLoop(t)) return;
     if (get().settings?.skipSilence && get().isPlaying) {
-      try {
-        const analyser = getAnalyser();
-        if (analyser) {
-          const data = new Uint8Array(analyser.fftSize);
-          analyser.getByteTimeDomainData(data);
-          let sum = 0;
-          for (let i = 0; i < data.length; i++) {
-            const v = (data[i] - 128) / 128;
-            sum += v * v;
-          }
-          const rms = Math.sqrt(sum / data.length);
-          const now = Date.now();
-          if (rms < 0.012 && t > 5 && t < (get().duration || 0) - 3) {
-            silenceSince = silenceSince || now;
-            if (now - silenceSince > 2500) {
-              silenceSince = null;
-              get().seekTo(Math.min((get().duration || 0) - 1, t + 2));
-              return;
-            }
-          } else {
-            silenceSince = null;
-          }
-        }
-      } catch { /* analyser unavailable */ }
+      if (get()._handleTimeUpdateSkipSilence(t)) return;
     }
     get()._checkSkipSegments(t);
     get()._maybeStartFadeOut();
     get()._maybePreloadNext();
+  },
+
+  _handleTimeUpdateABLoop(t) {
+    const ab = get().abLoop;
+    if (ab?.a != null && ab?.b != null && ab.b > ab.a && t >= ab.b) {
+      get().seekTo(ab.a);
+      return true;
+    }
+    return false;
+  },
+
+  _handleTimeUpdateSkipSilence(t) {
+    try {
+      const analyser = getAnalyser();
+      if (!analyser) return false;
+      const data = new Uint8Array(analyser.fftSize);
+      analyser.getByteTimeDomainData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) {
+        const v = (data[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / data.length);
+      const now = Date.now();
+      if (rms < 0.012 && t > 5 && t < (get().duration || 0) - 3) {
+        silenceSince = silenceSince || now;
+        if (now - silenceSince > 2500) {
+          silenceSince = null;
+          get().seekTo(Math.min((get().duration || 0) - 1, t + 2));
+          return true;
+        }
+      } else {
+        silenceSince = null;
+      }
+    } catch { /* analyser unavailable */ }
+    return false;
   },
   handleDurationChange(e) {
     if (e?.target && e.target !== activeAudio()) return;
