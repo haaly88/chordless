@@ -13,11 +13,11 @@ import app.chordless.music.R
 
 /** Inter — same typeface as the desktop app. */
 val Inter = FontFamily(
-    Font(R.font.inter, FontWeight.Normal, fontVariationSettings = "wght 400"),
-    Font(R.font.inter, FontWeight.Medium, fontVariationSettings = "wght 500"),
-    Font(R.font.inter, FontWeight.SemiBold, fontVariationSettings = "wght 600"),
-    Font(R.font.inter, FontWeight.Bold, fontVariationSettings = "wght 700"),
-    Font(R.font.inter, FontWeight.ExtraBold, fontVariationSettings = "wght 800"),
+    Font(R.font.inter, FontWeight.Normal),
+    Font(R.font.inter, FontWeight.Medium),
+    Font(R.font.inter, FontWeight.SemiBold),
+    Font(R.font.inter, FontWeight.Bold),
+    Font(R.font.inter, FontWeight.ExtraBold),
 )
 
 /** Desktop accent (#fc3c44, Apple-Music red). */
@@ -91,11 +91,13 @@ fun ChordlessTheme(
         else -> isSystemInDarkTheme()
     }
     val accent = accentFor(accentId, dark)
-    MaterialTheme(
-        colorScheme = if (dark) darkScheme(accent) else lightScheme(accent),
-        typography = androidx.compose.material3.Typography(
-            defaultFontFamily = Inter,
-        ),
-        content = content,
-    )
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.text.LocalTextStyle provides
+            androidx.compose.ui.text.LocalTextStyle.current.copy(fontFamily = Inter),
+    ) {
+        MaterialTheme(
+            colorScheme = if (dark) darkScheme(accent) else lightScheme(accent),
+            content = content,
+        )
+    }
 }
