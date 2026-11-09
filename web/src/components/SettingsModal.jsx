@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Moon, Sun, Trash2, Palette, Info, Keyboard, Heart, ExternalLink, Plug, Check, Loader2, Flame, Download, Upload, Monitor, RotateCcw, ChevronDown, Search, MapPin, Copy } from 'lucide-react';
+import { X, Moon, Sun, Trash2, Palette, Info, Keyboard, Heart, ExternalLink, Plug, Check, Loader2, Flame, Download, Upload, Monitor, RotateCcw, ChevronDown, Search, MapPin, Copy, Settings as SettingsIcon, Play, Database } from 'lucide-react';
 import usePlayer from '../store.js';
 import { apiAddonTest } from '../lib/api.js';
 import { REGION_OPTIONS, resolveRegion } from '../lib/region.js';
@@ -168,6 +168,7 @@ export default function SettingsModal() {
   const [addonTesting, setAddonTesting] = useState(false);
   const [addonStatus, setAddonStatus] = useState(null);
   const [remapFor, setRemapFor] = useState(null);
+  const [tab, setTab] = useState('general');
   const panelRef = useRef(null);
   const importRef = useRef(null);
 
@@ -247,26 +248,55 @@ export default function SettingsModal() {
     ['Double-click', 'kbd.doubleClick'],
   ];
 
+  const TABS = [
+    { id: 'general', tabKey: 'settings.tab.general', subKey: 'settings.tab.generalSub', Icon: SettingsIcon },
+    { id: 'appearance', tabKey: 'settings.tab.appearance', subKey: 'settings.tab.appearanceSub', Icon: Palette },
+    { id: 'playback', tabKey: 'settings.tab.playback', subKey: 'settings.tab.playbackSub', Icon: Play },
+    { id: 'addons', tabKey: 'settings.tab.addons', subKey: 'settings.tab.addonsSub', Icon: Plug },
+    { id: 'shortcuts', tabKey: 'settings.tab.shortcuts', subKey: 'settings.tab.shortcutsSub', Icon: Keyboard },
+    { id: 'data', tabKey: 'settings.tab.data', subKey: 'settings.tab.dataSub', Icon: Database },
+    { id: 'about', tabKey: 'settings.tab.about', subKey: 'settings.tab.aboutSub', Icon: Info },
+  ];
+  const activeTab = TABS.find((tb) => tb.id === tab) || TABS[0];
+
   return (
     <div className="modal-backdrop" onClick={() => setSettingsOpen(false)} role="presentation">
       <div
-        className="modal"
+        className="modal settings-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="Settings"
+        aria-label={t(lang, 'settings.titleVisible')}
         tabIndex={-1}
         ref={panelRef}
         onClick={(e) => e.stopPropagation()}
-        style={{ maxHeight: '88vh', overflowY: 'auto' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px 0' }}>
           <h2 style={{ margin: 0 }}>{t(lang, 'settings.titleVisible')}</h2>
-          <button className="icon-btn" onClick={() => setSettingsOpen(false)} aria-label="Close settings">
+          <button className="icon-btn" onClick={() => setSettingsOpen(false)} aria-label={t(lang, 'btn.close')}>
             <X size={20} />
           </button>
         </div>
 
-        {/* theme */}
+        <div className="settings-shell">
+          <nav className="settings-nav" aria-label={t(lang, 'settings.titleVisible')}>
+            {TABS.map(({ id, tabKey, Icon }) => (
+              <button
+                key={id}
+                className={`settings-nav-item${tab === id ? ' active' : ''}`}
+                onClick={() => setTab(id)}
+                aria-current={tab === id ? 'page' : undefined}
+              >
+                <Icon size={17} aria-hidden="true" />
+                <span>{t(lang, tabKey)}</span>
+              </button>
+            ))}
+            <div className="settings-version">{t(lang, 'settings.version')}</div>
+          </nav>
+          <div className="settings-pane">
+            <h2 className="settings-pane-title">{t(lang, activeTab.tabKey)}</h2>
+            <p className="settings-pane-sub">{t(lang, activeTab.subKey)}</p>
+
+        {tab === 'appearance' && (<> {/* theme */}
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.appearance')}</b>
@@ -291,7 +321,9 @@ export default function SettingsModal() {
           </div>
         </div>
 
-        {/* language */}
+        </>)}
+
+        {tab === 'general' && (<> {/* language */}
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.lang')}</b>
@@ -315,7 +347,9 @@ export default function SettingsModal() {
           </div>
         </div>
 
-        {/* text size + motion */}
+        </>)}
+
+        {tab === 'appearance' && (<> {/* text size + motion */}
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.textSize')}</b>
@@ -391,7 +425,9 @@ export default function SettingsModal() {
           />
         </div>
 
-        {/* home sections (custom shelves) */}
+        </>)}
+
+        {tab === 'general' && (<> {/* home sections (custom shelves) */}
         <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
           <div>
             <b>{t(lang, 'settings.homeSections')}</b>
@@ -445,7 +481,9 @@ export default function SettingsModal() {
           </div>
         </div>
 
-        {/* playback engine */}
+        </>)}
+
+        {tab === 'playback' && (<> {/* playback engine */}
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.playbackEngine')}</b>
@@ -470,7 +508,9 @@ export default function SettingsModal() {
           </div>
         </div>
 
-        {/* region */}
+        </>)}
+
+        {tab === 'general' && (<> {/* region */}
         <div className="setting-row">
           <div style={{ minWidth: 0, flex: 1 }}>
             <b><MapPin size={14} style={{ verticalAlign: '-2px', marginRight: 6, color: 'var(--accent)' }} />Region</b>
@@ -485,7 +525,9 @@ export default function SettingsModal() {
           </div>
         )}
 
-        {/* lossless addons (multi + failover) */}
+        </>)}
+
+        {tab === 'addons' && (<> {/* lossless addons (multi + failover) */}
         <div className="setting-row" style={{ alignItems: 'flex-start' }}>
           <div>
             <b><Flame size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{t(lang, 'settings.lossless')}</b>
@@ -538,7 +580,9 @@ export default function SettingsModal() {
           {addonStatus && !addonStatus.ok && <div className="addon-status err">{addonStatus.error}</div>}
         </div>
 
-        {/* sponsorblock */}
+        </>)}
+
+        {tab === 'playback' && (<> {/* sponsorblock */}
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.sb')}</b>
@@ -606,7 +650,9 @@ export default function SettingsModal() {
           </div>
         </div>
 
-        {/* adaptive accent */}
+        </>)}
+
+        {tab === 'appearance' && (<> {/* adaptive accent */}
         <div className="setting-row">
           <div>
             <b><Palette size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{t(lang, 'settings.adaptiveTheme')}</b>
@@ -621,7 +667,9 @@ export default function SettingsModal() {
           />
         </div>
 
-        {/* history */}
+        </>)}
+
+        {tab === 'data' && (<> {/* history */}
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.history')}</b>
@@ -657,7 +705,9 @@ export default function SettingsModal() {
           </div>
         </div>
 
-        {/* equalizer */}
+        </>)}
+
+        {tab === 'playback' && (<> {/* equalizer */}
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.equalizer')}</b>
@@ -953,7 +1003,9 @@ export default function SettingsModal() {
           />
         </div>
 
-        {/* keyboard remap */}
+        </>)}
+
+        {tab === 'shortcuts' && (<> {/* keyboard remap */}
         <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
           <div>
             <b>{t(lang, 'settings.keybinds')}</b>
@@ -977,7 +1029,9 @@ export default function SettingsModal() {
           </div>
         </div>
 
-        {/* reset */}
+        </>)}
+
+        {tab === 'data' && (<> {/* reset */}
         <div className="setting-row">
           <div>
             <b>{t(lang, 'settings.reset')}</b>
@@ -992,7 +1046,9 @@ export default function SettingsModal() {
           </button>
         </div>
 
-        {/* shortcuts */}
+        </>)}
+
+        {tab === 'shortcuts' && (<> {/* shortcuts */}
         <div style={{ marginTop: 18 }}>
           <div className="section-label" style={{ paddingLeft: 4 }}>
             <Keyboard size={13} style={{ verticalAlign: '-1px', marginRight: 6 }} />{t(lang, 'settings.kbdTitle')}
@@ -1007,12 +1063,17 @@ export default function SettingsModal() {
           </div>
         </div>
 
-        {/* about */}
+        </>)}
+
+        {tab === 'about' && (<> {/* about */}
         <div style={{ marginTop: 18, padding: '14px 16px', background: 'var(--hover)', borderRadius: 14, fontSize: 11.5, color: 'var(--text-2)', lineHeight: 1.6 }}>
           <b style={{ color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Info size={13} /> {t(lang, 'settings.aboutTitle')}
           </b>
           {t(lang, 'settings.aboutBodyPre')}<a href="https://lrclib.net" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>LRCLIB <ExternalLink size={10} style={{ verticalAlign: '-1px' }} /></a>{t(lang, 'settings.aboutBodyPost')}
+        </div>
+        </>)}
+          </div>
         </div>
       </div>
     </div>
