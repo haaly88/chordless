@@ -30,6 +30,7 @@ function QuickTile({ track, contextList }) {
   const isPlaying = usePlayer((s) => s.isPlaying);
   const playTrack = usePlayer((s) => s.playTrack);
   const togglePlay = usePlayer((s) => s.togglePlay);
+  const lang = usePlayer((s) => s.settings.lang || 'en');
   return (
     <button className="quick-tile" onClick={() => (active ? togglePlay() : playTrack(track, contextList))}
             aria-label={`${active && isPlaying ? 'Pause' : 'Play'} ${track.title}`}>
