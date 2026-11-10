@@ -11,10 +11,3 @@ buildscript {
         classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.0'
     }
 }
-
-ext {
-    minSdkVersion = 26
-    compileSdkVersion = 36
-    targetSdkVersion = 36
-    kotlinVersion = '2.0.0'
-}
