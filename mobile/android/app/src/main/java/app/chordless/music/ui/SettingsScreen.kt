@@ -1,7 +1,7 @@
 package app.chordless.music.ui
 
-import android.Manifest
 import android.content.pm.PackageManager
+import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -10,14 +10,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,20 +28,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.chordless.music.data.Prefs
+import app.chordless.music.data.Track
 import app.chordless.music.player.PlayerManager
 import app.chordless.music.ui.theme.Accents
 import kotlinx.coroutines.launch
@@ -64,6 +68,7 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
     var langOpen by remember { mutableStateOf(false) }
     var scaleOpen by remember { mutableStateOf(false) }
     var sleepOpen by remember { mutableStateOf(false) }
+    var crossfadeOpen by remember { mutableStateOf(false) }
     var crossfade by remember { mutableStateOf(0.5f) }
 
     LaunchedEffect(Unit) {
@@ -157,10 +162,8 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
                                 .clickable {
                                     accent = id
                                     scope.launch { Prefs.setAccent(ctx, id) }
-                                }
-                                .let {
-                                    if (accent == id) it.padding(0.dp) else it,
-                                contentAlignment = Alignment.Center,
+                                },
+                            contentAlignment = Alignment.Center,
                         ) {
                             if (accent == id) Text("✓", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold)
                         }
@@ -208,22 +211,22 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
                 scope.launch { Prefs.setSponsorSkip(ctx, it) }
             }
             SettingRow("Crossfade") {
-                ExposedDropdownMenuBox(expanded = scaleOpen, onExpandedChange = { scaleOpen = !scaleOpen }) {
+                ExposedDropdownMenuBox(expanded = crossfadeOpen, onExpandedChange = { crossfadeOpen = !crossfadeOpen }) {
                     OutlinedTextField(
                         value = "${(crossfade * 100).toInt()}%",
                         onValueChange = {},
                         readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(scaleOpen) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(crossfadeOpen) },
                         modifier = Modifier.menuAnchor().fillMaxWidth(),
                     )
-                    ExposedDropdownMenu(expanded = scaleOpen, onDismissRequest = { scaleOpen = false }) {
+                    ExposedDropdownMenu(expanded = crossfadeOpen, onDismissRequest = { crossfadeOpen = false }) {
                         listOf(0f, 0.5f, 1f, 2f).forEach { option ->
                             DropdownMenuItem(
                                 text = { Text("${(option * 100).toInt()}%") },
                                 onClick = {
                                     crossfade = option
                                     scope.launch { Prefs.setCrossfade(ctx, option) }
-                                    scaleOpen = false
+                                    crossfadeOpen = false
                                 }
                             )
                         }

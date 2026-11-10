@@ -8,6 +8,9 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.net.Uri
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
 import androidx.core.content.FileProvider
 import app.chordless.music.data.Track
 import coil.ImageLoader

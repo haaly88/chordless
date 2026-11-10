@@ -86,6 +86,37 @@ object PlayerManager {
     /** codec/bitrate of the currently playing stream (stats for nerds). */
     private var currentFormat: String = ""
 
+    /** Volume the user picked (before the crossfade ramp is applied). */
+    private var userVolume: Float = 1f
+
+    /** Current crossfade attenuation factor, 1f = no attenuation. */
+    private var fadeFactor: Float = 1f
+
+    /**
+     * Crossfade via volume ramp: fades out during the last N ms of a track and
+     * fades in during the first N ms of the next one. Media3 has no native
+     * crossfade API, so this is the closest equivalent.
+     */
+    private fun updateCrossfade() {
+        if (!::player.isInitialized) return
+        val ms = (crossfade * 1000).toInt()
+        val target = if (ms <= 0) {
+            1f
+        } else {
+            val pos = player.currentPosition
+            val dur = player.duration
+            val remaining = if (dur > 0) dur - pos else Long.MAX_VALUE
+            when {
+                remaining <= ms -> (remaining.toFloat() / ms).coerceIn(0f, 1f)
+                pos <= ms -> (pos.toFloat() / ms).coerceIn(0f, 1f)
+                else -> 1f
+            }
+        }
+        if (kotlin.math.abs(target - fadeFactor) < 0.01f) return
+        fadeFactor = target
+        player.volume = (userVolume * target).coerceIn(0f, 1f)
+    }
+
     fun init(app: Application) {
         if (::player.isInitialized) return
         ctx = app
@@ -118,8 +149,9 @@ object PlayerManager {
         // ticker: position + sleep countdown + sponsor skip
         scope.launch {
             while (true) {
-                delay(500)
+                delay(250)
                 if (::player.isInitialized) _positionMs.value = player.currentPosition
+                updateCrossfade()
                 val endsAt = _sleepEndsAt.value
                 if (endsAt != null && endsAt > 0) {
                     val remaining = ((endsAt - System.currentTimeMillis()) / 1000).coerceAtLeast(0)
@@ -223,8 +255,8 @@ object PlayerManager {
                         resolved.mime.ifBlank { null },
                         resolved.bitrate.takeIf { it > 0 }?.let { " ${it} kbps" },
                     ).filterNotNull().joinToString(" · ")
-                    // Apply crossfade when starting a new track
-                    player.setCrossfadeDuration((crossfade * 1000).toInt())
+                    // Crossfade is implemented as a volume ramp (Media3 exposes no
+                    // crossfade API) — see updateCrossfade().
                     player.setMediaItem(MediaItem.Builder().setUri(resolved.url).setMediaId(track.id).build())
                     player.prepare()
                     player.play()
@@ -264,7 +296,10 @@ object PlayerManager {
     }
 
     fun setVolume(v: Float) {
-        if (::player.isInitialized) player.volume = v
+        userVolume = v.coerceIn(0f, 1f)
+        if (::player.isInitialized) {
+            player.volume = (userVolume * fadeFactor).coerceIn(0f, 1f)
+        }
     }
 
     fun setShuffle(on: Boolean) {

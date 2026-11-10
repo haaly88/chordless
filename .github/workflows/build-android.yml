@@ -26,10 +26,7 @@ jobs:
       - name: Accept Android SDK licenses
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
-
-      - name: Configure Maven repositories
-        run: echo 'repositories { google() mavenCentral() }' >> mobile/android/build.gradle
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
       - name: Build debug APK (native, with retries)
         run: |

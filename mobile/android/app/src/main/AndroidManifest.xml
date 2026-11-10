@@ -35,28 +35,11 @@
             android:foregroundServiceType="mediaPlayback"
             android:exported="false" />
 
-        <service
-            android:name=".download.DownloadService"
-            android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
-
-        <receiver
-            android:name=".download.DownloadReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="app.chordless.music.download.ACTION_START" />
-                <action android:name="app.chordless.music.download.ACTION_PAUSE" />
-                <action android:name="app.chordless.music.download.ACTION_CANCEL" />
-            </intent-filter>
-        </receiver>
-
         <receiver
             android:name=".player.MediaButtonReceiver"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
-                <action android:name="PAUSE" />
-                <action android:name="NEXT" />
-                <action android:name="PREV" />
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
 

@@ -5,23 +5,24 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.Icons
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,41 +31,44 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import app.chordless.music.data.LocalStore
 import app.chordless.music.data.PlaylistCard
 import app.chordless.music.data.Track
 import app.chordless.music.player.PlayerManager
 import dev.chrisbanes.haze.HazeDefaults
-import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.launch
 
 private const val ROUTE_HOME = "home"
@@ -203,8 +207,8 @@ fun ChordlessApp() {
                 .windowInsetsPadding(WindowInsets.systemBars),
         ) {
             if (current != null && currentRoute != ROUTE_NOW_PLAYING) {
-                PlayerBar(
-                    track = current!!,
+                NowPlayingMiniPlayer(
+                    track = current,
                     isPlaying = isPlaying,
                     loading = loading,
                     positionMs = position,
@@ -310,72 +314,21 @@ fun ChordlessApp() {
                 }
                 actionTrack = null
             },
+            onDownload = {
+                actionTrack = null
+                scope.launch {
+                    snackbar.showSnackbar("Downloading ${track.title}…")
+                    val result = app.chordless.music.download.Downloader.download(ctx, track)
+                    snackbar.showSnackbar(
+                        if (result.status == app.chordless.music.download.Downloader.Status.COMPLETED) {
+                            "Downloaded ${track.title}"
+                        } else {
+                            "Download failed: ${result.error}"
+                        }
+                    )
+                }
+            },
         )
-    }
-}
-
-@Composable
-private fun PlayerBar(
-    track: Track,
-    isPlaying: Boolean,
-    loading: Boolean,
-    positionMs: Long,
-    onOpen: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val sleepChip = PlayerManager.sleepChip()
-    val haptics = LocalHapticFeedback.current
-    Box(
-        modifier = modifier
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-            .shadow(24.dp, RoundedCornerShape(30.dp))
-            .clip(RoundedCornerShape(30.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f))
-            .clickable(onClick = onOpen)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Artwork(track.thumbnail, size = 64.dp, radius = 18.dp)
-            Column(modifier = Modifier.weight(1f)) {
-                MarqueeText(text = track.title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
-                androidx.compose.material3.Text(
-                    (if (loading) "Loading… " else "") + (sleepChip?.let { "Sleep $it · " } ?: "") + track.artist,
-                    maxLines = 1,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = {
-                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                PlayerManager.toggle()
-            }) {
-                Icon(
-                    if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = "Play/Pause",
-                    modifier = Modifier.size(40.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
-        val dur = PlayerManager.durationMs()
-        if (dur > 0) {
-            androidx.compose.foundation.layout.Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = 14.dp, vertical = 3.dp)
-                    .fillMaxWidth()
-                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(percent = 50))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-            ) {
-                androidx.compose.foundation.layout.Box(
-                    modifier = Modifier
-                        .fillMaxWidth((positionMs.toFloat() / dur).coerceIn(0f, 1f))
-                        .padding(vertical = 1.dp)
-                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(percent = 50))
-                        .background(MaterialTheme.colorScheme.primary),
-                ) {}
-            }
-        }
     }
 }
 
@@ -388,6 +341,7 @@ private fun TrackActionSheet(
     onAddToQueue: () -> Unit,
     onToggleFavorite: () -> Unit,
     onAddToPlaylist: () -> Unit,
+    onDownload: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState()) {
         Column(modifier = Modifier.padding(24.dp)) {
@@ -398,6 +352,7 @@ private fun TrackActionSheet(
             ActionRow("Add to queue", onAddToQueue)
             ActionRow("Like / Unlike", onToggleFavorite)
             ActionRow("Add to playlist", onAddToPlaylist)
+            ActionRow("Download for offline", onDownload)
             Spacer(Modifier.height(16.dp))
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }

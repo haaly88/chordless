@@ -1,18 +1,19 @@
 package app.chordless.music.ui.theme
 
 import android.app.Activity
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Typography
+import androidx.compose.foundation.background
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import app.chordless.music.R
@@ -121,7 +122,7 @@ fun ChordlessTheme(
             headlineSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 24.sp, letterSpacing = (-0.4f).sp),
             titleLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 22.sp, letterSpacing = (-0.3f).sp),
             titleMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 18.sp, letterSpacing = (-0.2f).sp),
-            titleSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 16.sp, letterSpacing = 0.0f),
+            titleSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 16.sp, letterSpacing = 0.0f.sp),
             bodyLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W500, fontSize = 17.sp, letterSpacing = 0.15f.sp),
             bodyMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W500, fontSize = 15.sp, letterSpacing = 0.2f.sp),
             bodySmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W500, fontSize = 13.sp, letterSpacing = 0.2f.sp),
