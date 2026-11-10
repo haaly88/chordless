@@ -24,8 +24,6 @@ import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.Locale
 import kotlin.random.Random
-import kotlin.time.Duration.Companion.seconds
-
 /**
  * Native Listen Together.
  *
@@ -69,10 +67,7 @@ object Together {
             if (server != null) return@repeat
             try {
                 val s = embeddedServer(Netty, port = candidate) {
-                    install(WebSockets) {
-                        pingPeriod = 20.seconds
-                        timeout = 60.seconds
-                    }
+                    install(WebSockets)
                     routing {
                         webSocket("/room/$code") {
                             sessions.add(this)

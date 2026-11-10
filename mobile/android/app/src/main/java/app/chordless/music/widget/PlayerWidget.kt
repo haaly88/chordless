@@ -48,9 +48,7 @@ class PlayerWidget : GlanceAppWidget() {
                 ) {
                     Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
                         Image(
-                            provider = ImageProvider(
-                                Uri.parse(track?.thumbnail?.takeIf { it.isNotBlank() } ?: "")
-                            ),
+                            provider = ImageProvider(app.chordless.music.R.drawable.cover_1),
                             contentDescription = null,
                             modifier = GlanceModifier.size(58.dp).cornerRadius(16.dp),
                         )
