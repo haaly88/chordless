@@ -18,25 +18,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Setup Gradle (cached distribution + deps)
+      - name: Set up Gradle with Android plugin
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.5
 
-      - name: Accept Android SDK licenses + install platform 36
+      - name: Accept Android SDK licenses
         run: |
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
+
+      - name: Configure Maven repositories
+        run: echo 'repositories { google() mavenCentral() }' >> mobile/android/build.gradle
 
       - name: Build debug APK (native, with retries)
         run: |
@@ -65,4 +58,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: mobile/android/app/build/outputs/apk/debug/*.apk
-          name: Chordless ${{ github.ref_name }}
+          name: Chordless ${{ github.ref_name }}
