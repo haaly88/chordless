@@ -22,7 +22,7 @@ class MediaButtonReceiver : BroadcastReceiver() {
                     @Suppress("DEPRECATION")
                     intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
                 }
-                handleKey(event?.keyCode)
+                handleKey(event?.keyCode ?: return)
             }
 
             PlaybackService.ACTION_TOGGLE -> PlayerManager.toggle()

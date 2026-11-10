@@ -61,7 +61,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.chordless.music.data.LocalStore
 import app.chordless.music.data.LyricsRepo
-import app.chordless.music.data.Prefs
 import app.chordless.music.data.Track
 import app.chordless.music.player.PlayerManager
 import coil.compose.AsyncImage
@@ -93,7 +92,7 @@ fun NowPlayingScreen(
 
     val t = track
     LaunchedEffect(t?.id ?: "") {
-        favIds = Prefs.favorites(ctx).map { it.id }.toSet()
+        favIds = LocalStore.favorites(ctx).map { it.id }.toSet()
     }
 
     var syncedRaw by remember(t?.id) { mutableStateOf("") }
@@ -316,7 +315,7 @@ fun NowPlayingScreen(
                     scope.launch {
                         val nowFav = t.id !in favIds
                         LocalStore.setFavorite(ctx, t, nowFav)
-                        favIds = Prefs.favorites(ctx).map { it.id }.toSet()
+                        favIds = LocalStore.favorites(ctx).map { it.id }.toSet()
                     }
                 }) {
                     Icon(
@@ -412,8 +411,3 @@ fun NowPlayingScreen(
 
 private fun formatSpeed(v: Float): String =
     if (v == v.toInt().toFloat()) "${v.toInt()}x" else "${v}x"
-
-private fun fmtMs(ms: Long): String {
-    val s = (ms / 1000).toInt().coerceAtLeast(0)
-    return "%d:%02d".format(s / 60, s % 60)
-}
