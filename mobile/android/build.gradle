@@ -6,4 +6,9 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose' version '2.0.0' apply false
 }
 
-apply from: "variables.gradle"
+ext {
+    minSdkVersion = 26
+    compileSdkVersion = 36
+    targetSdkVersion = 36
+    kotlinVersion = '2.0.0'
+}
