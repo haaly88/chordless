@@ -11,6 +11,7 @@ import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
+import org.schabi.newpipe.extractor.stream.VideoStream
 import java.util.concurrent.TimeUnit
 
 /**
@@ -107,7 +108,7 @@ object Streams {
             } else {
                 // No audio-only rendition (live streams, some uploads): fall back
                 // to the smallest video stream, which still carries the audio.
-                val videos = info.videoStreams ?: emptyList()
+                val videos: List<VideoStream> = info.videoStreams ?: emptyList()
                 val fallback = videos.minByOrNull { it.averageBitrate } ?: videos.firstOrNull()
                 val url = fallback?.url
                 if (!url.isNullOrBlank()) {

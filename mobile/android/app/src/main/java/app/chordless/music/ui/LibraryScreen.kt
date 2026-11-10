@@ -154,7 +154,7 @@ fun LibraryScreen(
                     ) {
                         item {
                             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
-                                Text("Library", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                                Text("Library", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.W900)
                                 Text(
                                     "${playlists.size} playlists · ${favorites.size} favorites · ${history.size} played",
                                     style = MaterialTheme.typography.bodyMedium,

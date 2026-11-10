@@ -73,6 +73,7 @@ fun HomeScreen(
     onOpenSmart: (String) -> Unit,
     onOpenDownloads: () -> Unit,
     onOpenStats: () -> Unit,
+    onOpenTogether: () -> Unit,
     gl: String,
     hl: String,
 ) {
@@ -182,6 +183,7 @@ fun HomeScreen(
                     onOpenSmart = onOpenSmart,
                     onOpenDownloads = onOpenDownloads,
                     onOpenStats = onOpenStats,
+                    onOpenTogether = onOpenTogether,
                 )
                 Spacer(Modifier.height(26.dp))
             }
@@ -368,6 +370,7 @@ private fun QuickGrid(
     onOpenSmart: (String) -> Unit,
     onOpenDownloads: () -> Unit,
     onOpenStats: () -> Unit,
+    onOpenTogether: () -> Unit,
 ) {
     val tiles = listOf(
         QuickTile("Favorites", "$favCount tracks", R.drawable.cover_1, onOpenFavorites),
@@ -376,6 +379,7 @@ private fun QuickGrid(
         QuickTile("Most played", "Top repeats", R.drawable.cover_4, { onOpenSmart("played") }),
         QuickTile("Downloads", "Offline ready", R.drawable.cover_5, onOpenDownloads),
         QuickTile("Statistics", "Your listening", R.drawable.cover_6, onOpenStats),
+        QuickTile("Listen together", "Sync with friends", R.drawable.cover_7, onOpenTogether),
     )
     Column(
         modifier = Modifier.padding(horizontal = Chordless.gutter),

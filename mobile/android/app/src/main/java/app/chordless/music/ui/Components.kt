@@ -87,6 +87,7 @@ fun AuroraBackground(content: @Composable () -> Unit) {
 }
 
 // ---------- header / sections ----------
+/** Section header — large, bold, with generous spacing. */
 @Composable
 fun SectionHeader(
     title: String,
@@ -96,7 +97,7 @@ fun SectionHeader(
     Column(modifier = modifier) {
         Text(
             title,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.W800,
             color = MaterialTheme.colorScheme.onSurface,
         )
@@ -119,7 +120,10 @@ fun Artwork(
 ) {
     if (url.isBlank()) {
         Box(
-            modifier = Modifier.size(size).clip(RoundedCornerShape(radius)).background(MaterialTheme.colorScheme.surfaceVariant),
+            modifier = Modifier
+                .size(size)
+                .clip(RoundedCornerShape(radius))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
             Text("♪", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleLarge)
@@ -128,7 +132,9 @@ fun Artwork(
         AsyncImage(
             model = url,
             contentDescription = null,
-            modifier = Modifier.size(size).clip(RoundedCornerShape(radius)),
+            modifier = Modifier
+                .size(size)
+                .clip(RoundedCornerShape(radius)),
             contentScale = ContentScale.Crop,
         )
     }
@@ -143,7 +149,15 @@ fun CoverCard(
     size: Dp = 210.dp,
 ) {
     Column(modifier = Modifier.width(size).clickable(onClick = onClick)) {
-        Artwork(image, size = size, radius = 24.dp)
+        BigCoverTile(
+            title = title,
+            subtitle = subtitle,
+            image = image,
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(size),
+        )
         Spacer(Modifier.height(10.dp))
         Text(
             title,
@@ -238,7 +252,7 @@ fun TrackRow(
                 if (isCurrent) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.60f)
                 else Color.Transparent
             )
-            .padding(horizontal = 14.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 15.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -250,14 +264,14 @@ fun TrackRow(
                 modifier = Modifier.width(28.dp),
             )
         }
-        Artwork(track.thumbnail, size = 64.dp, radius = 16.dp)
+        Artwork(track.thumbnail, size = 68.dp, radius = 18.dp)
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (chip != null) KindBadge(chip)
                 Text(
                     track.title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
+                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,

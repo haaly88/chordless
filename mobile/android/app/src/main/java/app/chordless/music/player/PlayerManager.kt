@@ -335,9 +335,9 @@ object PlayerManager {
         player.prepare()
         player.play()
         _loading.value = false
-        ctx?.let {
-            LocalStore.recordPlay(it, track)
-            PlaybackService.start(it)
+        ctx?.let { context ->
+            PlaybackService.start(context)
+            scope.launch { LocalStore.recordPlay(context, track) }
         }
     }
 

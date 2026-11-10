@@ -80,6 +80,7 @@ private const val ROUTE_EQ = "eq"
 private const val ROUTE_NOW_PLAYING = "nowPlaying"
 private const val ROUTE_STATS = "statistics"
 private const val ROUTE_DOWNLOADS = "downloads"
+private const val ROUTE_TOGETHER = "together"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -148,6 +149,7 @@ fun ChordlessApp() {
                     onOpenSmart = { nav.navigate(ROUTE_LIBRARY) },
                     onOpenDownloads = { nav.navigate(ROUTE_DOWNLOADS) },
                     onOpenStats = { nav.navigate(ROUTE_STATS) },
+                    onOpenTogether = { nav.navigate(ROUTE_TOGETHER) },
                     gl = gl,
                     hl = hl,
                 )
@@ -172,6 +174,7 @@ fun ChordlessApp() {
             composable(ROUTE_EQ) { EqScreen() }
             composable(ROUTE_STATS) { StatisticsScreen() }
             composable(ROUTE_DOWNLOADS) { DownloadsScreen() }
+            composable(ROUTE_TOGETHER) { TogetherScreen() }
             composable(ROUTE_NOW_PLAYING) {
                 NowPlayingScreen(
                     onOpenQueue = { showQueue = true },
