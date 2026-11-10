@@ -7,7 +7,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
+import androidx.glance.appwidget.updateAll
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.provideContent
@@ -83,7 +85,7 @@ class PlayerWidget : GlanceAppWidget() {
                             ),
                             modifier = GlanceModifier
                                 .padding(horizontal = 10.dp)
-                                .clickable(androidx.glance.action.actionRunCallback<TogglePlaybackAction>()),
+                                .clickable(actionRunCallback<TogglePlaybackAction>()),
                         )
                         Text(
                             text = "⏭",
@@ -93,7 +95,7 @@ class PlayerWidget : GlanceAppWidget() {
                             ),
                             modifier = GlanceModifier
                                 .padding(horizontal = 10.dp)
-                                .clickable(androidx.glance.action.actionRunCallback<NextTrackAction>()),
+                                .clickable(actionRunCallback<NextTrackAction>()),
                         )
                     }
                 }

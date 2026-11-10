@@ -2,6 +2,7 @@ package app.chordless.music.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,11 +55,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.chordless.music.R
 import app.chordless.music.data.LocalStore
 import app.chordless.music.data.LyricsRepo
 import app.chordless.music.data.Track
@@ -116,6 +119,19 @@ fun NowPlayingScreen(
     val activeLine = syncedLines.getOrNull(activeIdx)?.second.orEmpty()
 
     // --- Full-bleed artwork backdrop with palette wash ---
+    val backdropRes = remember(t?.id) {
+        val index = ((t?.id?.hashCode() ?: 0) % 8 + 8) % 8 + 1
+        when (index) {
+            1 -> R.drawable.backdrop_1
+            2 -> R.drawable.backdrop_2
+            3 -> R.drawable.backdrop_3
+            4 -> R.drawable.backdrop_4
+            5 -> R.drawable.backdrop_5
+            6 -> R.drawable.backdrop_6
+            7 -> R.drawable.backdrop_7
+            else -> R.drawable.backdrop_8
+        }
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -128,6 +144,13 @@ fun NowPlayingScreen(
                 )
             )
     ) {
+        Image(
+            painter = painterResource(backdropRes),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            alpha = 0.55f,
+        )
         if (!t?.thumbnail.isNullOrBlank()) {
             AsyncImage(
                 model = t?.thumbnail,

@@ -109,13 +109,13 @@ object Streams {
                 // No audio-only rendition (live streams, some uploads): fall back
                 // to the smallest video stream, which still carries the audio.
                 val videos: List<VideoStream> = info.videoStreams ?: emptyList()
-                val fallback = videos.minByOrNull { it.averageBitrate } ?: videos.firstOrNull()
+                val fallback = videos.minByOrNull { it.bitrate } ?: videos.firstOrNull()
                 val url = fallback?.url
                 if (!url.isNullOrBlank()) {
                     candidates += Resolved(
                         url = url,
                         mime = fallback.format?.mimeType ?: "",
-                        bitrate = fallback.averageBitrate,
+                        bitrate = fallback.bitrate,
                     )
                 }
             }

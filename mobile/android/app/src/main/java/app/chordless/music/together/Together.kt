@@ -1,11 +1,13 @@
 package app.chordless.music.together
 
+import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.routing.routing
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
 import io.ktor.websocket.Frame
+import io.ktor.websocket.WebSocketSession
 import io.ktor.websocket.readText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,7 +51,7 @@ object Together {
     private val http = OkHttpClient.Builder().pingInterval(20, java.util.concurrent.TimeUnit.SECONDS).build()
 
     private var engine: io.ktor.server.engine.EmbeddedServer<*, *>? = null
-    private val sessions = java.util.Collections.synchronizedList(mutableListOf<io.ktor.server.websocket.WebSocketSession>())
+    private val sessions = java.util.Collections.synchronizedList(mutableListOf<WebSocketSession>())
     private var socket: WebSocket? = null
 
     private val _state = MutableStateFlow(State())
