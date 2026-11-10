@@ -60,7 +60,7 @@ dependencies {
     implementation 'org.json:json:20240303'
 
     // Frosted glass (BitChord parity) — Telegram-style blurred bars
-    implementation 'dev.chrisbanes.haze:haze:1.3.1'
+    implementation 'dev.chrisbanes.haze:haze:1.6.10'
 
     // Palette: dynamic artwork theming (BitChord-style mesh gradient tint)
     implementation 'androidx.palette:palette-ktx:1.0.0'
