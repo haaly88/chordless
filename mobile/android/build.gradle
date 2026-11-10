@@ -12,4 +12,9 @@ buildscript {
     }
 }
 
-apply from: "variables.gradle"
+ext {
+    minSdkVersion = 26
+    compileSdkVersion = 36
+    targetSdkVersion = 36
+    kotlinVersion = '2.0.0'
+}
