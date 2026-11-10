@@ -65,32 +65,68 @@ object Streams {
         }
     }
 
-    /** Best (highest-bitrate) audio-only stream. */
-    suspend fun resolve(videoId: String): Resolved = withContext(Dispatchers.IO) {
-        ensureInit()
-        mutex.withLock {
-            cache[videoId]?.let { (resolved, at) ->
-                if (System.currentTimeMillis() - at < 3 * 3_600_000L) return@withContext resolved
+    /**
+     * All usable audio candidates for [videoId], best first.
+     *
+     * YouTube media URLs are signed and can be rejected (HTTP 403) even when
+     * they were resolved a minute ago, so the player keeps several candidates
+     * around and walks through them when a stream fails.
+     */
+    suspend fun resolveCandidates(videoId: String, max: Int = 4): List<Resolved> =
+        withContext(Dispatchers.IO) {
+            ensureInit()
+            mutex.withLock {
+                cache[videoId]?.let { (resolved, at) ->
+                    if (System.currentTimeMillis() - at < 3 * 3_600_000L) {
+                        return@withContext listOf(resolved)
+                    }
+                }
             }
+            val info = runCatching { StreamInfo.getInfo("https://www.youtube.com/watch?v=$videoId") }
+                .getOrElse {
+                    // transient extractor hiccup — one retry before giving up
+                    kotlinx.coroutines.delay(600)
+                    StreamInfo.getInfo("https://www.youtube.com/watch?v=$videoId")
+                }
+
+            val audioStreams: List<AudioStream> = info.audioStreams ?: emptyList()
+            val candidates = mutableListOf<Resolved>()
+
+            if (audioStreams.isNotEmpty()) {
+                // Highest bitrate first, then a spread of lower ones so a
+                // rejected URL always has a fallback with a different format.
+                val sorted = audioStreams.sortedByDescending { it.averageBitrate }
+                sorted.forEach { stream ->
+                    val url = stream.url ?: return@forEach
+                    candidates += Resolved(
+                        url = url,
+                        mime = stream.format?.mimeType ?: "",
+                        bitrate = stream.averageBitrate,
+                    )
+                }
+            } else {
+                // No audio-only rendition (live streams, some uploads): fall back
+                // to the smallest video stream, which still carries the audio.
+                val videos = info.videoStreams ?: emptyList()
+                val fallback = videos.minByOrNull { it.averageBitrate } ?: videos.firstOrNull()
+                val url = fallback?.url
+                if (!url.isNullOrBlank()) {
+                    candidates += Resolved(
+                        url = url,
+                        mime = fallback.format?.mimeType ?: "",
+                        bitrate = fallback.averageBitrate,
+                    )
+                }
+            }
+
+            if (candidates.isEmpty()) throw IllegalStateException("No audio streams for $videoId")
+            val unique = candidates.distinctBy { it.url }.take(max)
+            mutex.withLock { cache[videoId] = unique.first() to System.currentTimeMillis() }
+            unique
         }
-        val info = runCatching { StreamInfo.getInfo("https://www.youtube.com/watch?v=$videoId") }
-            .getOrElse {
-                // transient extractor hiccup — one retry before giving up
-                kotlinx.coroutines.delay(600)
-                StreamInfo.getInfo("https://www.youtube.com/watch?v=$videoId")
-            }
-        val streams: List<AudioStream> = info.audioStreams ?: emptyList()
-        if (streams.isEmpty()) throw IllegalStateException("No audio streams for $videoId")
-        val best = streams.maxByOrNull { it.averageBitrate } ?: streams.first()
-        val url = best.url ?: throw IllegalStateException("No stream URL for $videoId")
-        val resolved = Resolved(
-            url = url,
-            mime = best.format?.mimeType ?: "",
-            bitrate = best.averageBitrate,
-        )
-        mutex.withLock { cache[videoId] = resolved to System.currentTimeMillis() }
-        resolved
-    }
+
+    /** Best (highest-bitrate) audio-only stream. */
+    suspend fun resolve(videoId: String): Resolved = resolveCandidates(videoId).first()
 
     /** Backwards-compatible URL-only helper. */
     suspend fun audioUrl(videoId: String): String = resolve(videoId).url

@@ -92,10 +92,23 @@ object PlayerManager {
     /** Current crossfade attenuation factor, 1f = no attenuation. */
     private var fadeFactor: Float = 1f
 
+    /** Wall-clock moment the current item started playing (for the fade-in). */
+    private var itemStartedAt: Long = 0L
+
+    /** Stream candidates for the current track, best first. */
+    private var streamCandidates: List<app.chordless.music.data.Streams.Resolved> = emptyList()
+
+    /** Index of the candidate currently in use. */
+    private var streamCandidateIndex: Int = 0
+
     /**
      * Crossfade via volume ramp: fades out during the last N ms of a track and
      * fades in during the first N ms of the next one. Media3 has no native
      * crossfade API, so this is the closest equivalent.
+     *
+     * The fade-in is measured from the moment playback actually started (wall
+     * clock), never from the player position — the position stays at zero while
+     * a stream is still buffering and would silence the track.
      */
     private fun updateCrossfade() {
         if (!::player.isInitialized) return
@@ -106,9 +119,10 @@ object PlayerManager {
             val pos = player.currentPosition
             val dur = player.duration
             val remaining = if (dur > 0) dur - pos else Long.MAX_VALUE
+            val elapsed = android.os.SystemClock.elapsedRealtime() - itemStartedAt
             when {
                 remaining <= ms -> (remaining.toFloat() / ms).coerceIn(0f, 1f)
-                pos <= ms -> (pos.toFloat() / ms).coerceIn(0f, 1f)
+                elapsed <= ms -> (elapsed.toFloat() / ms).coerceIn(0f, 1f)
                 else -> 1f
             }
         }
@@ -130,14 +144,14 @@ object PlayerManager {
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                _loading.value = false
-                _error.value = error.message
+                retryWithNextStream(error)
             }
 
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_READY) {
                     _loading.value = false
                     _error.value = null
+                    itemStartedAt = android.os.SystemClock.elapsedRealtime()
                     attachFx()
                 } else if (state == Player.STATE_BUFFERING) {
                     _loading.value = true
@@ -249,18 +263,11 @@ object PlayerManager {
         segments = emptyList()
         scope.launch(Dispatchers.IO) {
             try {
-                val resolved = app.chordless.music.data.Streams.resolve(track.id)
+                val candidates = app.chordless.music.data.Streams.resolveCandidates(track.id)
                 withContext(Dispatchers.Main) {
-                    currentFormat = listOf(
-                        resolved.mime.ifBlank { null },
-                        resolved.bitrate.takeIf { it > 0 }?.let { " ${it} kbps" },
-                    ).filterNotNull().joinToString(" · ")
-                    // Crossfade is implemented as a volume ramp (Media3 exposes no
-                    // crossfade API) — see updateCrossfade().
-                    player.setMediaItem(MediaItem.Builder().setUri(resolved.url).setMediaId(track.id).build())
-                    player.prepare()
-                    player.play()
-                    _loading.value = false
+                    streamCandidates = candidates
+                    streamCandidateIndex = 0
+                    applyCandidate(candidates[0], track)
                     ctx?.let {
                         LocalStore.recordPlay(it, track)
                         PlaybackService.start(it)
@@ -275,6 +282,43 @@ object PlayerManager {
                     _error.value = "Could not load audio: ${e.message}"
                 }
             }
+        }
+    }
+
+    /** Start playback of a resolved stream candidate. */
+    private fun applyCandidate(resolved: app.chordless.music.data.Streams.Resolved, track: Track) {
+        currentFormat = listOf(
+            resolved.mime.ifBlank { null },
+            resolved.bitrate.takeIf { it > 0 }?.let { "$it kbps" },
+        ).filterNotNull().joinToString(" · ")
+        itemStartedAt = android.os.SystemClock.elapsedRealtime()
+        fadeFactor = 1f
+        player.volume = userVolume
+        player.setMediaItem(MediaItem.Builder().setUri(resolved.url).setMediaId(track.id).build())
+        player.prepare()
+        player.play()
+    }
+
+    /**
+     * A signed media URL can be rejected by YouTube even seconds after it was
+     * resolved. Walk to the next candidate instead of giving up.
+     */
+    private fun retryWithNextStream(error: PlaybackException) {
+        val next = streamCandidateIndex + 1
+        if (next < streamCandidates.size) {
+            streamCandidateIndex = next
+            _loading.value = true
+            _error.value = null
+            val track = _current.value
+            scope.launch {
+                delay(600)
+                withContext(Dispatchers.Main) {
+                    if (track != null) applyCandidate(streamCandidates[next], track)
+                }
+            }
+        } else {
+            _loading.value = false
+            _error.value = "Could not play this track (${error.errorCodeName}). Tap play to retry."
         }
     }
 

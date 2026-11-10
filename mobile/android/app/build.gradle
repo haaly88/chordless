@@ -11,7 +11,7 @@ android {
         applicationId "app.chordless.music"
         minSdkVersion 26
         targetSdkVersion 36
-        versionCode 1
+        versionCode 110
         versionName "1.1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -34,10 +34,15 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += ['META-INF/*.kotlin_module', 'META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*']
+        }
+    }
 }
 
 dependencies {
-    // Compose
+    // ---------- Compose ----------
     def composeBom = platform('androidx.compose:compose-bom:2024.09.00')
     implementation composeBom
     androidTestImplementation composeBom
@@ -49,37 +54,84 @@ dependencies {
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.ui:ui-tooling-preview'
     implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material3:material3-window-size-class:1.3.1'
     implementation 'androidx.compose.material:material-icons-core'
     implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.compose.animation:animation'
+    implementation 'androidx.compose.foundation:foundation'
 
-    // Coroutines
+    // ---------- Coroutines ----------
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
 
-    // Networking + JSON
+    // ---------- Networking + JSON ----------
     implementation "com.squareup.okhttp3:okhttp:4.12.0"
-    implementation 'org.json:json:20240303'
+    implementation "org.json:json:20240303"
 
-    // Frosted glass (BitChord parity) — Telegram-style blurred bars
+    // ---------- Frosted glass (BitChord parity) ----------
     implementation 'dev.chrisbanes.haze:haze:1.6.10'
 
-    // Palette: dynamic artwork theming (BitChord-style mesh gradient tint)
+    // ---------- Palette: dynamic artwork theming ----------
     implementation 'androidx.palette:palette-ktx:1.0.0'
 
-    // Image loading
+    // ---------- Image loading (GIF + video artwork) ----------
     implementation 'io.coil-kt:coil-compose:2.6.0'
+    implementation 'io.coil-kt:coil-gif:2.6.0'
+    implementation 'io.coil-kt:coil-video:2.6.0'
 
-    // Preferences / favorites
+    // ---------- Preferences / favorites ----------
     implementation 'androidx.datastore:datastore-preferences:1.1.1'
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
 
-    // Media3 player
-    implementation 'androidx.media3:media3-exoplayer:1.11.0'
-    implementation 'androidx.media3:media3-session:1.11.0'
-    implementation 'androidx.media3:media3-ui:1.11.0'
+    // ---------- Media3 — complete playback stack ----------
+    implementation 'androidx.media3:media3-exoplayer:1.11.1'
+    implementation 'androidx.media3:media3-session:1.11.1'
+    implementation 'androidx.media3:media3-ui:1.11.1'
+    implementation 'androidx.media3:media3-ui-compose:1.11.1'
+    implementation 'androidx.media3:media3-ui-compose-material3:1.11.1'
+    implementation 'androidx.media3:media3-exoplayer-dash:1.11.1'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.11.1'
+    implementation 'androidx.media3:media3-exoplayer-rtsp:1.11.1'
+    implementation 'androidx.media3:media3-exoplayer-workmanager:1.11.1'
+    implementation 'androidx.media3:media3-transformer:1.11.1'
+    implementation 'androidx.media3:media3-muxer:1.11.1'
+    implementation 'androidx.media3:media3-effect-lottie:1.11.1'
+    implementation 'androidx.media3:media3-container:1.11.1'
+    implementation 'androidx.media3:media3-inspector:1.11.1'
+    implementation 'androidx.media3:media3-cast:1.11.1'
+    implementation 'androidx.media3:media3-database:1.11.1'
+    implementation 'androidx.media3:media3-datasource-okhttp:1.11.1'
 
-    // NewPipe extractor (YouTube stream resolution: formats + decipher)
+    // ---------- NewPipe extractor ----------
     // Pinned to v0.26.3 — same pin as BitChord: newer 0.26.4 parses the
     // current player JS incorrectly, older 0.24.x is dead on today's player.
     implementation 'com.github.TeamNewPipe:NewPipeExtractor:v0.26.3'
+
+    // ---------- Launcher widget (Glance) ----------
+    implementation 'androidx.glance:glance-appwidget:1.1.1'
+
+    // ---------- Background work (downloads / prefetch) ----------
+    implementation 'androidx.work:work-runtime-ktx:2.10.0'
+
+    // ---------- Paged lists ----------
+    implementation 'androidx.paging:paging-compose:3.3.5'
+
+    // ---------- Motion ----------
+    implementation 'com.airbnb.android:lottie-compose:6.6.2'
+
+    // ---------- In-app web (addons, artist pages) ----------
+    implementation 'androidx.webkit:webkit:1.13.0'
+
+    // ---------- Material components ----------
+    implementation 'com.google.android.material:material:1.12.0'
+
+    // ---------- Encrypted local database (downloads + history) ----------
+    implementation 'androidx.sqlite:sqlite-framework:2.4.0'
+    implementation 'net.zetetic:sqlcipher-android:4.6.1'
+
+    // ---------- Local sync server for Listen Together ----------
+    implementation 'io.ktor:ktor-server-core:3.1.3'
+    implementation 'io.ktor:ktor-server-netty:3.1.3'
+    implementation 'io.ktor:ktor-server-websockets:3.1.3'
 
     testImplementation 'junit:junit:4.13.2'
     debugImplementation 'androidx.compose.ui:ui-tooling'
