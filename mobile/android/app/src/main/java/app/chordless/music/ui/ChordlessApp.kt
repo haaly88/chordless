@@ -123,7 +123,7 @@ fun ChordlessApp() {
         PlayerManager.play(track)
     }
 
-    val hazeBarTint = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
+    val hazeBarTint = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)
     val hazeState = remember { HazeState() }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -228,32 +228,34 @@ fun ChordlessApp() {
                 val itemColors = NavigationBarItemDefaults.colors(
                     selectedIconColor = MaterialTheme.colorScheme.primary,
                     selectedTextColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 NavigationBarItem(
                     selected = currentRoute == ROUTE_HOME,
                     onClick = { nav.navigate(ROUTE_HOME) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                    icon = { Icon(Icons.Filled.Home, contentDescription = "Home", modifier = Modifier.size(28.dp)) },
+                    icon = { Icon(Icons.Filled.Home, contentDescription = "Home", modifier = Modifier.size(30.dp)) },
                     label = { Text("Home", style = MaterialTheme.typography.labelLarge) },
                     colors = itemColors,
                 )
                 NavigationBarItem(
                     selected = currentRoute == ROUTE_SEARCH,
                     onClick = { nav.navigate(ROUTE_SEARCH) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                    icon = { Icon(Icons.Filled.Search, contentDescription = "Search", modifier = Modifier.size(28.dp)) },
+                    icon = { Icon(Icons.Filled.Search, contentDescription = "Search", modifier = Modifier.size(30.dp)) },
                     label = { Text("Search", style = MaterialTheme.typography.labelLarge) },
                     colors = itemColors,
                 )
                 NavigationBarItem(
                     selected = currentRoute == ROUTE_LIBRARY,
                     onClick = { nav.navigate(ROUTE_LIBRARY) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                    icon = { Icon(Icons.Filled.LibraryMusic, contentDescription = "Library", modifier = Modifier.size(28.dp)) },
+                    icon = { Icon(Icons.Filled.LibraryMusic, contentDescription = "Library", modifier = Modifier.size(30.dp)) },
                     label = { Text("Library", style = MaterialTheme.typography.labelLarge) },
                     colors = itemColors,
                 )
                 NavigationBarItem(
                     selected = currentRoute == ROUTE_SETTINGS || currentRoute == ROUTE_EQ,
                     onClick = { nav.navigate(ROUTE_SETTINGS) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings", modifier = Modifier.size(28.dp)) },
+                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings", modifier = Modifier.size(30.dp)) },
                     label = { Text("Settings", style = MaterialTheme.typography.labelLarge) },
                     colors = itemColors,
                 )
@@ -262,7 +264,7 @@ fun ChordlessApp() {
 
         SnackbarHost(
             hostState = snackbar,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 140.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 150.dp),
         )
     }
 
@@ -325,17 +327,17 @@ private fun PlayerBar(
     val haptics = LocalHapticFeedback.current
     Box(
         modifier = modifier
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-            .shadow(16.dp, RoundedCornerShape(26.dp))
-            .clip(RoundedCornerShape(26.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f))
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .shadow(24.dp, RoundedCornerShape(30.dp))
+            .clip(RoundedCornerShape(30.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f))
             .clickable(onClick = onOpen)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Artwork(track.thumbnail, size = 60.dp, radius = 18.dp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Artwork(track.thumbnail, size = 64.dp, radius = 18.dp)
             Column(modifier = Modifier.weight(1f)) {
-                MarqueeText(text = track.title, style = MaterialTheme.typography.bodyLarge)
+                MarqueeText(text = track.title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
                 androidx.compose.material3.Text(
                     (if (loading) "Loading… " else "") + (sleepChip?.let { "Sleep $it · " } ?: "") + track.artist,
                     maxLines = 1,
@@ -350,7 +352,7 @@ private fun PlayerBar(
                 Icon(
                     if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     contentDescription = "Play/Pause",
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(40.dp),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -360,7 +362,7 @@ private fun PlayerBar(
             androidx.compose.foundation.layout.Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 12.dp, vertical = 2.dp)
+                    .padding(horizontal = 14.dp, vertical = 3.dp)
                     .fillMaxWidth()
                     .clip(androidx.compose.foundation.shape.RoundedCornerShape(percent = 50))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
@@ -388,15 +390,15 @@ private fun TrackActionSheet(
     onAddToPlaylist: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState()) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(track.title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(track.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, maxLines = 1)
             Text(track.artist, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.size(16.dp))
+            Spacer(Modifier.height(20.dp))
             ActionRow("Play next", onPlayNext)
             ActionRow("Add to queue", onAddToQueue)
             ActionRow("Like / Unlike", onToggleFavorite)
             ActionRow("Add to playlist", onAddToPlaylist)
-            Spacer(Modifier.size(12.dp))
+            Spacer(Modifier.height(16.dp))
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     }
@@ -408,8 +410,8 @@ private fun ActionRow(label: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
+            .padding(vertical = 14.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
+        Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
     }
 }

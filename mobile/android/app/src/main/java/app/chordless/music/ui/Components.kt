@@ -57,7 +57,7 @@ fun AuroraBackground(content: @Composable () -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         val scheme = MaterialTheme.colorScheme
         val dark = scheme.background.red < 0.5f
-        val tint = scheme.primary.copy(alpha = if (dark) 0.16f else 0.08f)
+        val tint = scheme.primary.copy(alpha = if (dark) 0.20f else 0.10f)
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.linearGradient(
@@ -72,10 +72,10 @@ fun AuroraBackground(content: @Composable () -> Unit) {
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.radialGradient(
-                    0.5f to tint.copy(alpha = if (dark) 0.10f else 0.06f),
+                    0.5f to tint.copy(alpha = if (dark) 0.14f else 0.08f),
                     1.2f to Color.Transparent,
                     center = androidx.compose.ui.geometry.Offset(0.5f, 0.0f),
-                    radius = 1200f,
+                    radius = 1400f,
                 )
             )
         )
@@ -91,16 +91,29 @@ fun SectionHeader(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
-        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        Text(
+            title,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.W800,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
         if (!subtitle.isNullOrBlank()) {
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
 
 // ---------- cover & cards ----------
 @Composable
-fun Artwork(url: String, size: Dp = 56.dp, radius: Dp = 12.dp) {
+fun Artwork(
+    url: String,
+    size: Dp = 56.dp,
+    radius: Dp = 12.dp,
+) {
     if (url.isBlank()) {
         Box(
             modifier = Modifier.size(size).clip(RoundedCornerShape(radius)).background(MaterialTheme.colorScheme.surfaceVariant),
@@ -124,16 +137,18 @@ fun CoverCard(
     subtitle: String,
     image: String,
     onClick: () -> Unit,
-    size: Dp = 190.dp,
+    size: Dp = 210.dp,
 ) {
     Column(modifier = Modifier.width(size).clickable(onClick = onClick)) {
         Artwork(image, size = size, radius = 24.dp)
+        Spacer(Modifier.height(10.dp))
         Text(
             title,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.paddingTop(),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
             subtitle,
@@ -147,7 +162,7 @@ fun CoverCard(
 
 private fun Modifier.paddingTop() = this.then(padding(top = 10.dp))
 
-// ---------- marquee title (desktop player-bar behaviour) ----------
+// ---------- marquee title ----------
 @Composable
 fun MarqueeText(
     text: String,
@@ -208,7 +223,7 @@ fun TrackRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
             .then(
                 if (onLongClick != null) {
                     Modifier.combinedClickable(onClick = onClick, onLongClick = { onLongClick() })
@@ -217,12 +232,12 @@ fun TrackRow(
                 }
             )
             .background(
-                if (isCurrent) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+                if (isCurrent) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.60f)
                 else Color.Transparent
             )
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         if (index >= 0) {
             Text(
@@ -232,13 +247,13 @@ fun TrackRow(
                 modifier = Modifier.width(28.dp),
             )
         }
-        Artwork(track.thumbnail, size = 60.dp, radius = 16.dp)
+        Artwork(track.thumbnail, size = 64.dp, radius = 16.dp)
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (chip != null) KindBadge(chip)
                 Text(
                     track.title,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -301,8 +316,8 @@ private fun kindChip(kind: String): String? = when (kind) {
 @Composable
 fun ErrorBox(message: String, onRetry: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(Modifier.size(48.dp))
-        Text(message.ifBlank { "Something went wrong" }, color = MaterialTheme.colorScheme.error)
+        Spacer(Modifier.size(56.dp))
+        Text(message.ifBlank { "Something went wrong" }, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleMedium)
         TextButton(onClick = onRetry) { Text("Retry") }
     }
 }
@@ -310,7 +325,7 @@ fun ErrorBox(message: String, onRetry: () -> Unit) {
 @Composable
 fun LoadingBox() {
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Spacer(Modifier.size(48.dp))
+        Spacer(Modifier.size(56.dp))
         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
     }
 }
@@ -318,13 +333,13 @@ fun LoadingBox() {
 @Composable
 fun EmptyState(title: String, subtitle: String? = null) {
     Box(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(40.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("♪", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.size(12.dp))
-            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(14.dp))
+            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             if (!subtitle.isNullOrBlank()) {
                 Text(
                     subtitle,

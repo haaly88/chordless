@@ -31,11 +31,12 @@ val Accent = Color(0xFFFC3C44)
 val AccentSoft = Color(0xFFFF8A90)
 val AccentOn = Color(0xFF1A0505)
 
+/** Dark palette — deep, premium, matches desktop. */
 private val BgDark = Color(0xFF000000)
-private val Bg2Dark = Color(0xFF0D0D0F)
-private val PanelDark = Color(0xFF1C1C1E)
+private val Bg2Dark = Color(0xFF0A0A0C)
+private val PanelDark = Color(0xFF141418)
 private val TextDark = Color(0xFFFFFFFF)
-private val Text2Dark = Color(0xFF8E8E93)
+private val Text2Dark = Color(0xFFA3A3AD)
 
 private val BgLight = Color(0xFFF4F4F7)
 private val Bg2Light = Color(0xFFECECF0)
@@ -43,7 +44,7 @@ private val PanelLight = Color(0xFFFFFFFF)
 private val TextLight = Color(0xFF1C1C1E)
 private val Text2Light = Color(0xFF5B5B63)
 
-/** Accent swatches (mirrors desktop Settings → Accent). */
+/** Accent swatches. */
 val Accents: Map<String, Color> = mapOf(
     "red" to Color(0xFFFC3C44),
     "purple" to Color(0xFF8B5CF6),
@@ -97,6 +98,7 @@ fun SystemBarIcons(dark: Boolean) {
     }
 }
 
+/** Chordless theme — Expressive typography, dark by default. */
 @Composable
 fun ChordlessTheme(
     theme: String = "system",
@@ -107,25 +109,25 @@ fun ChordlessTheme(
     val dark = true
     val accent = accentFor(accentId, dark)
     SystemBarIcons(dark = dark)
-    val base = Typography()
     MaterialTheme(
-        colorScheme = if (dark) darkScheme(accent) else lightScheme(accent),
+        colorScheme = darkScheme(accent),
         typography = Typography(
-            displayLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 36.sp, letterSpacing = (-0.5f).sp),
-            displayMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 30.sp, letterSpacing = (-0.4f).sp),
-            displaySmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 28.sp, letterSpacing = (-0.3f).sp),
-            headlineLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 28.sp, letterSpacing = (-0.4f).sp),
-            headlineMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 24.sp, letterSpacing = (-0.3f).sp),
-            headlineSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 22.sp, letterSpacing = (-0.2f).sp),
-            titleLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 20.sp, letterSpacing = (-0.2f).sp),
-            titleMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W600, fontSize = 17.sp, letterSpacing = 0.1f.sp),
-            titleSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W600, fontSize = 15.sp, letterSpacing = 0.1f.sp),
-            bodyLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W400, fontSize = 16.sp, letterSpacing = 0.15f.sp),
-            bodyMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W400, fontSize = 14.5f.sp, letterSpacing = 0.2f.sp),
-            bodySmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W400, fontSize = 13.sp, letterSpacing = 0.2f.sp),
-            labelLarge = base.labelLarge.copy(fontFamily = Inter, fontWeight = FontWeight.W600),
+            // Expressive, bold display type — LastWave-style
+            displayLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W900, fontSize = 40.sp, letterSpacing = (-0.75f).sp),
+            displayMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W900, fontSize = 32.sp, letterSpacing = (-0.6f).sp),
+            displaySmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W900, fontSize = 26.sp, letterSpacing = (-0.5f).sp),
+            headlineLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W900, fontSize = 32.sp, letterSpacing = (-0.6f).sp),
+            headlineMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 28.sp, letterSpacing = (-0.5f).sp),
+            headlineSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 24.sp, letterSpacing = (-0.4f).sp),
+            titleLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W800, fontSize = 22.sp, letterSpacing = (-0.3f).sp),
+            titleMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 18.sp, letterSpacing = (-0.2f).sp),
+            titleSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W700, fontSize = 16.sp, letterSpacing = 0.0f),
+            bodyLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W500, fontSize = 17.sp, letterSpacing = 0.15f.sp),
+            bodyMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W500, fontSize = 15.sp, letterSpacing = 0.2f.sp),
+            bodySmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W500, fontSize = 13.sp, letterSpacing = 0.2f.sp),
+            labelLarge = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W600, fontSize = 14.sp, letterSpacing = 0.1f.sp),
             labelMedium = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W600, fontSize = 12.sp, letterSpacing = 0.25f.sp),
-            labelSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W600, fontSize = 11.5f.sp, letterSpacing = 0.3f.sp),
+            labelSmall = TextStyle(fontFamily = Inter, fontWeight = FontWeight.W600, fontSize = 11.sp, letterSpacing = 0.3f.sp),
         ),
         content = content,
     )

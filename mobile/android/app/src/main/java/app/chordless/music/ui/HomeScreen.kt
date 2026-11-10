@@ -105,11 +105,11 @@ fun HomeScreen(
         }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 28.dp),
+            contentPadding = PaddingValues(bottom = 32.dp),
         ) {
             item {
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
-                    Text("Chordless", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
+                    Text("Chordless", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.W800)
                     Text(
                         "Every song, beautifully.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -131,11 +131,11 @@ fun HomeScreen(
                 item {
                     SectionHeader(
                         title = shelf.title,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
                     )
                     LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 6.dp),
                     ) {
                         items(shelf.items) { track ->
                             CoverCard(
@@ -143,6 +143,7 @@ fun HomeScreen(
                                 subtitle = track.artist,
                                 image = track.thumbnail,
                                 onClick = { onPlay(track, shelf.items) },
+                                size = 210.dp,
                             )
                         }
                     }
@@ -152,11 +153,11 @@ fun HomeScreen(
                 item {
                     SectionHeader(
                         title = "Playlists",
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
                     )
                     LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 6.dp),
                     ) {
                         items(playlists) { card ->
                             CoverCard(
@@ -164,6 +165,7 @@ fun HomeScreen(
                                 subtitle = card.author.ifBlank { card.views },
                                 image = card.thumbnail,
                                 onClick = { onOpenPlaylist(card) },
+                                size = 210.dp,
                             )
                         }
                     }
@@ -173,52 +175,53 @@ fun HomeScreen(
     }
 }
 
-/** For You hero — desktop-style gradient card with play-all. */
+/** For You hero — large gradient card with play-all. */
 @Composable
 private fun ForYouHero(onPlay: (Track, List<Track>) -> Unit, fallback: Track?) {
     val current by PlayerManager.current.collectAsState()
     val playTrack = current ?: fallback
     Row(
         modifier = Modifier
-            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .padding(horizontal = 24.dp, vertical = 10.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(32.dp))
             .background(
                 Brush.linearGradient(
                     listOf(
                         MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.45f),
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.50f),
                     )
                 )
             )
-            .padding(22.dp),
+            .padding(28.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text("FOR YOU", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 "Your daily mix, made for you.",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onPrimary,
             )
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(18.dp))
             Button(
                 onClick = { if (playTrack != null) onPlay(playTrack, listOf(playTrack)) },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onPrimary),
                 shape = CircleShape,
             ) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
                 Text("Play", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             }
         }
-        if (playTrack != null) Artwork(playTrack.thumbnail, size = 124.dp, radius = 22.dp)
+        if (playTrack != null) Artwork(playTrack.thumbnail, size = 140.dp, radius = 24.dp)
     }
 }
 
+/** Quick tiles — rounded action buttons. */
 @Composable
 private fun QuickTiles(
     favCount: Int,
@@ -235,17 +238,17 @@ private fun QuickTiles(
         Triple("Top Rated", "Most loved", { onOpenSmart("rated") }),
     )
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
     ) {
         items(tiles) { (title, sub, action) ->
             Column(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f))
                     .clickable(onClick = action)
-                    .padding(16.dp)
-                    .width(150.dp),
+                    .padding(18.dp)
+                    .width(160.dp),
             ) {
                 val icon = when (title) {
                     "Favorites" -> Icons.Filled.Favorite
@@ -255,8 +258,8 @@ private fun QuickTiles(
                     else -> Icons.Filled.TrendingUp
                 }
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(10.dp))
-                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(12.dp))
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
