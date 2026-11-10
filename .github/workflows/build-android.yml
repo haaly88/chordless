@@ -31,7 +31,7 @@ jobs:
       - name: Setup Gradle (cached distribution + deps)
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.2.1
+          gradle-version: 8.5
 
       - name: Accept Android SDK licenses + install platform 36
         run: |
@@ -65,4 +65,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: mobile/android/app/build/outputs/apk/debug/*.apk
-          name: Chordless ${{ github.ref_name }}
+          name: Chordless ${{ github.ref_name }}
