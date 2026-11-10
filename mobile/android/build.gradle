@@ -1,7 +1,15 @@
 // Chordless native Android — top-level build file.
 
-plugins {
-    id 'com.android.application' version '8.2.1' apply false
-    id 'org.jetbrains.kotlin.android' version '2.0.0' apply false
-    id 'org.jetbrains.kotlin.plugin.compose' version '2.0.0' apply false
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.1'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.0'
+    }
 }
+
+apply from: "variables.gradle"
