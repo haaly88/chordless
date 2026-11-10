@@ -10,13 +10,3 @@ buildscript {
         classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.10'
     }
 }
-
-configurations.all {
-    resolutionStrategy {
-        eachDependency {
-            if (it.group == 'org.jetbrains.kotlin') {
-                it.version = '2.2.10'
-            }
-        }
-    }
-}
