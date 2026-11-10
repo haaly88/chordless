@@ -322,6 +322,25 @@ object PlayerManager {
         }
     }
 
+    /** Play a track from the offline (downloaded) library. */
+    fun playLocal(file: java.io.File, track: Track) {
+        if (!::player.isInitialized) return
+        _current.value = track
+        _loading.value = true
+        _error.value = null
+        streamCandidates = emptyList()
+        currentFormat = "Offline · ${file.length() / 1024} KB"
+        itemStartedAt = android.os.SystemClock.elapsedRealtime()
+        player.setMediaItem(MediaItem.Builder().setUri(file.toURI().toString()).setMediaId(track.id).build())
+        player.prepare()
+        player.play()
+        _loading.value = false
+        ctx?.let {
+            LocalStore.recordPlay(it, track)
+            PlaybackService.start(it)
+        }
+    }
+
     fun toggle() {
         if (::player.isInitialized) {
             if (player.isPlaying) player.pause() else player.play()

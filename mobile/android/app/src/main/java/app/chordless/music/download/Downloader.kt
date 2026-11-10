@@ -78,6 +78,7 @@ object Downloader {
             }
 
             val done = State(track.id, Status.COMPLETED, 1f, file)
+            writeMeta(file, track)
             publish(track.id, done)
             done
         } catch (e: Exception) {
@@ -89,6 +90,37 @@ object Downloader {
 
     private fun publish(trackId: String, state: State) {
         _states.value = _states.value.toMutableMap().apply { put(trackId, state) }
+    }
+
+    /** Sidecar with the track metadata so the offline library can rebuild it. */
+    private fun writeMeta(file: File, track: Track) {
+        runCatching {
+            File(file.parentFile, file.name + ".meta").writeText(
+                listOf(track.id, track.title, track.artist, track.duration.toString())
+                    .joinToString("\n")
+            )
+        }
+    }
+
+    /** Metadata for a downloaded file, when available. */
+    fun metaFor(file: File): Track? = runCatching {
+        val sidecar = File(file.parentFile, file.name + ".meta")
+        if (!sidecar.exists()) return null
+        val parts = sidecar.readText().split("\n")
+        if (parts.size < 4) return null
+        Track(
+            id = parts[0],
+            title = parts[1],
+            artist = parts[2],
+            duration = parts[3].toLongOrNull() ?: 0L,
+            thumbnail = "",
+        )
+    }.getOrNull()
+
+    /** Removes a downloaded file together with its metadata sidecar. */
+    fun delete(file: File) {
+        runCatching { File(file.parentFile, file.name + ".meta").delete() }
+        runCatching { file.delete() }
     }
 
     private fun fileName(track: Track, mime: String): String {

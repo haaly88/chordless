@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -77,6 +78,8 @@ private const val ROUTE_LIBRARY = "library"
 private const val ROUTE_SETTINGS = "settings"
 private const val ROUTE_EQ = "eq"
 private const val ROUTE_NOW_PLAYING = "nowPlaying"
+private const val ROUTE_STATS = "statistics"
+private const val ROUTE_DOWNLOADS = "downloads"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,6 +146,8 @@ fun ChordlessApp() {
                     onOpenFavorites = { nav.navigate(ROUTE_LIBRARY) },
                     onOpenHistory = { nav.navigate(ROUTE_LIBRARY) },
                     onOpenSmart = { nav.navigate(ROUTE_LIBRARY) },
+                    onOpenDownloads = { nav.navigate(ROUTE_DOWNLOADS) },
+                    onOpenStats = { nav.navigate(ROUTE_STATS) },
                     gl = gl,
                     hl = hl,
                 )
@@ -165,6 +170,8 @@ fun ChordlessApp() {
                 SettingsScreen(onOpenEq = { nav.navigate(ROUTE_EQ) })
             }
             composable(ROUTE_EQ) { EqScreen() }
+            composable(ROUTE_STATS) { StatisticsScreen() }
+            composable(ROUTE_DOWNLOADS) { DownloadsScreen() }
             composable(ROUTE_NOW_PLAYING) {
                 NowPlayingScreen(
                     onOpenQueue = { showQueue = true },
@@ -222,48 +229,22 @@ fun ChordlessApp() {
                     },
                 )
             }
-            NavigationBar(
-                containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                modifier = Modifier.hazeEffect(hazeState) {
-                    blurRadius = HazeDefaults.blurRadius
-                    backgroundColor = hazeBarTint
+            FloatingNavBar(
+                currentRoute = currentRoute,
+                onSelect = { route ->
+                    nav.navigate(route) {
+                        popUpTo(nav.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 },
-            ) {
-                val itemColors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                NavigationBarItem(
-                    selected = currentRoute == ROUTE_HOME,
-                    onClick = { nav.navigate(ROUTE_HOME) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                    icon = { Icon(Icons.Filled.Home, contentDescription = "Home", modifier = Modifier.size(30.dp)) },
-                    label = { Text("Home", style = MaterialTheme.typography.labelLarge) },
-                    colors = itemColors,
-                )
-                NavigationBarItem(
-                    selected = currentRoute == ROUTE_SEARCH,
-                    onClick = { nav.navigate(ROUTE_SEARCH) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                    icon = { Icon(Icons.Filled.Search, contentDescription = "Search", modifier = Modifier.size(30.dp)) },
-                    label = { Text("Search", style = MaterialTheme.typography.labelLarge) },
-                    colors = itemColors,
-                )
-                NavigationBarItem(
-                    selected = currentRoute == ROUTE_LIBRARY,
-                    onClick = { nav.navigate(ROUTE_LIBRARY) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                    icon = { Icon(Icons.Filled.LibraryMusic, contentDescription = "Library", modifier = Modifier.size(30.dp)) },
-                    label = { Text("Library", style = MaterialTheme.typography.labelLarge) },
-                    colors = itemColors,
-                )
-                NavigationBarItem(
-                    selected = currentRoute == ROUTE_SETTINGS || currentRoute == ROUTE_EQ,
-                    onClick = { nav.navigate(ROUTE_SETTINGS) { popUpTo(nav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings", modifier = Modifier.size(30.dp)) },
-                    label = { Text("Settings", style = MaterialTheme.typography.labelLarge) },
-                    colors = itemColors,
-                )
-            }
+                modifier = Modifier
+                    .padding(horizontal = 18.dp)
+                    .hazeEffect(hazeState) {
+                        blurRadius = HazeDefaults.blurRadius
+                        backgroundColor = hazeBarTint
+                    },
+            )
         }
 
         SnackbarHost(
@@ -368,5 +349,60 @@ private fun ActionRow(label: String, onClick: () -> Unit) {
             .padding(vertical = 14.dp),
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+    }
+}
+
+/**
+ * Floating pill navigation — the selected destination is highlighted with an
+ * accent capsule instead of the classic Material bar.
+ */
+@Composable
+private fun FloatingNavBar(
+    currentRoute: String?,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val items = listOf(
+        Triple("Home", ROUTE_HOME, Icons.Filled.Home),
+        Triple("Search", ROUTE_SEARCH, Icons.Filled.Search),
+        Triple("Library", ROUTE_LIBRARY, Icons.Filled.LibraryMusic),
+        Triple("Settings", ROUTE_SETTINGS, Icons.Filled.Settings),
+    )
+    GlassPanel(modifier = modifier.fillMaxWidth(), radius = 32.dp) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            items.forEach { (label, route, icon) ->
+                val selected = currentRoute == route ||
+                    (route == ROUTE_SETTINGS && currentRoute == ROUTE_EQ)
+                Column(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                            else androidx.compose.ui.graphics.Color.Transparent
+                        )
+                        .clickable { onSelect(route) }
+                        .padding(horizontal = 18.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(
+                        icon,
+                        contentDescription = label,
+                        tint = if (selected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (selected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
     }
 }
