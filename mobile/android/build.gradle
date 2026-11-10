@@ -1,11 +1,13 @@
 // Chordless native Android — top-level build file.
 //
-// Repositories live here (not in settings.gradle) so that `gradle assembleDebug`
-// resolves google()/mavenCentral()/jitpack.io identically on CI and locally.
-// NewPipeExtractor is served from JitPack, hence the extra repository.
+// Repositories are declared for every project (root + :app) so that Gradle can
+// resolve Compose/Media3 from Google + Maven Central and NewPipeExtractor from
+// JitPack, identically on CI and on a developer machine.
 
-repositories {
-    google()
-    mavenCentral()
-    maven { url 'https://jitpack.io' }
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
 }
