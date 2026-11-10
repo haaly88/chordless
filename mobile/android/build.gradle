@@ -6,11 +6,6 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose' version '2.2.20' apply false
 }
 
-repositories {
-    google()
-    mavenCentral()
-}
-
 apply from: "variables.gradle"
 
 task clean(type: Delete) {
