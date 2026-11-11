@@ -299,14 +299,13 @@ const persistedSettings = {
   region: String(storedSettings?.region || 'auto').toUpperCase() === 'AUTO' ? 'auto' : String(storedSettings?.region || 'auto').toUpperCase(),
   autoplay: Boolean(storedSettings?.autoplay),
   fontScale: [0.9, 1, 1.15].includes(Number(storedSettings?.fontScale)) ? Number(storedSettings.fontScale) : 1,
-  // Whole-UI scale. Auto-compensates Windows display scaling (dpr 1.5):
-  // on high-DPR displays the default shrinks the layout so it matches the
-  // physical size users see in unaffected browsers. User-overridable.
+  // Whole-UI scale. Defaults to 90 % so the layout stays compact on every
+  // display (laptops, phones and the public web build alike). A value the
+  // user picked themselves always wins.
   uiScale: (() => {
     const allowed = [0.6, 0.7, 0.8, 0.9, 1];
     if (allowed.includes(Number(storedSettings?.uiScale))) return Number(storedSettings.uiScale);
-    const dpr = typeof window !== 'undefined' ? Number(window.devicePixelRatio || 1) : 1;
-    return dpr >= 1.45 ? 0.7 : dpr >= 1.2 ? 0.8 : 1;
+    return 0.9;
   })(),
   reduceMotion: storedSettings?.reduceMotion === true,
   reduceBlur: storedSettings?.reduceBlur === true,
