@@ -78,22 +78,26 @@ object LyricsRepo {
                 .url("$LRC_RED/search.json?q=$q")
                 .header("User-Agent", USER_AGENT)
                 .build()
-            val hits = client.newCall(request).execute().use { res ->
+
+            var best: JSONObject? = null
+            var bestScore = Double.MAX_VALUE
+            val target = (durationSec ?: 0).toDouble()
+            val wantTrack = track.trim().lowercase()
+            val wantArtist = artist.trim().lowercase()
+
+            client.newCall(request).execute().use { res ->
                 if (!res.isSuccessful) return Lyrics()
                 val data = JSONObject(res.body?.string().orEmpty())
                 val arr = data.optJSONArray("hits") ?: JSONArray()
-                val target = (durationSec ?: 0).toDouble()
-                var best: JSONObject? = null
-                var bestScore = Double.MAX_VALUE
                 for (i in 0 until arr.length()) {
                     val hit = arr.optJSONObject(i) ?: continue
                     val title = hit.optString("title").lowercase()
                     val hitArtist = hit.optString("artist").lowercase()
                     var score = 0.0
-                    if (track.isNotBlank() && title.isNotBlank()) {
-                        score += if (title.contains(track.lowercase()) || track.lowercase().contains(title)) -1000.0 else 0.0
+                    if (wantTrack.isNotEmpty() && title.isNotEmpty()) {
+                        score += if (title.contains(wantTrack) || wantTrack.contains(title)) -1000.0 else 0.0
                     }
-                    if (artist.isNotBlank() && hitArtist.isNotBlank() && hitArtist.contains(artist.lowercase())) score -= 300.0
+                    if (wantArtist.isNotEmpty() && hitArtist.isNotEmpty() && hitArtist.contains(wantArtist)) score -= 300.0
                     val dur = hit.optDouble("duration", 0.0)
                     if (target > 0 && dur > 0) score += kotlin.math.abs(dur - target) * 10
                     if (score < bestScore) {
@@ -101,10 +105,10 @@ object LyricsRepo {
                         best = hit
                     }
                 }
-                best
-            } ?: return Lyrics()
+            }
 
-            val isrc = best.optString("isrc").takeIf { it.isNotBlank() } ?: return Lyrics()
+            val hit = best ?: return Lyrics()
+            val isrc = hit.optString("isrc").takeIf { it.isNotBlank() } ?: return Lyrics()
             val lrcRequest = Request.Builder()
                 .url("$LRC_RED/s/${java.net.URLEncoder.encode(isrc, "UTF-8")}.lrc")
                 .header("User-Agent", USER_AGENT)
