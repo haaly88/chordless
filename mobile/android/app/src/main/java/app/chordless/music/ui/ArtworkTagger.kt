@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
+import androidx.core.graphics.drawable.toBitmap
 import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
@@ -151,16 +152,8 @@ object ArtworkTagger {
                 .allowHardware(false)
                 .build()
             val result = loader.execute(request)
-            (result as? SuccessResult)?.drawable?.let { drawable ->
-                val bitmap = Bitmap.createBitmap(
-                    drawable.intrinsicWidth.coerceAtLeast(1),
-                    drawable.intrinsicHeight.coerceAtLeast(1),
-                    Bitmap.Config.ARGB_8888,
-                )
-                val canvas = android.graphics.Canvas(bitmap)
-                drawable.setBounds(0, 0, bitmap.width, bitmap.height)
-                canvas.drawDrawable(drawable)
-                bitmap
+            (result as? SuccessResult)?.drawable?.toBitmap()?.let { bitmap ->
+                bitmap.copy(Bitmap.Config.ARGB_8888, false)
             }
         }.getOrNull()
     }
