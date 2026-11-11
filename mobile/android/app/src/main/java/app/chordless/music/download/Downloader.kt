@@ -117,6 +117,30 @@ object Downloader {
         )
     }.getOrNull()
 
+    /**
+     * The downloaded file for a track, if it exists.
+     *
+     * Playback prefers this file so a saved track keeps playing without a
+     * network connection.
+     */
+    fun localFileFor(context: Context, trackId: String): File? {
+        if (trackId.isBlank()) return null
+        val dir = File(context.filesDir, "downloads")
+        val files = dir.listFiles()?.filter { it.isFile && !it.name.endsWith(".meta") } ?: return null
+        for (file in files) {
+            val meta = metaFor(file) ?: continue
+            if (meta.id == trackId) return file
+        }
+        return null
+    }
+
+    /** All downloaded tracks (metadata only). */
+    fun downloadedTracks(context: Context): List<Pair<Track, File>> {
+        val dir = File(context.filesDir, "downloads")
+        val files = dir.listFiles()?.filter { it.isFile && !it.name.endsWith(".meta") } ?: return emptyList()
+        return files.mapNotNull { file -> metaFor(file)?.let { it to file } }
+    }
+
     /** Removes a downloaded file together with its metadata sidecar. */
     fun delete(file: File) {
         runCatching { File(file.parentFile, file.name + ".meta").delete() }

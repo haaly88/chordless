@@ -283,6 +283,15 @@ object PlayerManager {
     /** Resolve stream URL (NewPipe) and start playback for [track]. */
     fun play(track: Track, queue: List<Track> = emptyList()) {
         if (!::player.isInitialized) return
+
+        // A track that was downloaded for offline listening plays from the
+        // local file — no network, no stream resolution.
+        val local = ctx?.let { app.chordless.music.download.Downloader.localFileFor(it, track.id) }
+        if (local != null && local.exists() && local.length() > 0) {
+            playLocal(local, track)
+            return
+        }
+
         if (queue.isNotEmpty()) {
             val found = queue.indexOfFirst { it.id == track.id }
             if (found >= 0) {
