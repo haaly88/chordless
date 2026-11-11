@@ -142,7 +142,7 @@ object ArtworkTagger {
         }
     }
 
-    private fun loadBitmap(context: Context, url: String): Bitmap? {
+    private suspend fun loadBitmap(context: Context, url: String): Bitmap? {
         return runCatching {
             val loader = ImageLoader(context)
             val request = ImageRequest.Builder(context)
@@ -159,7 +159,7 @@ object ArtworkTagger {
                 )
                 val canvas = android.graphics.Canvas(bitmap)
                 drawable.setBounds(0, 0, bitmap.width, bitmap.height)
-                canvas.draw(drawable)
+                canvas.drawDrawable(drawable)
                 bitmap
             }
         }.getOrNull()
