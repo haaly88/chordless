@@ -10,7 +10,7 @@
  * 1-byte request before using it. Failures are cached for 45s to avoid
  * hammering YouTube when a video is genuinely unavailable.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { Readable } from 'node:stream';
 import { createCache } from './cache.js';
 import { withYtDlpSlot } from './pool.js';
@@ -77,13 +77,33 @@ function formatForQuality(quality, playerClient) {
   return FORMAT_BY_QUALITY[String(quality || 'high').toLowerCase()] || FORMAT_BY_QUALITY.high;
 }
 
+/**
+ * Is a `node` binary reachable?
+ *
+ * yt-dlp only needs a JavaScript runtime for the clients that still require
+ * the n-challenge; the ones we use work without it. Asking for a runtime that
+ * is not installed makes yt-dlp abort, so the flag is only passed when node
+ * is actually on PATH (a plain user has no Node installed).
+ */
+let nodeRuntimeAvailable = null;
+function hasNodeRuntime() {
+  if (nodeRuntimeAvailable !== null) return nodeRuntimeAvailable;
+  try {
+    const probe = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['node'], { stdio: 'ignore' });
+    nodeRuntimeAvailable = probe.status === 0;
+  } catch {
+    nodeRuntimeAvailable = false;
+  }
+  return nodeRuntimeAvailable;
+}
+
 function runYtDlpOnce(id, playerClient, quality) {
   const format = formatForQuality(quality, playerClient);
   return new Promise((resolve, reject) => {
     const { cmd, prefix } = ytDlpCommand();
     const args = [
       ...prefix,
-      '--js-runtimes', 'node',
+      ...(hasNodeRuntime() ? ['--js-runtimes', 'node'] : []),
       '--no-playlist',
       '--no-warnings',
       ...(playerClient && playerClient !== 'default' ? ['--extractor-args', `youtube:player_client=${playerClient}`] : []),

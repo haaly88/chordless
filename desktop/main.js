@@ -56,6 +56,20 @@ function applyLoginItem() {
   } catch { /* unsupported platform */ }
 }
 
+/**
+ * macOS marks every file that came from a downloaded archive with the
+ * quarantine attribute, which blocks the bundled yt-dlp helper from running.
+ * The app itself is not signed, so we clear the flag for our own helper.
+ */
+function clearHelperQuarantine() {
+  if (process.platform !== 'darwin') return;
+  const helper = path.join(APP_ROOT, 'yt-dlp', 'yt-dlp_macos');
+  if (!fs.existsSync(helper)) return;
+  try {
+    spawn('xattr', ['-dr', 'com.apple.quarantine', helper], { windowsHide: true });
+  } catch { /* best effort */ }
+}
+
 function logServer(msg) {
   try {
     fs.mkdirSync(app.getPath('userData'), { recursive: true });
@@ -256,6 +270,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(() => {
     // No default File/Edit/View menu bar — the app uses its own chrome.
     Menu.setApplicationMenu(null);
+    clearHelperQuarantine();
     loadPrefs();
     createWindow();
     createTray();

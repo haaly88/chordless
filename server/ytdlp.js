@@ -5,9 +5,21 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+
+/** Make sure the bundled helper can actually be executed. */
+function ensureExecutable(file) {
+  try {
+    fs.accessSync(file, fs.constants.X_OK);
+  } catch {
+    try {
+      spawnSync('chmod', ['+x', file], { stdio: 'ignore' });
+    } catch { /* best effort */ }
+  }
+}
 
 export function ytDlpCommand() {
   const candidates = [
@@ -17,7 +29,10 @@ export function ytDlpCommand() {
   ].filter(Boolean);
   for (const candidate of candidates) {
     try {
-      if (fs.existsSync(candidate)) return { cmd: candidate, prefix: [] };
+      if (fs.existsSync(candidate)) {
+        if (process.platform !== 'win32') ensureExecutable(candidate);
+        return { cmd: candidate, prefix: [] };
+      }
     } catch { /* fall through */ }
   }
   return { cmd: process.platform === 'win32' ? 'python' : 'python3', prefix: ['-m', 'yt_dlp'] };
