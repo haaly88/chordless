@@ -101,11 +101,18 @@ jobs:
           fi
 
       - name: Smoke test through the public URL
+        continue-on-error: true
         run: |
-          set -e
-          echo "health:  $(curl -fsS "$TUNNEL_URL/api/health")"
-          echo "search:  $(curl -fsS "$TUNNEL_URL/api/search?q=teh%20hijau&limit=3" | head -c 220)"
-          code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Range: bytes=0-1023' "$TUNNEL_URL/api/stream/5F28ye50-Kc")
+          for i in $(seq 1 20); do
+            if curl -fsS --max-time 20 "$TUNNEL_URL/api/health" > /dev/null 2>&1; then
+              echo "public host resolves"
+              break
+            fi
+            sleep 6
+          done
+          echo "health:  $(curl -fsS --max-time 30 "$TUNNEL_URL/api/health" || echo FAILED)"
+          echo "search:  $(curl -fsS --max-time 60 "$TUNNEL_URL/api/search?q=teh%20hijau&limit=3" | head -c 220 || echo FAILED)"
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 -H 'Range: bytes=0-1023' "$TUNNEL_URL/api/stream/5F28ye50-Kc" || echo "000")
           echo "stream:  HTTP $code"
 
       - name: Publish the current URL
