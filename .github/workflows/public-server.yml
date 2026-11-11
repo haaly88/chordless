@@ -23,10 +23,6 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: public-chordless
-  cancel-in-progress: false
-
 jobs:
   serve:
     name: Serve + tunnel
@@ -137,11 +133,40 @@ jobs:
 
       - name: Keep it alive
         run: |
-          # Stay up for the whole job window; the schedule restarts it later.
+          # Stay up for the whole job window; the schedule starts the next one.
+          publish() {
+            url=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' logs/tunnel.log | tail -n1 || true)
+            if [ -n "$url" ] && [ "$url" != "$TUNNEL_URL" ]; then
+              echo "TUNNEL_URL=$url" >> "$GITHUB_ENV"
+              mkdir -p public
+              cat > public/current-url.json <<EOF
+          {
+            "url": "$url",
+            "updated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "run": "${GITHUB_RUN_ID}"
+          }
+          EOF
+              git config user.name "chordless-bot"
+              git config user.email "bot@users.noreply.github.com"
+              git add public/current-url.json
+              git commit -m "chore: update public server url" || true
+              git push || true
+              echo "republished: $url"
+            fi
+          }
           while true; do
             sleep 300
-            curl -fsS "http://127.0.0.1:3001/api/health" > /dev/null || {
+            # server alive?
+            if ! curl -fsS --max-time 20 "http://127.0.0.1:3001/api/health" > /dev/null 2>&1; then
               echo "server died, restarting"
               nohup node server/index.js >> logs/server.log 2>&1 &
-            }
+            fi
+            # tunnel alive?
+            if ! pgrep -f "cloudflared tunnel" > /dev/null 2>&1; then
+              echo "tunnel died, restarting"
+              nohup ./cloudflared tunnel --no-autoupdate --url http://127.0.0.1:3001 \
+                >> logs/tunnel.log 2>&1 &
+              sleep 30
+              publish
+            fi
           done
