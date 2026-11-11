@@ -114,6 +114,8 @@ jobs:
           echo "search:  $(curl -fsS --max-time 60 "$TUNNEL_URL/api/search?q=teh%20hijau&limit=3" | head -c 220 || echo FAILED)"
           code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 -H 'Range: bytes=0-1023' "$TUNNEL_URL/api/stream/5F28ye50-Kc" || echo "000")
           echo "stream:  HTTP $code"
+          echo "--- server log ---"
+          tail -25 logs/server.log || true
 
       - name: Publish the current URL
         run: |
