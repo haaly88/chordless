@@ -11,7 +11,7 @@ import { translateToastTitle, translateToastSub } from './lib/i18n.js';
 import { totalDuration, formatTotalDuration } from './lib/format.js';
 import { buildForYouMix } from './lib/ai-mix.js';
 import { read, write, readString, writeString, readMigrated } from './lib/storage.js';
-import { streamSrc, qualityFromConnection, connectionSnapshot, lowerQuality } from './lib/quality.js';
+import { streamSrc, warmSrc, qualityFromConnection, connectionSnapshot, lowerQuality } from './lib/quality.js';
 import { SB_LABELS, DEFAULT_SB_CATEGORIES, sbCategories } from './lib/sb.js';
 import { uid, shuffled, sameTrack, smartShuffle } from './lib/shuffle.js';
 import { embedBridge, isEmbedEngine } from './lib/embed.js';
@@ -50,7 +50,15 @@ export function getActiveSlot() { return activeSlot; }
 let preloaded = null; // { forIndex, trackId, url, slot }
 let preloadBusy = { forIndex: null }; // guards async offline-resolve spawns
 let translateToken = 0; // guards lyric-translation races per track
-let altChain = null; // { rootId, candidates, cursor, tried } — alternate-upload chain for embed-blocked tracks
+let altChain = null; // { rootId, candidates, cursor, tried } - alternate-upload chain for embed-blocked tracks
+
+// Tracks whose stream URL is already being resolved in the background.
+const warming = new Set();
+
+// Timestamp of the last playback start — used to ignore a stale 'ended'
+// event that arrives from the media we just replaced (it would otherwise
+// advance the queue a second time and skip a song).
+let lastLoadAt = 0;
 
 let audioCtx = null;
 let analyserNode = null;
@@ -514,6 +522,34 @@ export const usePlayer = create((set, get) => ({
     return { url, useAddon, orphan, addonManifest };
   },
 
+  /**
+   * Resolve the stream URL ahead of time.
+   *
+   * The server needs a couple of seconds to turn a video id into a signed
+   * media URL. Doing that while the user hovers a row (or while the current
+   * track plays) means the play request itself is served from the cache and
+   * the audio starts immediately.
+   */
+  _warmTrack(track) {
+    if (!track?.id || track.isAddon) return;
+    if (warming.has(track.id)) return;
+    warming.add(track.id);
+    const url = warmSrc(track.id, get().effectiveYtQuality || get().settings?.ytQuality || 'high');
+    const done = () => warming.delete(track.id);
+    fetch(url, { cache: 'no-store' }).then(done, done);
+  },
+
+  /** Warm the track that will play next so "next" is instant. */
+  _warmNextTrack() {
+    const { queue, index, repeat } = get();
+    if (!queue.length) return;
+    if (repeat === 'one') return;
+    const nextIndex = index + 1 < queue.length ? index + 1 : (repeat === 'all' ? 0 : -1);
+    if (nextIndex < 0) return;
+    const track = queue[nextIndex];
+    if (track) get()._warmTrack(track);
+  },
+
   // Silence BOTH engines — stream <audio> and the embed iframe. Without
   // this, switching engines mid-playback leaves the old engine audible.
   _stopBothEngines() {
@@ -530,6 +566,10 @@ export const usePlayer = create((set, get) => ({
     }
     const track = list[index];
     if (!track) return;
+
+    // Mark the load so a late 'ended' event from the previous media (which
+    // fires after we swapped the src) cannot advance the queue again.
+    lastLoadAt = Date.now();
 
     // Invalidate any pending fade transition and reset audio completely
     transitionToken += 1;
@@ -626,6 +666,8 @@ export const usePlayer = create((set, get) => ({
     get()._togetherPushState?.();
     get()._togetherPushPresence?.();
     get()._notifyNowPlaying?.(track);
+    // Resolve the next track's stream in the background so "next" is instant.
+    get()._warmNextTrack();
   },
 
   // ---------- For You AI Mix ----------
@@ -2148,6 +2190,10 @@ export const usePlayer = create((set, get) => ({
   },
   handleEnded(e) {
     if (e?.target && e.target !== activeAudio()) return;
+    // A track that just started replaces the previous media; the browser can
+    // still deliver the old media's 'ended' event. Ignoring it prevents the
+    // queue from skipping a song.
+    if (Date.now() - lastLoadAt < 1500) return;
     const { sleepTimer } = get();
     if (sleepTimer === 'track') {
       get()._stopBothEngines();

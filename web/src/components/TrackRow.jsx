@@ -20,11 +20,15 @@ function TrackRow({ track, index, contextList, playlistId, showArt = true }) {
   const chapterCount = usePlayer((s) => (active && s.chaptersFor === track.id ? s.chapters.length : 0));
 
   const handlePlay = () => (active ? togglePlay() : playTrack(track, contextList));
+  // Resolving a stream URL takes a moment — do it while the pointer is on the
+  // row so the click starts playing right away.
+  const warm = usePlayer((s) => s._warmTrack);
 
   return (
     <div
       className={`track-row${active ? ' active' : ''}`}
       onDoubleClick={handlePlay}
+      onPointerEnter={() => warm(track)}
       onContextMenu={(e) => {
         e.preventDefault();
         openMenu({ x: e.clientX, y: e.clientY, track, contextList, playlistId });

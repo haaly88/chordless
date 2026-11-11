@@ -126,60 +126,13 @@ fun NowPlayingScreen(
     val activeLine = syncedLines.getOrNull(activeIdx)?.second.orEmpty()
 
     // --- Full-bleed artwork backdrop with palette wash ---
-    val backdropRes = remember(t?.id) {
-        val index = ((t?.id?.hashCode() ?: 0) % 8 + 8) % 8 + 1
-        when (index) {
-            1 -> R.drawable.backdrop_1
-            2 -> R.drawable.backdrop_2
-            3 -> R.drawable.backdrop_3
-            4 -> R.drawable.backdrop_4
-            5 -> R.drawable.backdrop_5
-            6 -> R.drawable.backdrop_6
-            7 -> R.drawable.backdrop_7
-            else -> R.drawable.backdrop_8
-        }
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        (palette?.dominant ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.45f),
-                        MaterialTheme.colorScheme.background,
-                    )
-                )
-            )
-    ) {
-        Image(
-            painter = painterResource(backdropRes),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            alpha = 0.55f,
-        )
-        if (!t?.thumbnail.isNullOrBlank()) {
-            AsyncImage(
-                model = t?.thumbnail,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                alpha = 0.28f,
-            )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Transparent,
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.92f),
-                        )
-                    )
-                )
-        )
-    }
+    // Kept in its own composable so the position ticks do not re-render the
+    // (expensive) blurred artwork on every update.
+    NowPlayingBackdrop(
+        track = t,
+        palette = palette,
+        modifier = Modifier.fillMaxSize(),
+    )
 
     Column(
         modifier = Modifier
@@ -464,3 +417,66 @@ fun NowPlayingScreen(
 
 private fun formatSpeed(v: Float): String =
     if (v == v.toInt().toFloat()) "${v.toInt()}x" else "${v}x"
+/**
+ * Immersive backdrop for the Now Playing screen: a bundled gradient artwork
+ * plus the track cover, washed with the palette colour.
+ */
+@Composable
+private fun NowPlayingBackdrop(
+    track: Track?,
+    palette: ArtworkPalette.Colors?,
+    modifier: Modifier = Modifier,
+) {
+    val backdropRes = remember(track?.id) {
+        val index = ((track?.id?.hashCode() ?: 0) % 8 + 8) % 8 + 1
+        when (index) {
+            1 -> R.drawable.backdrop_1
+            2 -> R.drawable.backdrop_2
+            3 -> R.drawable.backdrop_3
+            4 -> R.drawable.backdrop_4
+            5 -> R.drawable.backdrop_5
+            6 -> R.drawable.backdrop_6
+            7 -> R.drawable.backdrop_7
+            else -> R.drawable.backdrop_8
+        }
+    }
+    Box(
+        modifier = modifier.background(
+            Brush.verticalGradient(
+                listOf(
+                    (palette?.dominant ?: MaterialTheme.colorScheme.primary).copy(alpha = 0.45f),
+                    MaterialTheme.colorScheme.background,
+                )
+            )
+        )
+    ) {
+        Image(
+            painter = painterResource(backdropRes),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            alpha = 0.55f,
+        )
+        if (!track?.thumbnail.isNullOrBlank()) {
+            AsyncImage(
+                model = track.thumbnail,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                alpha = 0.28f,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Transparent,
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.92f),
+                        )
+                    )
+                )
+        )
+    }
+}

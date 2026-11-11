@@ -120,6 +120,7 @@ function Shelf({ title, icon, items, onPlayAll }) {
   const rowRef = useRef(null);
   const playTrack = usePlayer((s) => s.playTrack);
   const setView = usePlayer((s) => s.setView);
+  const warmTrack = usePlayer((s) => s._warmTrack);
   const lang = usePlayer((s) => s.settings.lang || 'en');
   const activeId = usePlayer((s) => (s.index >= 0 ? s.queue[s.index]?.id : null));
   const isPlaying = usePlayer((s) => s.isPlaying);
@@ -150,6 +151,7 @@ function Shelf({ title, icon, items, onPlayAll }) {
           return (
           <button key={track.id} className="shelf-card" onClick={onClick}
                   aria-label={`${isEntity ? 'Open' : 'Play'} ${track.title}`}
+                  onPointerEnter={() => { if (!isEntity) warmTrack(track); }}
                   onMouseMove={(e) => {
                     const el = e.currentTarget;
                     const rect = el.getBoundingClientRect();

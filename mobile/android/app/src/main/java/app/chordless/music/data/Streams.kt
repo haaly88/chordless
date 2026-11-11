@@ -73,13 +73,15 @@ object Streams {
      * they were resolved a minute ago, so the player keeps several candidates
      * around and walks through them when a stream fails.
      */
-    suspend fun resolveCandidates(videoId: String, max: Int = 4): List<Resolved> =
+    suspend fun resolveCandidates(videoId: String, max: Int = 6, force: Boolean = false): List<Resolved> =
         withContext(Dispatchers.IO) {
             ensureInit()
-            mutex.withLock {
-                cache[videoId]?.let { (resolved, at) ->
-                    if (System.currentTimeMillis() - at < 3 * 3_600_000L) {
-                        return@withContext listOf(resolved)
+            if (!force) {
+                mutex.withLock {
+                    cache[videoId]?.let { (resolved, at) ->
+                        if (System.currentTimeMillis() - at < 3 * 3_600_000L) {
+                            return@withContext listOf(resolved)
+                        }
                     }
                 }
             }
@@ -91,11 +93,11 @@ object Streams {
                 }
 
             val audioStreams: List<AudioStream> = info.audioStreams ?: emptyList()
+            val videoStreams: List<VideoStream> = info.videoStreams ?: emptyList()
             val candidates = mutableListOf<Resolved>()
 
+            // 1) Audio-only renditions first (smallest payload), best first.
             if (audioStreams.isNotEmpty()) {
-                // Highest bitrate first, then a spread of lower ones so a
-                // rejected URL always has a fallback with a different format.
                 val sorted = audioStreams.sortedByDescending { it.averageBitrate }
                 sorted.forEach { stream ->
                     val url = stream.url ?: return@forEach
@@ -105,20 +107,23 @@ object Streams {
                         bitrate = stream.averageBitrate,
                     )
                 }
-            } else {
-                // No audio-only rendition (live streams, some uploads): fall back
-                // to the smallest video stream, which still carries the audio.
-                val videos: List<VideoStream> = info.videoStreams ?: emptyList()
-                val fallback = videos.minByOrNull { it.bitrate } ?: videos.firstOrNull()
-                val url = fallback?.url
-                if (!url.isNullOrBlank()) {
+            }
+
+            // 2) Muxed (video + audio) renditions as fallbacks: YouTube rejects
+            //    audio-only URLs without a proof-of-origin token, while the
+            //    muxed ones are served happily. Smallest first — we only need
+            //    the audio track.
+            videoStreams
+                .filter { it.bitrate > 0 }
+                .sortedBy { it.bitrate }
+                .forEach { stream ->
+                    val url = stream.url ?: return@forEach
                     candidates += Resolved(
                         url = url,
-                        mime = fallback.format?.mimeType ?: "",
-                        bitrate = fallback.bitrate,
+                        mime = stream.format?.mimeType ?: "",
+                        bitrate = stream.bitrate,
                     )
                 }
-            }
 
             if (candidates.isEmpty()) throw IllegalStateException("No audio streams for $videoId")
             val unique = candidates.distinctBy { it.url }.take(max)

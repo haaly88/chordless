@@ -22,6 +22,18 @@ export function streamSrc(id, qualityOverride) {
   return `${base}/api/stream/${id}${qs}`;
 }
 
+/**
+ * Warm-up URL: asks the server to resolve the stream ahead of time.
+ *
+ * Resolving a signed media URL takes a couple of seconds; doing it while the
+ * user hovers a row (or while the current track plays) means the actual play
+ * request is served from the cache and starts instantly.
+ */
+export function warmSrc(id, qualityOverride) {
+  const base = streamSrc(id, qualityOverride);
+  return `${base}${base.includes('?') ? '&' : '?'}warm=1`;
+}
+
 /* ---------- network-adaptive quality ---------- */
 const Q_ORDER = { high: 3, medium: 2, low: 1 };
 const Q_NAME = { 3: 'high', 2: 'medium', 1: 'low' };

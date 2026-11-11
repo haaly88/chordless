@@ -101,6 +101,9 @@ object PlayerManager {
     /** Index of the candidate currently in use. */
     private var streamCandidateIndex: Int = 0
 
+    /** When the current item entered the BUFFERING state (0 = not buffering). */
+    private var bufferingSince: Long = 0L
+
     /**
      * Crossfade via volume ramp: fades out during the last N ms of a track and
      * fades in during the first N ms of the next one. Media3 has no native
@@ -137,6 +140,19 @@ object PlayerManager {
         player = ExoPlayer.Builder(app)
             .setSeekBackIncrementMs(10_000)
             .setSeekForwardIncrementMs(10_000)
+            // Generous time-based buffering: short-lived stalls are far more
+            // annoying than a slightly larger download.
+            .setLoadControl(
+                androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                    .setBufferDurationsMs(
+                        30_000,   // min buffer
+                        180_000,  // max buffer
+                        1_500,    // buffer before starting playback
+                        3_000,    // buffer after a rebuffer
+                    )
+                    .setPrioritizeTimeOverSizeThresholds(true)
+                    .build(),
+            )
             .build()
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -162,9 +178,17 @@ object PlayerManager {
         })
         // ticker: position + sleep countdown + sponsor skip
         scope.launch {
+            var lastPublish = 0L
             while (true) {
                 delay(250)
-                if (::player.isInitialized) _positionMs.value = player.currentPosition
+                // Publish the position at ~2.5 Hz. Every update re-composes the
+                // Now Playing screen, and a 4 Hz tick makes the UI stutter on
+                // mid-range phones.
+                val now = System.currentTimeMillis()
+                if (now - lastPublish >= 400) {
+                    lastPublish = now
+                    if (::player.isInitialized) _positionMs.value = player.currentPosition
+                }
                 updateCrossfade()
                 val endsAt = _sleepEndsAt.value
                 if (endsAt != null && endsAt > 0) {
@@ -179,6 +203,22 @@ object PlayerManager {
                     val pos = player.currentPosition
                     val seg = segments.firstOrNull { pos >= it.first && pos < it.second }
                     if (seg != null) player.seekTo(seg.second)
+                }
+
+                // Watchdog: a stream that stays stuck in BUFFERING for too
+                // long has an expired/limited URL — resolve a fresh one and
+                // resume at the same position instead of stalling forever.
+                if (::player.isInitialized) {
+                    val state = player.playbackState
+                    if (state == androidx.media3.common.Player.STATE_BUFFERING) {
+                        if (bufferingSince == 0L) bufferingSince = now
+                        else if (now - bufferingSince > 8_000) {
+                            bufferingSince = 0L
+                            refreshStalledStream()
+                        }
+                    } else {
+                        bufferingSince = 0L
+                    }
                 }
             }
         }
@@ -300,11 +340,51 @@ object PlayerManager {
     }
 
     /**
+     * Re-resolve the current track with a fresh URL and resume playback at the
+     * same position. Used when a stream gets stuck buffering.
+     */
+    private fun refreshStalledStream() {
+        val track = _current.value ?: return
+        val position = player.currentPosition
+        scope.launch(Dispatchers.IO) {
+            try {
+                val candidates = app.chordless.music.data.Streams.resolveCandidates(
+                    track.id,
+                    max = 6,
+                    force = true,
+                )
+                withContext(Dispatchers.Main) {
+                    streamCandidates = candidates
+                    streamCandidateIndex = 0
+                    currentFormat = listOf(
+                        candidates[0].mime.ifBlank { null },
+                        candidates[0].bitrate.takeIf { it > 0 }?.let { "$it kbps" },
+                    ).filterNotNull().joinToString(" · ")
+                    player.setMediaItem(
+                        MediaItem.Builder()
+                            .setUri(candidates[0].url)
+                            .setMediaId(track.id)
+                            .build(),
+                    )
+                    player.prepare()
+                    if (position > 0) player.seekTo(position)
+                    player.play()
+                    _loading.value = false
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    _loading.value = false
+                    _error.value = "Stream stalled: ${e.message}"
+                }
+            }
+        }
+    }
+
+    /**
      * A signed media URL can be rejected by YouTube even seconds after it was
      * resolved. Walk to the next candidate instead of giving up.
      */
-    private fun retryWithNextStream(error: PlaybackException) {
-        val next = streamCandidateIndex + 1
+    private fun retryWithNextStream(error: PlaybackException) {        val next = streamCandidateIndex + 1
         if (next < streamCandidates.size) {
             streamCandidateIndex = next
             _loading.value = true
