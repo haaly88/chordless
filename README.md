@@ -34,7 +34,7 @@ How it works (nothing runs on anybody's personal machine):
 |---|---|---|
 | **Hugging Face Space** (Docker) | free, no card | 2 vCPU / 16 GB, always on. New Space → Docker → port `3001` → paste the YAML header from `public/index.html` into the Space README |
 | **Docker** | free on any free host | `docker run -d -p 3001:3001 ghcr.io/haaly88/chordless:latest` |
-| **Render** | free tier | one click via `render.yaml` (asks for a card on some accounts) |
+| **Render** | free tier | one click: [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/haaly88/chordless) — uses `render.yaml` (asks for a card on some accounts) |
 | **Fly.io / Railway / Koyeb / VPS** | free tier or cheap | `fly.toml` and `Procfile` are included |
 | **Own machine** | free | `npm run serve` → http://0.0.0.0:3001 |
 
