@@ -203,7 +203,12 @@ async function resolveCandidate(id, pref, quality, skipClients = new Set()) {
   for (let i = 0; i < clients.length; i += 2) {
     const group = clients.slice(i, i + 2);
     const attempts = group.map((client) =>
-      runYtDlp(id, client, quality).then((info) => ({ ...info, client })),
+      runYtDlp(id, client, quality)
+        .then((info) => ({ ...info, client }))
+        .catch((e) => {
+          console.warn('[stream] %s failed for %s — %s', client, id, String(e.message || e).slice(0, 220));
+          throw e;
+        }),
     );
     try {
       return await Promise.any(attempts);
@@ -215,8 +220,8 @@ async function resolveCandidate(id, pref, quality, skipClients = new Set()) {
     const { resolveWithYoutubei } = await import('./streamFallback.js');
     const info = await resolveWithYoutubei(id, quality);
     if (info?.url) return { ...info, client: 'youtubei' };
-  } catch {
-    /* no fallback available */
+  } catch (e) {
+    console.warn('[stream] youtubei failed for %s — %s', id, String(e.message || e).slice(0, 220));
   }
   throw new Error('Could not resolve a playable stream');
 }

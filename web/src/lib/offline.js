@@ -68,7 +68,12 @@ export async function getOfflineUrl(id) {
 export async function saveOffline(track, url) {
   if (!track?.id || !url) throw new Error('Cannot download this track.');
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Download failed (HTTP ${res.status}).`);
+  if (!res.ok) {
+    if (res.status === 502 || res.status === 503 || res.status === 504) {
+      throw new Error('The server cannot reach YouTube right now, so the audio could not be fetched. Use the desktop app or a self-hosted server for offline downloads.');
+    }
+    throw new Error(`Download failed (HTTP ${res.status}).`);
+  }
   const blob = await res.blob();
   if (!blob.size) throw new Error('Downloaded an empty file.');
   const rec = {
