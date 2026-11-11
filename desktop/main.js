@@ -144,7 +144,11 @@ async function startServer() {
     logServer(`starting server on port ${port}`);
     const proc = await spawnServer(port);
     if (!proc) continue;
-    if (await waitHealth(port, 12000)) {
+    // Do not wait for the full health timeout when the child dies right away
+    // (for example because the port is still held by an old process).
+    const died = new Promise((resolve) => proc.once('exit', () => resolve(true)));
+    const healthy = await Promise.race([waitHealth(port, 12000), died.then(() => false)]);
+    if (healthy) {
       activePort = port;
       return true;
     }
@@ -197,6 +201,24 @@ function createWindow() {
     if (!win) return;
     win.loadURL(`http://${HOST}:${activePort}/`);
   };
+
+  // Shown when the bundled server could not be started — a friendly retry
+  // screen beats Electron's "ERR_CONNECTION_REFUSED" page.
+  const loadErrorPage = (message) => {
+    if (!win) return;
+    const html = `<!doctype html><html><head><meta charset="utf-8">
+      <title>Chordless</title><style>
+      body{margin:0;height:100vh;display:grid;place-items:center;background:#0b0b0e;color:#f4f4f7;
+        font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-align:center}
+      .card{max-width:420px;padding:28px 30px;border-radius:20px;background:#141418;border:1px solid #26262e}
+      h1{font-size:19px;margin:0 0 10px}p{font-size:13.5px;line-height:1.55;color:#a3a3ad;margin:0 0 18px}
+      button{appearance:none;border:0;border-radius:999px;padding:10px 20px;font-size:13px;font-weight:700;
+        background:#fc3c44;color:#fff;cursor:pointer}
+      </style></head><body><div class="card">
+      <h1>Chordless could not start its server</h1><p>${String(message).replace(/[<>&]/g, '')}</p>
+      <button onclick="location.reload()">Try again</button></div></body></html>`;
+    win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+  };
   // External links (license pages, etc.) open in the system browser.
   // Allow any 127.0.0.1 port (the active port is only known after the
   // async server spawn; the default is BASE_PORT before that).
@@ -220,7 +242,8 @@ function createWindow() {
   // is healthy (or after a short deadline so the user still sees the UI).
   startServer().then((ok) => {
     logServer(`server ready: ${ok} on port ${activePort}`);
-    loadPage();
+    if (ok) loadPage();
+    else loadErrorPage('The local server did not start. Check that port ' + activePort + ' is free and try again.');
   });
 }
 

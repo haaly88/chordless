@@ -491,6 +491,20 @@ export default function App() {
           {t(lang, 'app.offlineBanner')}
         </div>
       )}
+      {update && (
+        <div className="update-banner" role="status">
+          <div className="update-banner-text">
+            <strong>{t(lang, 'app.updateBanner')}</strong>
+            <span>Chordless {update.version}</span>
+          </div>
+          <a className="btn primary update-banner-cta" href={update.url} target="_blank" rel="noreferrer">
+            {t(lang, 'app.updateDownload')}
+          </a>
+          <button className="update-banner-close" onClick={() => setUpdate(null)} aria-label={t(lang, 'app.updateDismiss')} title={t(lang, 'app.updateDismiss')}>
+            ×
+          </button>
+        </div>
+      )}
       <main className="main" key={view?.name + (view?.id || '')} ref={mainRef}>
         <ViewErrorBoundary>
           <Suspense fallback={<div className="skel-view" aria-busy="true" aria-label="Loading view"><div className="skel skel-hero" /><div className="skel skel-row" /><div className="skel skel-row" /><div className="skel skel-row" /><div className="skel skel-row" /></div>}>{mainView}</Suspense>

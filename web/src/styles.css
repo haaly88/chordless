@@ -2011,3 +2011,55 @@ img { user-select: none; -webkit-user-drag: none; }
   .main { padding-top: 18px; padding-bottom: calc(var(--player-h) + 20px); }
   .pb-art { width: 48px; height: 48px; }
 }
+
+/* ---------- update notifier banner ---------- */
+.update-banner {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 16px;
+  border-radius: 16px;
+  background: var(--panel-strong);
+  border: 1px solid var(--stroke-strong);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .45);
+  color: var(--text);
+  animation: update-banner-in .28s ease;
+}
+.update-banner-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.update-banner-text strong { font-size: 13px; font-weight: 800; }
+.update-banner-text span { font-size: 11.5px; color: var(--text-dim); }
+.update-banner-cta {
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.update-banner-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+.update-banner-close:hover { color: var(--text); background: var(--hover, rgba(255, 255, 255, .06)); }
+@keyframes update-banner-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 720px) {
+  .update-banner { left: 12px; right: 12px; top: 10px; }
+}
