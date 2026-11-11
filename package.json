@@ -10,6 +10,7 @@
     "dev": "concurrently -n server,web -c magenta,cyan \"npm:dev:server\" \"npm:dev:web\"",
     "build": "npm --prefix web run build",
     "start": "cross-env NODE_ENV=production node server/index.js",
+    "serve": "cross-env NODE_ENV=production HOST=0.0.0.0 node server/index.js",
     "setup": "npm --prefix web install && pip install -U yt-dlp"
   },
   "dependencies": {

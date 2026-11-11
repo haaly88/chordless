@@ -4,6 +4,72 @@ An aesthetic, ad-free **YouTube Music web client** for the browser — audio onl
 
 Plays music straight from YouTube Music (search, home feed, album/track pages), with **line-synced lyrics from [LRCLIB](https://lrclib.net)**, a real-time visualizer, dynamic artwork-driven theming and a full library system — all stored locally in your browser.
 
+---
+
+## 🌐 Public URL (100% gratis)
+
+The web app is a single Node server (UI + API + stream proxy), so it runs fine on any
+container host. Three ways to get a public URL — **all free, no card needed**:
+
+### 1) Hugging Face Space — free, no card (recommended)
+
+1. Create a free account at [huggingface.co](https://huggingface.co)
+2. **New Space → Docker** → give it a name → in *Space* config set the port to `3001`
+3. *(optional)* Under **Files → README.md** paste this instead of the template body:
+
+   ```yaml
+   ---
+   title: Chordless
+   emoji: 🎵
+   colorFrom: red
+   colorTo: black
+   sdk: docker
+   app_port: 3001
+   pinned: false
+   ---
+   ```
+
+4. **Settings → Variables and secrets → New variable** → add
+   `CHORDLESS_USER` and `CHORDLESS_PASS` to protect the URL with a login prompt
+   (optional but recommended for a public URL)
+5. **Restart the Space**
+
+Your URL: `https://<your-space-name>.hf.space` — live 24/7, no credit card, free tier
+(2 vCPU / 16 GB).
+
+### 2) Render — one click
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/haaly88/chordless)
+
+Uses [`render.yaml`](render.yaml) (Docker image, health check on `/api/health`).
+Set `CHORDLESS_USER` / `CHORDLESS_PASS` in the dashboard to put a login prompt in front.
+
+### 3) Any container host
+
+The repo publishes a ready-to-run image to GitHub Container Registry:
+
+```bash
+docker run -d -p 3001:3001 --name chordless ghcr.io/haaly88/chordless:latest
+```
+
+Works as-is on Fly.io, Railway, Koyeb, Repli, or any VPS. `fly.toml` is included.
+
+### Local / own server
+
+```bash
+npm install && npm --prefix web install && npm run build
+npm run serve          # http://0.0.0.0:3001
+```
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `HOST` | `127.0.0.1` | bind address (`0.0.0.0` in containers) |
+| `PORT` | `3001` | port |
+| `CHORDLESS_USER` / `CHORDLESS_PASS` | – | enable HTTP basic auth |
+| `YT_DLP_BIN` | – | path to a custom yt-dlp binary |
+
+---
+
 ## Features
 
 - **Search & home feed** straight from YouTube Music (Songs / Videos filter, trending chips, mood/genre chips, "Quick picks", "Recently played", region-aware charts via `gl/hl`)

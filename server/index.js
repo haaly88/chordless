@@ -23,7 +23,26 @@ const isProd = process.env.NODE_ENV === 'production';
 const app = express();
 app.disable('x-powered-by');
 app.set('etag', false); // dynamic API — never 304 against a stale browser cache
+// Behind a reverse proxy (Fly, Render, Cloudflare) the client IP is in
+// X-Forwarded-For — without this the rate limiter would count everyone as
+// the proxy.
+app.set('trust proxy', true);
 app.use(express.json({ limit: '100kb' }));
+
+// Optional HTTP basic auth — set CHORDLESS_USER / CHORDLESS_PASS to keep a
+// public deployment private.
+const AUTH_USER = String(process.env.CHORDLESS_USER || '');
+const AUTH_PASS = String(process.env.CHORDLESS_PASS || '');
+if (AUTH_USER && AUTH_PASS) {
+  app.use((req, res, next) => {
+    const header = String(req.headers.authorization || '');
+    const expected = `Basic ${Buffer.from(`${AUTH_USER}:${AUTH_PASS}`).toString('base64')}`;
+    if (header === expected) return next();
+    res.setHeader('WWW-Authenticate', 'Basic realm="Chordless", charset="UTF-8"');
+    res.status(401).send('Authentication required');
+  });
+}
+
 // never let API responses be cached by the browser
 app.use('/api', (_req, res, next) => {
   res.set('Cache-Control', 'no-store');

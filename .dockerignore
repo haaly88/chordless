@@ -1,0 +1,11 @@
+node_modules
+**/node_modules
+web/dist
+desktop
+mobile
+test-build-*
+test-build-win*
+test-build-mac*
+.git
+.github
+*.log

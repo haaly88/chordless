@@ -1,14 +1,12 @@
-# Chordless — one-click public deployment (Render free tier).
-# Deploy from https://dashboard.render.com/blueprint — it reads this file.
-# The Android app then points to this URL in Settings → General → Backend server.
-
+# Render Blueprint — one click deploy of the Chordless web app.
+# The deploy button in the README points here.
 services:
   - type: web
     name: chordless
-    runtime: node
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     plan: free
-    buildCommand: npm ci --prefix web && npm run build
-    startCommand: HOST=0.0.0.0 node server/index.js
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
@@ -16,7 +14,11 @@ services:
         value: production
       - key: HOST
         value: 0.0.0.0
-      - key: YT_HL
-        value: en
-      - key: YT_GL
-        value: ID
+      - key: PORT
+        value: 3001
+      # Optional: protect the public URL with HTTP basic auth.
+      # Set CHORDLESS_USER / CHORDLESS_PASS as secret env vars in the dashboard.
+      - key: CHORDLESS_USER
+        sync: false
+      - key: CHORDLESS_PASS
+        sync: false

@@ -26,6 +26,9 @@ export function ytDlpCommand() {
     process.env.YT_DLP_BIN,
     path.join(here, '..', 'yt-dlp', process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp_macos'),
     path.join(here, '..', 'yt-dlp', process.platform === 'win32' ? 'yt-dlp' : 'yt-dlp'),
+    // Container images install yt-dlp as a python package.
+    '/usr/local/bin/yt-dlp',
+    '/usr/bin/yt-dlp',
   ].filter(Boolean);
   for (const candidate of candidates) {
     try {
