@@ -35,7 +35,6 @@ jobs:
     env:
       PORT: '3001'
       HOST: '0.0.0.0'
-      NODE_ENV: production
     steps:
       - uses: actions/checkout@v4
 
@@ -47,7 +46,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000
-          npm ci --prefix web --fetch-retries=5 --fetch-retry-mintimeout=20000
+          npm ci --prefix web --include=dev --fetch-retries=5 --fetch-retry-mintimeout=20000
 
       - name: Build the web UI
         run: npm run build
@@ -59,6 +58,8 @@ jobs:
           ~/.local/bin/yt-dlp --version || yt-dlp --version
 
       - name: Start the server
+        env:
+          NODE_ENV: production
         run: |
           mkdir -p logs
           nohup node server/index.js > logs/server.log 2>&1 &
