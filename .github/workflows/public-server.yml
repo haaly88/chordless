@@ -1,0 +1,136 @@
+name: Public Chordless server
+
+# Runs the Chordless web app (UI + API + stream proxy) on a GitHub runner and
+# publishes it through a Cloudflare quick tunnel. Nothing runs on the owner's
+# machine — the runner lives in GitHub's cloud and the minutes are free for
+# public repositories.
+#
+# The current public URL is written to public/current-url.json, which the
+# GitHub Pages site redirects to — so there is always one stable link:
+#   https://haaly88.github.io/chordless/
+
+on:
+  schedule:
+    # every 5 hours (the job itself can run up to ~5.8 hours)
+    - cron: '17 */5 * * *'
+  workflow_dispatch:
+    inputs:
+      test_only:
+        description: 'Only resolve a stream and report the result'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: public-chordless
+  cancel-in-progress: false
+
+jobs:
+  serve:
+    name: Serve + tunnel
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      PORT: '3001'
+      HOST: '0.0.0.0'
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000
+          npm ci --prefix web --fetch-retries=5 --fetch-retry-mintimeout=20000
+
+      - name: Build the web UI
+        run: npm run build
+
+      - name: Install yt-dlp
+        run: |
+          python3 -m pip install --user --upgrade "yt-dlp==2026.10.26" || \
+            pip3 install --break-system-packages --upgrade "yt-dlp==2026.10.26"
+          ~/.local/bin/yt-dlp --version || yt-dlp --version
+
+      - name: Start the server
+        run: |
+          mkdir -p logs
+          nohup node server/index.js > logs/server.log 2>&1 &
+          echo $! > logs/server.pid
+          for i in $(seq 1 40); do
+            if curl -fsS "http://127.0.0.1:3001/api/health" > /dev/null; then
+              echo "server is up"
+              curl -fsS "http://127.0.0.1:3001/api/health"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "server did not start"
+          tail -40 logs/server.log
+          exit 1
+
+      - name: Start the Cloudflare tunnel
+        run: |
+          curl -L --fail --retry 5 -o cloudflared \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x cloudflared
+          nohup ./cloudflared tunnel --no-autoupdate --url http://127.0.0.1:3001 \
+            > logs/tunnel.log 2>&1 &
+          echo $! > logs/tunnel.pid
+          for i in $(seq 1 60); do
+            url=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' logs/tunnel.log | head -n1 || true)
+            if [ -n "$url" ]; then
+              echo "TUNNEL_URL=$url" >> "$GITHUB_ENV"
+              echo "public url: $url"
+              break
+            fi
+            sleep 2
+          done
+          if [ -z "${TUNNEL_URL:-}" ]; then
+            echo "tunnel did not come up"
+            tail -40 logs/tunnel.log
+            exit 1
+          fi
+
+      - name: Smoke test through the public URL
+        run: |
+          set -e
+          echo "health:  $(curl -fsS "$TUNNEL_URL/api/health")"
+          echo "search:  $(curl -fsS "$TUNNEL_URL/api/search?q=teh%20hijau&limit=3" | head -c 220)"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Range: bytes=0-1023' "$TUNNEL_URL/api/stream/5F28ye50-Kc")
+          echo "stream:  HTTP $code"
+
+      - name: Publish the current URL
+        run: |
+          mkdir -p public
+          cat > public/current-url.json <<EOF
+          {
+            "url": "$TUNNEL_URL",
+            "updated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "run": "${GITHUB_RUN_ID}"
+          }
+          EOF
+          git config user.name "chordless-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add public/current-url.json
+          git commit -m "chore: update public server url" || true
+          git push || true
+          echo "### Chordless is live" >> "$GITHUB_STEP_SUMMARY"
+          echo "$TUNNEL_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep it alive
+        run: |
+          # Stay up for the whole job window; the schedule restarts it later.
+          while true; do
+            sleep 300
+            curl -fsS "http://127.0.0.1:3001/api/health" > /dev/null || {
+              echo "server died, restarting"
+              nohup node server/index.js >> logs/server.log 2>&1 &
+            }
+          done

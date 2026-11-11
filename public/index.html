@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chordless</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      background: #0b0b0e; color: #f4f4f7;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .card { text-align: center; padding: 32px; max-width: 460px; }
+    h1 { font-size: 30px; margin: 0 0 10px; letter-spacing: -.5px; }
+    p { color: #a3a3ad; font-size: 14px; line-height: 1.6; margin: 0 0 18px; }
+    a.btn {
+      display: inline-block; padding: 11px 22px; border-radius: 999px;
+      background: #fc3c44; color: #fff; text-decoration: none; font-weight: 700; font-size: 14px;
+    }
+    a.btn:hover { filter: brightness(1.08); }
+    code { color: #8b8b95; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎵 Chordless</h1>
+    <p>Mengalihkan ke server Chordless yang sedang aktif…</p>
+    <p><a class="btn" id="go" href="#">Buka Chordless</a></p>
+    <p><code id="raw"></code></p>
+  </div>
+  <script>
+    const link = document.getElementById('go');
+    fetch('current-url.json', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d || !d.url) throw new Error('no url');
+        link.href = d.url + (location.hash || '');
+        document.getElementById('raw').textContent = d.url + ' · ' + (d.updated || '');
+        location.replace(d.url + (location.hash || ''));
+      })
+      .catch(() => {
+        document.getElementById('raw').textContent = 'server belum siap — coba beberapa saat lagi';
+      });
+  </script>
+</body>
+</html>
