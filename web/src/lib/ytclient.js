@@ -81,6 +81,15 @@ export function parseDurationText(text) {
   return Number(m[2]) * 60 + Number(m[3]);
 }
 
+/** Duration from run texts — takes the last time-like token ("… • 3:31"). */
+export function parseDurationFromParts(parts) {
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const value = parseDurationText(parts[i]);
+    if (value > 0) return value;
+  }
+  return 0;
+}
+
 function classify(subtitle) {
   const s = (subtitle || '').trim();
   if (/^song/i.test(s)) return 'song';
@@ -177,7 +186,8 @@ function parseCardShelf(card) {
     title: runsText(r?.title?.runs) || 'Unknown title',
     artist: artistFromSubtitle(subtitle),
     kind,
-    duration: 0,
+    // Card subtitles carry the runtime as their last segment ("… • 3:31").
+    duration: parseDurationFromParts(subtitle.split('•').map((s) => s.trim())),
     thumbnail: bestThumb(r?.thumbnail?.thumbnails || r?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails),
   };
 }

@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { searchMusic, homeShelves, getPlaylist, getCharts, getArtist, getAlbum, normalizeLocale } from './innertube.js';
+import { searchMusic, homeShelves, getPlaylist, getCharts, getArtist, getAlbum, normalizeLocale, fetchDuration, enrichDurations } from './innertube.js';
 import { getSegments, DEFAULT_CATEGORIES } from './sponsorblock.js';
 import { isValidVideoId, streamAudio, ytDlpAvailable, pipeUpstream } from './stream.js';
 import { getManifest, searchAddon, resolveAddonStream, testAddon, normalizeBase } from './addon.js';
@@ -75,6 +75,7 @@ app.get('/api/search', async (req, res) => {
   const locale = normalizeLocale(req.query.gl, req.query.hl);
   try {
     const results = await searchMusic(q, limit, locale);
+    await enrichDurations(results, locale);
     res.json({ results });
   } catch (e) {
     console.error('[search]', e.message);
@@ -82,10 +83,27 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
+/** Runtime of a single track (seconds) — used to fill gaps in cached lists. */
+app.get('/api/duration/:id', async (req, res) => {
+  const id = String(req.params.id || '');
+  if (!isValidVideoId(id)) return res.status(400).json({ error: 'Invalid video id' });
+  const locale = normalizeLocale(req.query.gl, req.query.hl);
+  try {
+    const seconds = await fetchDuration(id, locale);
+    res.json({ id, duration: seconds });
+  } catch (e) {
+    console.error('[duration]', e.message);
+    res.status(502).json({ error: 'Failed to read the track duration.' });
+  }
+});
+
 app.get('/api/home', async (req, res) => {
   const locale = normalizeLocale(req.query.gl, req.query.hl);
   try {
     const result = await homeShelves(locale.gl, locale.hl);
+    for (const shelf of result.shelves || []) {
+      await enrichDurations(shelf.items, locale, 8);
+    }
     res.json({ ...result, gl: locale.gl, hl: locale.hl });
   } catch (e) {
     console.error('[home]', e.message);
@@ -97,6 +115,9 @@ app.get('/api/charts', async (req, res) => {
   const locale = normalizeLocale(req.query.gl, req.query.hl);
   try {
     const shelves = await getCharts(locale.gl, locale.hl);
+    for (const shelf of shelves || []) {
+      await enrichDurations(shelf.items, locale, 8);
+    }
     res.json({ shelves, gl: locale.gl, hl: locale.hl });
   } catch (e) {
     console.error('[charts]', e.message);

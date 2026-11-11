@@ -32,6 +32,7 @@ const HEADERS = {
 const searchCache = createCache({ max: 200, ttlMs: 5 * 60 * 1000 });
 const homeCache = createCache({ max: 10, ttlMs: 15 * 60 * 1000 });
 const playlistCache = createCache({ max: 100, ttlMs: 30 * 60 * 1000 });
+const durationCache = createCache({ max: 1000, ttlMs: 6 * 60 * 60 * 1000 });
 
 async function itPost(endpoint, body, locale) {
   const { gl, hl } = normalizeLocale(locale?.gl, locale?.hl);
@@ -46,6 +47,40 @@ async function itPost(endpoint, body, locale) {
 }
 
 const runsText = (runs) => (runs || []).map((r) => r.text || '').join('');
+
+/**
+ * Track runtime in seconds.
+ *
+ * The search/home responses do not include runtimes, so we ask the player
+ * endpoint for them (cheap, cached for 6 hours).
+ */
+export async function fetchDuration(videoId, locale) {
+  if (!videoId) return 0;
+  const cached = durationCache.get(videoId);
+  if (cached) return cached;
+  try {
+    const doc = await itPost('player', { videoId }, locale);
+    const seconds = Number(doc?.videoDetails?.lengthSeconds || 0);
+    if (seconds > 0) durationCache.set(videoId, seconds);
+    return seconds;
+  } catch {
+    return 0;
+  }
+}
+
+/** Fill missing runtimes on a list of tracks (bounded, runs in parallel). */
+export async function enrichDurations(tracks, locale, limit = 16) {
+  if (!Array.isArray(tracks)) return tracks;
+  const missing = tracks.filter((t) => t && !t.duration).slice(0, limit);
+  if (!missing.length) return tracks;
+  await Promise.all(
+    missing.map(async (t) => {
+      const seconds = await fetchDuration(t.id, locale);
+      if (seconds > 0) t.duration = seconds;
+    }),
+  );
+  return tracks;
+}
 
 /** Rewrite tiny artwork URLs to high-res variants (yt3/ggpht size suffixes, ytimg quality tiers). */
 function upgradeThumb(u) {
@@ -78,6 +113,18 @@ export function parseDurationText(text) {
   if (!m) return 0;
   if (m[1] !== undefined) return Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
   return Number(m[2]) * 60 + Number(m[3]);
+}
+
+/**
+ * Duration from a run of texts (e.g. "Tulus • 3:31"): scans from the end and
+ * takes the last time-like token, so trailing view counts never win.
+ */
+export function parseDurationFromParts(parts) {
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const value = parseDurationText(parts[i]);
+    if (value > 0) return value;
+  }
+  return 0;
 }
 
 function classify(subtitle) {
@@ -185,7 +232,8 @@ function parseCardShelf(card) {
     title: runsText(r?.title?.runs) || 'Unknown title',
     artist: artistFromSubtitle(subtitle),
     kind,
-    duration: 0,
+    // Card subtitles carry the runtime as their last segment ("… • 3:31").
+    duration: parseDurationFromParts(subtitle.split('•').map((s) => s.trim())),
     thumbnail: bestThumb(r?.thumbnail?.thumbnails || r?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails),
   };
 }

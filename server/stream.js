@@ -27,8 +27,15 @@ const BROWSER_HEADERS = {
   'Accept-Encoding': 'identity',
 };
 
-const PLAYER_CLIENTS = ['tv_embedded', 'web_safari', 'ios'];
+const PLAYER_CLIENTS = ['android_vr', 'web_embedded', 'tv_embedded'];
 const CLIENT_PREFS = new Set(['auto', ...PLAYER_CLIENTS, 'default']);
+
+/**
+ * Clients whose audio-only renditions are rejected by YouTube without a
+ * proof-of-origin token. For those we must ask for a muxed (video + audio)
+ * rendition — the smallest one that still carries the audio track.
+ */
+const MUXED_ONLY_CLIENTS = new Set(['android_vr', 'web_embedded']);
 
 const EXT_CONTENT_TYPE = {
   m4a: 'audio/mp4',
@@ -54,12 +61,16 @@ const FORMAT_BY_QUALITY = {
   low: 'bestaudio[abr<=96]/worstaudio',
 };
 
-function formatForQuality(quality) {
+function formatForQuality(quality, playerClient) {
+  if (MUXED_ONLY_CLIENTS.has(playerClient)) {
+    // Smallest muxed rendition that still carries the audio (itag 18 style).
+    return 'worst[ext=mp4][acodec!=none]/b[ext=mp4][acodec!=none]/b';
+  }
   return FORMAT_BY_QUALITY[String(quality || 'high').toLowerCase()] || FORMAT_BY_QUALITY.high;
 }
 
 function runYtDlpOnce(id, playerClient, quality) {
-  const format = formatForQuality(quality);
+  const format = formatForQuality(quality, playerClient);
   return new Promise((resolve, reject) => {
     const { cmd, prefix } = ytDlpCommand();
     const args = [
@@ -105,7 +116,14 @@ function runYtDlp(id, playerClient, quality) {
   return withYtDlpSlot(() => runYtDlpOnce(id, playerClient, quality));
 }
 
-/** Check that a googlevideo URL actually serves bytes (not 403). */
+/** Minimum plausible size of a real audio rendition (bytes). */
+const MIN_PLAUSIBLE_BYTES = 50 * 1024;
+
+/**
+ * Check that a googlevideo URL actually serves bytes (not 403).
+ * Returns the total size of the resource when the server reports it, so
+ * callers can reject truncated/degenerate responses.
+ */
 async function verifyAudioUrl(url) {
   try {
     const res = await fetch(url, {
@@ -114,9 +132,17 @@ async function verifyAudioUrl(url) {
       signal: AbortSignal.timeout(15000),
     });
     try { await res.arrayBuffer(); } catch { /* drained */ }
-    return res.ok || res.status === 206;
+    if (!(res.ok || res.status === 206)) return { ok: false, size: 0 };
+    const range = res.headers.get('content-range') || '';
+    const total = Number(range.split('/')[1] || res.headers.get('content-length') || 0);
+    if (total && total < MIN_PLAUSIBLE_BYTES) {
+      // A "successful" response that is far too small is a preview/garbage
+      // URL — accepting it would play a fraction of a second of audio.
+      return { ok: false, size: total };
+    }
+    return { ok: true, size: total };
   } catch {
-    return false;
+    return { ok: false, size: 0 };
   }
 }
 
@@ -139,23 +165,22 @@ export async function resolveStream(id, pref = 'auto', quality = 'high') {
   for (const client of clientOrder(pref)) {
     attempts.push((async () => {
       const info = await runYtDlp(id, client, normalizedQuality);
-      if (client === 'default') {
-        // default client historically 403s; verify before trusting it
-        if (!(await verifyAudioUrl(info.url))) {
-          throw new Error('default client returned a URL YouTube refused (403)');
-        }
-      } else if (!(await verifyAudioUrl(info.url))) {
-        console.warn('[stream] %s URL rejected for %s', client, id);
+      const check = await verifyAudioUrl(info.url);
+      if (!check.ok) {
+        console.warn('[stream] %s URL rejected for %s (%s bytes)', client, id, check.size || 0);
         throw new Error(`${client} returned a URL YouTube refused (403)`);
       }
+      info.size = check.size;
       return info;
     })());
   }
   attempts.push((async () => {
     const { resolveWithYoutubei } = await import('./streamFallback.js');
     const info = await resolveWithYoutubei(id, normalizedQuality);
-    if (await verifyAudioUrl(info.url)) {
+    const check = await verifyAudioUrl(info.url);
+    if (check.ok) {
       console.warn('[stream] youtubei fallback resolved %s', id);
+      info.size = check.size;
       return info;
     }
     throw new Error('youtubei returned a URL YouTube refused (403)');
