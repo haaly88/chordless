@@ -14,7 +14,7 @@ Architecture, internals and deployment details. The public README stays short on
  │ Queue · Lyrics panel  │  stream    │ /api/stream/:id                │ ◄─│ yt-dlp →   │
  │ Visualizer (WebAudio) │ ◄────────► │  → multi-client resolution    │   │ googlevideo│
  └───────────────────────┘  range     │  → Range-aware proxy          │   └─────────────┘
-                                       │ /api/lyrics → LRCLIB           │
+                                       │ /api/lyrics → LRCLIB + LRC.red│
                                        │ /api/cover  → artwork proxy    │
                                        └──────────────────────────────┘
 ```
@@ -26,7 +26,7 @@ Architecture, internals and deployment details. The public README stays short on
 | `index.js` | routes: `/api/search|home|charts|playlist|artist|album|stream|duration|lyrics|translate|cover|sponsorblock|addon/*|together/*` |
 | `innertube.js` | InnerTube (WEB_REMIX) client — search, home, charts, pages, runtime lookup |
 | `stream.js` | media URL resolution + Range-aware proxy |
-| `lyrics.js` | LRCLIB + translation (Google GTX → MyMemory) |
+| `lyrics.js` | LRCLIB + LRC.red fallback + translation (Google GTX → MyMemory) |
 | `together.js` | Listen Together rooms (host migration, TTL) |
 | `addon.js` | addon manifest / search / track proxy |
 | `pool.js` | global yt-dlp concurrency pool |

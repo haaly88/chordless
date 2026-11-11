@@ -4,11 +4,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-/** Synced & plain lyrics via LRCLIB (no key, CORS not applicable on-device). */
+/**
+ * Synced & plain lyrics.
+ *
+ * LRCLIB is the primary source; when it has nothing (or nothing synced) we
+ * fall back to lrc.red, whose catalogue is ISRC-keyed and often better
+ * synchronised.
+ */
 object LyricsRepo {
+
+    private const val LRC_RED = "https://lrc.red"
+    private const val USER_AGENT = "Chordless Android"
 
     private val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -19,6 +29,20 @@ object LyricsRepo {
 
     suspend fun get(artist: String, track: String, album: String?, durationSec: Int?): Lyrics =
         withContext(Dispatchers.IO) {
+            val lrclib = fromLrclib(artist, track, album, durationSec)
+            if (lrclib.synced.isNotBlank()) return@withContext lrclib
+            val red = fromLrcRed(artist, track, durationSec)
+            if (red.synced.isNotBlank()) return@withContext red
+            lrclib
+        }
+
+    private fun fromLrclib(
+        artist: String,
+        track: String,
+        album: String?,
+        durationSec: Int?,
+    ): Lyrics {
+        return try {
             val url = buildString {
                 append("https://lrclib.net/api/get?artist_name=")
                 append(java.net.URLEncoder.encode(artist, "UTF-8"))
@@ -30,10 +54,10 @@ object LyricsRepo {
                 }
                 if (durationSec != null && durationSec > 0) append("&duration=").append(durationSec)
             }
-            Request.Builder().url(url).header("User-Agent", "Chordless Android").build().let { req ->
+            Request.Builder().url(url).header("User-Agent", USER_AGENT).build().let { req ->
                 client.newCall(req).execute().use { res ->
                     val body = res.body?.string().orEmpty()
-                    if (!res.isSuccessful) return@withContext Lyrics()
+                    if (!res.isSuccessful) return Lyrics()
                     val json = JSONObject(body)
                     Lyrics(
                         synced = json.optString("syncedLyrics"),
@@ -41,7 +65,58 @@ object LyricsRepo {
                     )
                 }
             }
+        } catch (e: Exception) {
+            Lyrics()
         }
+    }
+
+    /** lrc.red fallback — ISRC keyed, often better synced than LRCLIB. */
+    private fun fromLrcRed(artist: String, track: String, durationSec: Int?): Lyrics {
+        return try {
+            val q = java.net.URLEncoder.encode("${artist} $track".trim(), "UTF-8")
+            val request = Request.Builder()
+                .url("$LRC_RED/search.json?q=$q")
+                .header("User-Agent", USER_AGENT)
+                .build()
+            val hits = client.newCall(request).execute().use { res ->
+                if (!res.isSuccessful) return Lyrics()
+                val data = JSONObject(res.body?.string().orEmpty())
+                val arr = data.optJSONArray("hits") ?: JSONArray()
+                val target = (durationSec ?: 0).toDouble()
+                var best: JSONObject? = null
+                var bestScore = Double.MAX_VALUE
+                for (i in 0 until arr.length()) {
+                    val hit = arr.optJSONObject(i) ?: continue
+                    val title = hit.optString("title").lowercase()
+                    val hitArtist = hit.optString("artist").lowercase()
+                    var score = 0.0
+                    if (track.isNotBlank() && title.isNotBlank()) {
+                        score += if (title.contains(track.lowercase()) || track.lowercase().contains(title)) -1000.0 else 0.0
+                    }
+                    if (artist.isNotBlank() && hitArtist.isNotBlank() && hitArtist.contains(artist.lowercase())) score -= 300.0
+                    val dur = hit.optDouble("duration", 0.0)
+                    if (target > 0 && dur > 0) score += kotlin.math.abs(dur - target) * 10
+                    if (score < bestScore) {
+                        bestScore = score
+                        best = hit
+                    }
+                }
+                best
+            } ?: return Lyrics()
+
+            val isrc = best.optString("isrc").takeIf { it.isNotBlank() } ?: return Lyrics()
+            val lrcRequest = Request.Builder()
+                .url("$LRC_RED/s/${java.net.URLEncoder.encode(isrc, "UTF-8")}.lrc")
+                .header("User-Agent", USER_AGENT)
+                .build()
+            val synced = client.newCall(lrcRequest).execute().use { res ->
+                if (res.isSuccessful) res.body?.string()?.trim().orEmpty() else ""
+            }
+            Lyrics(synced = synced)
+        } catch (e: Exception) {
+            Lyrics()
+        }
+    }
 
     /** Parse "[mm:ss.xx] text" lines into (timeMs, text). */
     fun parseLrc(lrc: String): List<Pair<Long, String>> {

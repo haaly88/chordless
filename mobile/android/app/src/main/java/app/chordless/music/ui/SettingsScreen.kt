@@ -278,8 +278,9 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
             SectionLabel("About")
             Text(
                 "Chordless 1.1 (native Android)\\n" +
-                    "YouTube Music client with synced lyrics (LRCLIB),\\n" +
-                    "stream resolution via NewPipe, playback via Media3.\\n" +
+                    "YouTube Music client with synced lyrics\\n" +
+                    "(LRCLIB + LRC.red), stream resolution via NewPipe,\\n" +
+                    "playback via Media3.\\n" +
                     "Fully standalone — no server required.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

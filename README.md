@@ -40,7 +40,7 @@ docker run -d -p 3001:3001 ghcr.io/haaly88/chordless:latest
 
 **Sound** — 3-band EQ with shareable presets, spatial widening, loudness normalisation, stereo balance, lossless addons with failover, YouTube quality high/medium/low.
 
-**Lyrics** — synced lyrics from [LRCLIB](https://lrclib.net), karaoke mode with click-to-seek, translation in 14 languages, adjustable offset, `.lrc` export.
+**Lyrics** — synced lyrics from [LRCLIB](https://lrclib.net) with an [LRC.red](https://lrc.red) fallback, karaoke mode with click-to-seek, translation in 14 languages, adjustable offset, `.lrc` export.
 
 **Library** — offline downloads that play without a network, sponsor-segment skipping, statistics with streaks and charts, share cards as PNG.
 
@@ -59,6 +59,6 @@ Chordless is an independent, unofficial client and is **not affiliated with Goog
 
 ## Credits
 
-Inspired by [BitChord](https://github.com/kushagrasinghx/BitChord), [LastWave](https://github.com/Clash-Projects/LastWave-Native) and [limusic](https://github.com/SimoHypers/limusic). Lyrics by [LRCLIB](https://lrclib.net). Built with React, Vite, Express, yt-dlp, Electron and Kotlin/Compose.
+Inspired by [BitChord](https://github.com/kushagrasinghx/BitChord), [LastWave](https://github.com/Clash-Projects/LastWave-Native) and [limusic](https://github.com/SimoHypers/limusic). Lyrics by [LRCLIB](https://lrclib.net) and [LRC.red](https://lrc.red). Built with React, Vite, Express, yt-dlp, Electron and Kotlin/Compose.
 
 Development notes, architecture and deployment details live in [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
