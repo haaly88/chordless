@@ -87,6 +87,7 @@ jobs:
           for i in $(seq 1 60); do
             url=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' logs/tunnel.log | head -n1 || true)
             if [ -n "$url" ]; then
+              TUNNEL_URL="$url"
               echo "TUNNEL_URL=$url" >> "$GITHUB_ENV"
               echo "public url: $url"
               break
