@@ -92,10 +92,17 @@ fun NowPlayingScreen(
     var translating by remember { mutableStateOf(false) }
     var langTarget by remember { mutableStateOf("id") }
     var volume by remember { mutableStateOf(1f) }
+    var vibes by remember { mutableStateOf<List<ArtworkTagger.Vibe>>(emptyList()) }
 
     val t = track
     LaunchedEffect(t?.id ?: "") {
         favIds = LocalStore.favorites(ctx).map { it.id }.toSet()
+    }
+
+    // On-device artwork classification -> vibe tags.
+    LaunchedEffect(t?.id, t?.thumbnail) {
+        val url = t?.thumbnail.orEmpty()
+        vibes = if (url.isBlank()) emptyList() else ArtworkTagger.tag(ctx, url)
     }
 
     var syncedRaw by remember(t?.id) { mutableStateOf("") }
@@ -184,6 +191,29 @@ fun NowPlayingScreen(
         Spacer(Modifier.height(20.dp))
 
         NowPlayingHeader(track = t, palette = palette)
+
+        if (vibes.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                vibes.forEach { vibe ->
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f))
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            vibe.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+        }
 
         Spacer(Modifier.height(18.dp))
 
