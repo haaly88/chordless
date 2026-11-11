@@ -22,6 +22,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   serve:
@@ -130,6 +132,40 @@ jobs:
           git push || true
           echo "### Chordless is live" >> "$GITHUB_STEP_SUMMARY"
           echo "$TUNNEL_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      # The commit above uses GITHUB_TOKEN, which never triggers other
+      # workflows — so the Pages site is published from this job instead.
+      - name: Publish the permanent link (GitHub Pages)
+        if: always()
+        continue-on-error: true
+        env:
+          TUNNEL_URL: ${{ env.TUNNEL_URL }}
+        run: |
+          mkdir -p public
+          cat > public/current-url.json <<EOF
+          {
+            "url": "$TUNNEL_URL",
+            "updated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "run": "${GITHUB_RUN_ID}"
+          }
+          EOF
+
+      - name: Configure Pages
+        if: always()
+        continue-on-error: true
+        uses: actions/configure-pages@v5
+
+      - name: Upload the Pages artifact
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy the Pages site
+        if: always()
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
 
       - name: Keep it alive
         run: |
