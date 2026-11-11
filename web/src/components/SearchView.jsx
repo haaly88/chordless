@@ -17,6 +17,7 @@ export default function SearchView() {
   const addSearchHistory = usePlayer((s) => s.addSearchHistory);
   const removeSearchHistory = usePlayer((s) => s.removeSearchHistory);
   const clearSearchHistory = usePlayer((s) => s.clearSearchHistory);
+  const warmTrack = usePlayer((s) => s._warmTrack);
   const savedSearchesRaw = usePlayer((s) => s.savedSearches);
   const savedSearches = Array.isArray(savedSearchesRaw) ? savedSearchesRaw.filter((s) => s?.query) : [];
   const saveSearch = usePlayer((s) => s.saveSearch);
@@ -92,7 +93,16 @@ export default function SearchView() {
       const controller = new AbortController();
       abortRef.current = controller;
       apiSearch(q, { signal: controller.signal, gl: region.gl, hl: region.hl })
-        .then((d) => { setResults(d.results || []); setError(null); addSearchHistory(q); })
+        .then((d) => {
+          const list = d.results || [];
+          setResults(list);
+          setError(null);
+          addSearchHistory(q);
+          // Resolve the top pick in the background so clicking it starts
+          // playing immediately. Only one: every extra resolution is another
+          // request to YouTube and too many of them get throttled.
+          if (list[0]) warmTrack(list[0]);
+        })
         .catch((e) => { if (e.name !== 'AbortError') { setError(e.message || 'Search failed'); setResults(null); } })
         .finally(() => { if (abortRef.current === controller) setLoading(false); });
     }, 350);

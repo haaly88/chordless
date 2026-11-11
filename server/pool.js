@@ -4,7 +4,7 @@
  * chapters + import) can pin the machine. At most MAX concurrent slots,
  * the rest queue (FIFO).
  */
-const MAX_CONCURRENT = 4;
+const MAX_CONCURRENT = 6;
 let active = 0;
 const waiters = [];
 

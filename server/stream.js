@@ -16,8 +16,8 @@ import { createCache } from './cache.js';
 import { withYtDlpSlot } from './pool.js';
 import { ytDlpCommand } from './ytdlp.js';
 
-const urlCache = createCache({ max: 300, ttlMs: 4 * 60 * 60 * 1000 });
-const failCache = createCache({ max: 300, ttlMs: 45 * 1000 });
+const urlCache = createCache({ max: 300, ttlMs: 30 * 60 * 1000 });
+const failCache = createCache({ max: 300, ttlMs: 30 * 1000 });
 const inflight = new Map();
 
 const BROWSER_HEADERS = {
@@ -27,15 +27,23 @@ const BROWSER_HEADERS = {
   'Accept-Encoding': 'identity',
 };
 
-const PLAYER_CLIENTS = ['android_vr', 'web_embedded', 'tv_embedded'];
+/**
+ * Player clients that still serve the media.
+ *
+ * `web_embedded` is deliberately NOT used: it only exposes a ~48 KB preview
+ * clip, never the full track. `tv_embedded` / `tv` answer with 403.
+ */
+const PLAYER_CLIENTS = ['android_vr', 'android', 'mweb', 'android_music', 'ios_music'];
 const CLIENT_PREFS = new Set(['auto', ...PLAYER_CLIENTS, 'default']);
 
 /**
- * Clients whose audio-only renditions are rejected by YouTube without a
- * proof-of-origin token. For those we must ask for a muxed (video + audio)
- * rendition — the smallest one that still carries the audio track.
+ * Every client needs the muxed (video + audio) rendition: YouTube rejects
+ * audio-only URLs without a proof-of-origin token.
  */
-const MUXED_ONLY_CLIENTS = new Set(['android_vr', 'web_embedded']);
+const MUXED_ONLY_CLIENTS = new Set(PLAYER_CLIENTS);
+
+/** A real track is bigger than this; smaller answers are preview clips. */
+const MIN_PLAUSIBLE_BYTES = 100 * 1024;
 
 const EXT_CONTENT_TYPE = {
   m4a: 'audio/mp4',
@@ -116,100 +124,120 @@ function runYtDlp(id, playerClient, quality) {
   return withYtDlpSlot(() => runYtDlpOnce(id, playerClient, quality));
 }
 
-/** Minimum plausible size of a real audio rendition (bytes). */
-const MIN_PLAUSIBLE_BYTES = 50 * 1024;
+/**
+ * Warm-ups are serialised.
+ *
+ * A burst of background resolutions would compete with the request that
+ * actually plays a track for the yt-dlp process pool — that is what made
+ * "next" wait for tens of seconds.
+ */
+let warmChain = Promise.resolve();
+function enqueueWarm(task) {
+  const next = warmChain.then(task, task);
+  warmChain = next.then(() => {}, () => {});
+  return next;
+}
 
 /**
- * Check that a googlevideo URL actually serves bytes (not 403).
- * Returns the total size of the resource when the server reports it, so
- * callers can reject truncated/degenerate responses.
+ * Check that a candidate actually serves the track (not 403, not a preview).
+ *
+ * Used by the warm-up route only: the real playback request is the one that
+ * matters, and a second request per play made YouTube start refusing URLs.
  */
-async function verifyAudioUrl(url) {
+async function verifyCandidate(candidate) {
   try {
-    const res = await fetch(url, {
+    const res = await fetch(candidate.url, {
       headers: { ...BROWSER_HEADERS, Range: 'bytes=0-0' },
       redirect: 'follow',
       signal: AbortSignal.timeout(15000),
     });
     try { await res.arrayBuffer(); } catch { /* drained */ }
-    if (!(res.ok || res.status === 206)) return { ok: false, size: 0 };
+    if (!(res.ok || res.status === 206)) return false;
     const range = res.headers.get('content-range') || '';
-    const total = Number(range.split('/')[1] || res.headers.get('content-length') || 0);
-    if (total && total < MIN_PLAUSIBLE_BYTES) {
-      // A "successful" response that is far too small is a preview/garbage
-      // URL — accepting it would play a fraction of a second of audio.
-      return { ok: false, size: total };
-    }
-    return { ok: true, size: total };
+    const total = Number(range.split('/')[1] || 0);
+    return !total || total >= MIN_PLAUSIBLE_BYTES;
   } catch {
-    return { ok: false, size: 0 };
+    return false;
   }
 }
 
-export async function resolveStream(id, pref = 'auto', quality = 'high') {
+/**
+ * Resolve the playable candidates for a video id.
+ *
+ * Resolution itself never touches googlevideo: verifying a candidate with a
+ * separate request doubles the traffic per play and YouTube starts answering
+ * with 403 (rate limiting) — which showed up as multi-second stalls. The
+ * real fetch is the verification; a refused candidate just moves on to the
+ * next one.
+ */
+/**
+ * Resolve one playable candidate.
+ *
+ * The clients are raced in small groups (two at a time): the first that
+ * resolves wins, while the yt-dlp process pool stays free for the request
+ * that actually plays the track. Racing every client at once used to clog
+ * the pool and delayed the real playback by tens of seconds.
+ */
+async function resolveCandidate(id, pref, quality, skipClients = new Set()) {
+  const clients = clientOrder(pref).filter((c) => !skipClients.has(c));
+  for (let i = 0; i < clients.length; i += 2) {
+    const group = clients.slice(i, i + 2);
+    const attempts = group.map((client) =>
+      runYtDlp(id, client, quality).then((info) => ({ ...info, client })),
+    );
+    try {
+      return await Promise.any(attempts);
+    } catch {
+      /* try the next group */
+    }
+  }
+  try {
+    const { resolveWithYoutubei } = await import('./streamFallback.js');
+    const info = await resolveWithYoutubei(id, quality);
+    if (info?.url) return { ...info, client: 'youtubei' };
+  } catch {
+    /* no fallback available */
+  }
+  throw new Error('Could not resolve a playable stream');
+}
+
+/** Resolve the best candidate and remember it (used by the warm-up route). */
+export async function resolveStream(id, pref = 'auto', quality = 'high', { verify = false } = {}) {
   const normalizedQuality = ['high', 'medium', 'low'].includes(String(quality || 'high').toLowerCase()) ? String(quality).toLowerCase() : 'high';
   const cacheKey = `stream:${pref}:${normalizedQuality}:${id}`;
   const cached = urlCache.get(cacheKey);
-  if (cached) return cached;
+  if (cached && !verify) return cached;
   const failed = failCache.get(cacheKey);
   if (failed) throw new Error(failed);
 
   const flightKey = cacheKey;
   if (inflight.has(flightKey)) return inflight.get(flightKey);
 
-  // Race the preferred yt-dlp clients against the youtubei.js fallback:
-  // the first VERIFIED URL wins, so a slow client can no longer stall a
-  // track change for up to a minute. Losers are abandoned (their subprocess
-  // slots free when the children finish; the shared cache takes the winner).
-  const attempts = [];
-  for (const client of clientOrder(pref)) {
-    attempts.push((async () => {
-      const info = await runYtDlp(id, client, normalizedQuality);
-      const check = await verifyAudioUrl(info.url);
-      if (!check.ok) {
-        console.warn('[stream] %s URL rejected for %s (%s bytes)', client, id, check.size || 0);
-        throw new Error(`${client} returned a URL YouTube refused (403)`);
-      }
-      info.size = check.size;
-      return info;
-    })());
-  }
-  attempts.push((async () => {
-    const { resolveWithYoutubei } = await import('./streamFallback.js');
-    const info = await resolveWithYoutubei(id, normalizedQuality);
-    const check = await verifyAudioUrl(info.url);
-    if (check.ok) {
-      console.warn('[stream] youtubei fallback resolved %s', id);
-      info.size = check.size;
-      return info;
-    }
-    throw new Error('youtubei returned a URL YouTube refused (403)');
-  })());
-
   const p = (async () => {
-    let lastError = null;
-    const pending = new Set(attempts);
-    while (pending.size) {
+    const skipClients = new Set();
+    for (;;) {
+      let candidate;
       try {
-        const winner = await Promise.any([...pending]);
-        urlCache.set(cacheKey, winner);
-        return winner;
-      } catch (e) {
-        if (e instanceof AggregateError) {
-          lastError = e.errors[e.errors.length - 1] || lastError;
-          pending.clear();
-          break;
-        }
-        // Promise.any only rejects on AggregateError (all failed); any other
-        // rejection means... keep waiting for the rest.
-        lastError = e;
+        candidate = await resolveCandidate(id, pref, normalizedQuality, skipClients);
+      } catch {
+        break;
       }
+      if (verify) {
+        // The warm-up may spend one request to be sure the URL we remember
+        // is one YouTube will actually serve.
+        const ok = await verifyCandidate(candidate);
+        if (!ok) {
+          skipClients.add(candidate.client);
+          continue;
+        }
+      }
+      urlCache.set(cacheKey, candidate);
+      return candidate;
     }
-    const message = lastError?.message || 'Could not resolve a playable stream';
+    const message = 'Could not resolve a playable stream';
     failCache.set(cacheKey, message);
-    throw lastError || new Error(message);
+    throw new Error(message);
   })().finally(() => inflight.delete(flightKey));
-
   inflight.set(flightKey, p);
   return p;
 }
@@ -222,17 +250,7 @@ export async function streamAudio(req, res) {
   const client = CLIENT_PREFS.has(clientParam) ? clientParam : 'auto';
   const qualityParam = ['high', 'medium', 'low'].includes(String(req.query.quality || 'high').toLowerCase()) ? String(req.query.quality).toLowerCase() : 'high';
 
-  let info;
-  try {
-    info = await resolveStream(id, client, qualityParam);
-  } catch (e) {
-    console.error('[stream] resolve failed for', id, '—', e.message);
-    return res.status(502).json({ error: e.message || 'Failed to resolve stream' });
-  }
-
-  // Warm-up mode: resolve only (kept for API compatibility; not used by the UI)
-  if (req.query.warm === '1') return res.status(204).end();
-
+  const cacheKey = `stream:${client}:${qualityParam}:${id}`;
   const headers = { ...BROWSER_HEADERS };
   if (req.headers.range) headers.Range = req.headers.range;
 
@@ -252,37 +270,67 @@ export async function streamAudio(req, res) {
     }
   };
 
-  let upstream = await tryFetch(info);
-
-  // Cached URL refused — drop it and re-resolve once
-  if (!upstream || upstream.error || (upstream.status !== 206 && (upstream.status === 403 || upstream.status === 404 || upstream.status === 410))) {
-    console.warn('[stream] cached URL refused for', id, '— re-resolving');
-    // Evict every real key variant (pref × quality) — the previous
-    // `stream:pref:id` guess never matched, so stale URLs lived 4h.
-    for (const p of CLIENT_PREFS) {
-      for (const q of ['high', 'medium', 'low']) urlCache.delete(`stream:${p}:${q}:${id}`);
-    }
+  // Warm-up mode: resolve AND verify the URL, so the play request that
+  // follows is served from the cache with a URL YouTube accepts.
+  if (req.query.warm === '1') {
     try {
-      info = await resolveStream(id, client, qualityParam);
-      upstream = await tryFetch(info);
+      // Resolve AND verify: the verification request warms the media CDN edge
+      // for this URL, which is what makes the real playback request start
+      // within a few hundred milliseconds instead of several seconds.
+      const info = await enqueueWarm(() =>
+        resolveStream(id, client, qualityParam, { verify: true }),
+      );
+      urlCache.set(cacheKey, info);
+      return res.status(204).end();
     } catch (e) {
-      console.error('[stream] re-resolve failed for', id, '—', e.message);
-      return res.status(502).json({ error: e.message || 'Failed to re-resolve stream' });
+      console.error('[stream] warm failed for', id, '—', e.message);
+      return res.status(502).json({ error: e.message || 'Failed to resolve stream' });
     }
   }
 
-  if (!upstream || upstream.error) {
-    console.error('[stream] upstream connect failed for', id, '—', upstream?.error?.message);
-    return res.status(502).json({ error: 'Failed to connect to the audio source' });
+  // Playback: try the remembered candidate first, then resolve further
+  // candidates until one actually serves bytes. A refused URL (403) is
+  // normal — signed media URLs expire or get throttled — so we simply move
+  // on to the next candidate instead of failing the track.
+  const cached = urlCache.get(cacheKey);
+  const skipClients = new Set();
+  let lastStatus = 0;
+  let candidate = cached || null;
+
+  for (;;) {
+    if (!candidate) {
+      try {
+        candidate = await resolveCandidate(id, client, qualityParam, skipClients);
+      } catch (e) {
+        console.error('[stream] resolve failed for', id, '—', e.message);
+        return res.status(502).json({ error: e.message || 'Failed to resolve stream' });
+      }
+    }
+    const upstream = await tryFetch(candidate);
+    if (upstream && !upstream.error && (upstream.ok || upstream.status === 206)) {
+      urlCache.set(cacheKey, candidate);
+      return pipeUpstream(
+        req,
+        res,
+        upstream,
+        EXT_CONTENT_TYPE[candidate.ext] || upstream.headers.get('content-type') || 'application/octet-stream',
+      );
+    }
+    if (upstream && !upstream.error) {
+      lastStatus = upstream.status;
+      console.warn('[stream] %s refused (%s) for %s — trying the next candidate', candidate.client, upstream.status, id);
+    } else {
+      console.warn('[stream] %s failed (%s) for %s — trying the next candidate', candidate.client, upstream?.error?.message, id);
+    }
+    skipClients.add(candidate.client);
+    candidate = null;
+    if (skipClients.size >= CLIENT_PREFS.size + 1) break;
   }
 
-  if (!upstream.ok && upstream.status !== 206) {
-    const body = await upstream.text().catch(() => '');
-    console.error('[stream] upstream HTTP', upstream.status, 'for', id, '—', body.slice(0, 200));
-    return res.status(502).json({ error: `Audio source returned HTTP ${upstream.status}` });
-  }
-
-  return pipeUpstream(req, res, upstream, EXT_CONTENT_TYPE[info.ext] || upstream.headers.get('content-type') || 'application/octet-stream');
+  console.error('[stream] no candidate served bytes for', id);
+  return res.status(502).json({
+    error: lastStatus ? `Audio source returned HTTP ${lastStatus}` : 'Could not play this track',
+  });
 }
 
 /** Pipe an already-resolved upstream fetch response to the client, with Range support. */

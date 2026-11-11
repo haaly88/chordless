@@ -52,8 +52,13 @@ let preloadBusy = { forIndex: null }; // guards async offline-resolve spawns
 let translateToken = 0; // guards lyric-translation races per track
 let altChain = null; // { rootId, candidates, cursor, tried } - alternate-upload chain for embed-blocked tracks
 
-// Tracks whose stream URL is already being resolved in the background.
-const warming = new Set();
+// Tracks whose stream URL is already being resolved in the background
+// (id -> timestamp of the last warm-up).
+const warming = new Map();
+const WARM_COOLDOWN_MS = 60_000;
+// Pending warm-ups, so sweeping the pointer over a list does not fire a
+// request per row.
+const warmTimers = new Map();
 
 // Timestamp of the last playback start — used to ignore a stale 'ended'
 // event that arrives from the media we just replaced (it would otherwise
@@ -532,11 +537,21 @@ export const usePlayer = create((set, get) => ({
    */
   _warmTrack(track) {
     if (!track?.id || track.isAddon) return;
-    if (warming.has(track.id)) return;
-    warming.add(track.id);
-    const url = warmSrc(track.id, get().effectiveYtQuality || get().settings?.ytQuality || 'high');
-    const done = () => warming.delete(track.id);
-    fetch(url, { cache: 'no-store' }).then(done, done);
+    const last = warming.get(track.id) || 0;
+    const now = Date.now();
+    if (now - last < WARM_COOLDOWN_MS) return;
+    // Debounce: only warm the row the pointer actually settled on.
+    const pending = warmTimers.get(track.id);
+    if (pending) clearTimeout(pending);
+    warmTimers.set(track.id, setTimeout(() => {
+      warmTimers.delete(track.id);
+      const at = Date.now();
+      const seen = warming.get(track.id) || 0;
+      if (at - seen < WARM_COOLDOWN_MS) return;
+      warming.set(track.id, at);
+      const url = warmSrc(track.id, get().effectiveYtQuality || get().settings?.ytQuality || 'high');
+      fetch(url, { cache: 'no-store' }).catch(() => {});
+    }, 350));
   },
 
   /** Warm the track that will play next so "next" is instant. */
