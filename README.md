@@ -1,72 +1,72 @@
 # Chordless
 
-An aesthetic, ad-free **YouTube Music web client** for the browser — audio only, never video. Inspired by [BitChord](https://github.com/kushagrasinghx/BitChord) and [limusic](https://github.com/SimoHypers/limusic), rebuilt as a local web app.
+An aesthetic, ad-free **YouTube Music client** — available as a **web app**, a **native Android app** and a **desktop app** for Windows & macOS. Audio only, never video. Inspired by [BitChord](https://github.com/kushagrasinghx/BitChord), [LastWave](https://github.com/Clash-Projects/LastWave-Native) and [limusic](https://github.com/SimoHypers/limusic).
 
-Plays music straight from YouTube Music (search, home feed, album/track pages), with **line-synced lyrics from [LRCLIB](https://lrclib.net)**, a real-time visualizer, dynamic artwork-driven theming and a full library system — all stored locally in your browser.
+Plays music straight from YouTube Music (search, home feed, album/track pages), with **line-synced lyrics from [LRCLIB](https://lrclib.net)**, a real-time visualizer, dynamic artwork-driven theming and a full library system.
 
 ---
 
-## 🌐 Public URL (100% gratis)
+## 🌐 Public URL — free, no credit card
 
-The web app is a single Node server (UI + API + stream proxy), so it runs fine on any
-container host. Three ways to get a public URL — **all free, no card needed**:
+**👉 https://haaly88.github.io/chordless/**
 
-### 1) Hugging Face Space — free, no card (recommended)
+That single link is stable: it always redirects to the live instance. The URL behind it changes every few hours, you never have to care.
 
-1. Create a free account at [huggingface.co](https://huggingface.co)
-2. **New Space → Docker** → give it a name → in *Space* config set the port to `3001`
-3. *(optional)* Under **Files → README.md** paste this instead of the template body:
+How it works (nothing runs on anybody's personal machine):
 
-   ```yaml
-   ---
-   title: Chordless
-   emoji: 🎵
-   colorFrom: red
-   colorTo: black
-   sdk: docker
-   app_port: 3001
-   pinned: false
-   ---
-   ```
-
-4. **Settings → Variables and secrets → New variable** → add
-   `CHORDLESS_USER` and `CHORDLESS_PASS` to protect the URL with a login prompt
-   (optional but recommended for a public URL)
-5. **Restart the Space**
-
-Your URL: `https://<your-space-name>.hf.space` — live 24/7, no credit card, free tier
-(2 vCPU / 16 GB).
-
-### 2) Render — one click
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/haaly88/chordless)
-
-Uses [`render.yaml`](render.yaml) (Docker image, health check on `/api/health`).
-Set `CHORDLESS_USER` / `CHORDLESS_PASS` in the dashboard to put a login prompt in front.
-
-### 3) Any container host
-
-The repo publishes a ready-to-run image to GitHub Container Registry:
-
-```bash
-docker run -d -p 3001:3001 --name chordless ghcr.io/haaly88/chordless:latest
+```
+[ GitHub Actions runner ]        ← GitHub's cloud, free minutes for public repos
+   ├─ builds the web UI (vite)
+   ├─ node server + yt-dlp
+   └─ Cloudflare quick tunnel  →  https://xxxx.trycloudflare.com
+                    ↓
+[ GitHub Pages ]  haaly88.github.io/chordless/  →  redirects to the newest URL
 ```
 
-Works as-is on Fly.io, Railway, Koyeb, Repli, or any VPS. `fly.toml` is included.
+- The `Public Chordless server` workflow starts a server, opens the tunnel, smoke-tests it and publishes the URL to `public/current-url.json`.
+- It re-runs on a schedule every 5 hours; the keep-alive step restarts the server or the tunnel and re-publishes the URL if anything changes.
+- Overlapping runs mean there is no downtime.
+- Optional protection: set `CHORDLESS_USER` / `CHORDLESS_PASS` for HTTP basic auth.
 
-### Local / own server
+### Other ways to run it yourself
 
-```bash
-npm install && npm --prefix web install && npm run build
-npm run serve          # http://0.0.0.0:3001
-```
+| Option | Cost | Notes |
+|---|---|---|
+| **Hugging Face Space** (Docker) | free, no card | 2 vCPU / 16 GB, always on. New Space → Docker → port `3001` → paste the YAML header from `public/index.html` into the Space README |
+| **Docker** | free on any free host | `docker run -d -p 3001:3001 ghcr.io/haaly88/chordless:latest` |
+| **Render** | free tier | one click via `render.yaml` (asks for a card on some accounts) |
+| **Fly.io / Railway / Koyeb / VPS** | free tier or cheap | `fly.toml` and `Procfile` are included |
+| **Own machine** | free | `npm run serve` → http://0.0.0.0:3001 |
 
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `HOST` | `127.0.0.1` | bind address (`0.0.0.0` in containers) |
-| `PORT` | `3001` | port |
-| `CHORDLESS_USER` / `CHORDLESS_PASS` | – | enable HTTP basic auth |
-| `YT_DLP_BIN` | – | path to a custom yt-dlp binary |
+The production image is built on every push and published to
+`ghcr.io/haaly88/chordless:latest` (public, pull without login).
+
+---
+
+## 📱 Apps
+
+### Android (native, fully standalone)
+
+A complete **Kotlin + Jetpack Compose** app (Material 3 Expressive) — it talks to YouTube Music directly on the device, so it needs **no PC and no server**.
+
+- Playback: Media3 1.11 `ExoPlayer` + foreground service, lockscreen controls, MediaSession
+- Streams resolved with NewPipe Extractor, with **muxed (video+audio) fallbacks** — audio-only URLs are refused by YouTube without a proof-of-origin token
+- Automatic **stream retry**: when a signed URL is rejected the next candidate is used; a stream stuck buffering for 8 s is re-resolved and resumes at the same position
+- Synced lyrics with karaoke highlighting + translation, crossfade, EQ, sleep timer, SponsorBlock
+- **Listen Together** rooms (Ktor websocket server), offline downloads, statistics, launcher widget (Glance)
+- **On-device AI**: an EfficientNet-Lite model bundled in the APK classifies the cover art into music “vibe” tags
+- Onboarding, always-dark theme, UI scale default 100 %, dynamic palette from artwork
+
+Latest debug build: **88.98 MB** (`test-build-android/Chordless-1.1.0-app-debug.apk`).
+
+### Desktop (Electron — Windows & macOS)
+
+The desktop shell embeds the very same Node server and serves the web UI from it.
+
+- Windows (x64), macOS Apple Silicon and macOS Intel, NSIS installer + portable build
+- Bundled **universal** `yt-dlp` binary — **no Python and no Node installation required**
+- macOS: the app clears the quarantine attribute from its own helper so Gatekeeper cannot block it
+- System tray, close-to-tray, launch at login, media keys, in-app update banner
 
 ---
 
@@ -74,18 +74,20 @@ npm run serve          # http://0.0.0.0:3001
 
 - **Search & home feed** straight from YouTube Music (Songs / Videos filter, trending chips, mood/genre chips, "Quick picks", "Recently played", region-aware charts via `gl/hl`)
 - **Audio-only streaming** — two engines:
-  - **Stream** (default in Auto): local proxy via `yt-dlp` with full HTTP Range support — seeking, low bandwidth
-  - **YouTube player** (fallback or forced): hidden YouTube iframe — works even when direct streams are throttled
+  - **Stream** (default in Auto): local proxy via `yt-dlp` with full HTTP Range support → seeking, low bandwidth
+  - **YouTube player** (fallback or forced): hidden YouTube iframe → works even when direct streams are throttled
   - **Auto** (default): tries Stream, falls back to the YouTube player automatically
+- **Fast playback start**: the signed media URL is resolved ahead of time (hover a row, on search, and always for the next track), so a click starts playing in ~1.3 s instead of 12 s
+- **Resilient streaming**: several player clients are raced in pairs, a refused URL automatically moves on to the next candidate, and the yt-dlp process pool never starves the request that is actually playing
 - **Lossless addons (multi + failover)** — search queries every enabled addon; playback tries the next addon on failure, then YouTube. Order = priority. Deezer preset included (full FLAC needs a personal URL at `deezer.nom.deno.net`)
-- **Synced lyrics** from LRCLIB — Apple-Music-style large lines, active line highlight, auto-scroll, click any line to seek, plain-lyrics fallback, ±0.5s offset, instrumental detection, plus **translation** (Google GTX → MyMemory) in 14 languages
+- **Synced lyrics** from LRCLIB — Apple-Music-style large lines, active line highlight, auto-scroll, click any line to seek, plain-lyrics fallback, A±0.5s offset, instrumental detection, plus **translation** (Google GTX → MyMemory) in 14 languages
 - **Karaoke Mode** (`C`) — fullscreen lyric overlay with karaoke progress fill, click-to-seek, font sizes, translate, offset
 - **True Gapless + Preload** — dual `<audio>` slots with background preload (10/20/30s ahead). Stream engine only; replaces Crossfade when enabled
 - **Crossfade** — fade transition (3/5/8/12s). Mutually exclusive with Gapless
 - **For You AI Mix** — local taste engine (`lib/ai-mix.js`) scoring play count, likes, recency and artist affinity, enriched with fresh search picks
 - **Smart Playlists** — Recently Added, Most Played, Top Rated (+ For You) in Library
-- **Share Card** — 1080×1080 PNG from Now Playing (cover art, title/artist, active lyric line, progress bar, "SHARED FROM CHORDLESS") with Download PNG + Web Share / clipboard copy
-- **Listen Together** — host-authoritative sync rooms (code-based join, guest polling, drift correction, host migration)
+- **Share Card** — 1080×1920 PNG from Now Playing (cover art, title/artist, active lyric line, progress bar, "SHARED FROM CHORDLESS") with Download PNG + Web Share / clipboard copy
+- **Listen Together** — host-authoritative sync rooms (code-based join, guest polling, drift correction, host migration, room chat & emoji reactions, per-member presence)
 - **Audio** — 3-band EQ + presets, spatial audio (mid/side widening), loudness normalize, stereo balance, playback speed 0.5–2×, YouTube quality high/medium/low, **network-adaptive quality** (downgrades next track on stalls/`navigator.connection`)
 - **Skip sponsor segments** via [SponsorBlock](https://github.com/ajayyy/SponsorBlock) with Undo; categories configurable in Settings
 - **Library**: Liked Songs, custom playlists (create / rename / delete / reorder covers), playlist folders, share/import via clipboard JSON, export/import library JSON, full history, "Recently played" shelf
@@ -100,14 +102,14 @@ npm run serve          # http://0.0.0.0:3001
 - **Stats** — weekly totals + delta, streak, peak hour, uniques, 24h chart, **Diagnostics** (LCP/CLS/INP, heap, connection), **Export story PNG**
 - **Saved Searches** — save query + filter, restore in one tap; **auto-complete** from saved/history/trending
 - **PWA** — install prompt (Sidebar "Install app"), offline banner, pull-to-refresh on Home
-- **Listen Together** — host-authoritative sync + **room chat & emoji reactions** + per-member presence (now playing)
 - **Custom Home shelves** — show/hide + reorder Home sections (Settings → Home sections); auto collage cover in Library
-- **Appearance** — dark/light/system, **text size** (Compact/Default/Large), **reduce motion**, adaptive accent from artwork, **language toggle EN/ID** (core UI + toasts + section labels)
+- **Appearance** — dark/light/system, **UI scale (default 90 %)** with 60–100 % options, **reduce motion**, adaptive accent from artwork, **language toggle EN/ID** (core UI + toasts + section labels)
 - **Audio advanced** — EQ presets **shareable via clipboard** (Copy/Paste EQ), spatial, normalize, balance, crossfade/gapless, SponsorBlock, adaptive quality, chapters, skip silence
-- **Library**: Liked Songs, custom playlists, folders, share/import via clipboard JSON **+ share link**, import from external link, **duplicate finder**, export/import library JSON, full history, "Recently played" shelf, **Downloaded** shelf
-- **Queue**: drag-to-reorder, play-next / add-to-queue, clear, Save as playlist, survives restarts, queue filter/search
 - **Interactions**: right-click context menu, toasts (localized), voice search, search history + saved searches, PWA + service worker, mini visualizer in PlayerBar, title marquee, 3D cover tilt, lyrics cache + `.lrc` export
 - **Mobile layout**: sidebar collapses to an off-canvas drawer with hamburger; mini player keeps controls usable
+- **Update notifier** — checks GitHub Releases and shows a banner with a Download button (web, desktop and Android)
+
+---
 
 ## Requirements
 
@@ -118,6 +120,8 @@ npm run serve          # http://0.0.0.0:3001
 | `yt-dlp` | `pip install -U yt-dlp` — run `npm run setup` to do this and install JS deps |
 
 No YouTube API keys, no Google account, no database. Everything runs locally.
+
+> The packaged desktop app ships its own `yt-dlp` binary and needs **neither Python nor Node** on the machine.
 
 ## Quick start
 
@@ -143,18 +147,21 @@ The app is served from `http://localhost:3001`.
 
 ## Configuration
 
-Environment variables (optional):
+Environment variables (all optional):
 
 | Var | Default | Meaning |
 |---|---|---|
 | `PORT` | `3001` | API/static server port |
-| `NODE_ENV` | unset | Set to `production` for production mode |
+| `HOST` | `127.0.0.1` | bind address — use `0.0.0.0` in containers |
+| `NODE_ENV` | unset | set to `production` for production mode |
+| `CHORDLESS_USER` / `CHORDLESS_PASS` | – | enable HTTP basic auth in front of the app |
+| `YT_DLP_BIN` | – | path to a custom `yt-dlp` binary |
 
-Region (`gl/hl`) is detected in the browser (language/timezone) and can be overridden in Settings — server-side `YT_GL`/`YT_HL` are no longer used.
+Region (`gl/hl`) is detected in the browser (language/timezone) and can be overridden in Settings.
 
 In-app (Settings, gear icon in the sidebar):
 
-- **Appearance** — dark / light / system theme, adaptive accent from artwork
+- **Appearance** — dark / light / system theme, adaptive accent from artwork, **UI scale (defaults to 90 %)**
 - **Region** — custom dropdown with flag/search/keyboard (Auto + manual override)
 - **Playback engine** — Auto / Stream / YouTube player
 - **Stream source & quality** — YouTube client + high/medium/low, adaptive quality toggle
@@ -166,13 +173,14 @@ In-app (Settings, gear icon in the sidebar):
 
 ```
 server/               Express backend (Node, ESM)
-  index.js            routes: /api/search|home|charts|playlist|artist|album|stream|lyrics|translate|cover|sponsorblock|addon/*|together/*
-  innertube.js        YouTube InnerTube (WEB_REMIX) client
-  stream.js           yt-dlp stream extraction + Range proxy
+  index.js            routes: /api/search|home|charts|playlist|artist|album|stream|duration|
+                      lyrics|translate|cover|sponsorblock|addon/*|together/*
+  innertube.js        YouTube InnerTube (WEB_REMIX) client + runtime lookup
+  stream.js           yt-dlp stream resolution + Range proxy (multi-client, retries)
   lyrics.js           LRCLIB + translation (GTX → MyMemory)
   together.js         Listen Together in-memory rooms (host migration, TTL)
   addon.js            addon manifest/search/track proxy
-  cover.js  cache.js  sponsorblock.js
+  cover.js  cache.js  pool.js  sponsorblock.js  ytdlp.js
 
 web/src/
   store.js            zustand store: playback, gapless dual-audio, Web Audio chain,
@@ -184,7 +192,7 @@ web/src/
   lib/
     api.js            fetch client for /api/* incl. gl/hl, addon, together
     storage.js        localStorage helpers (cl:* JSON + plain-string, bc:* migration)
-    quality.js        streamSrc + network-adaptive quality (pure)
+    quality.js        streamSrc + warmSrc + network-adaptive quality (pure)
     sb.js             SponsorBlock labels/categories (pure)
     shuffle.js        uid / shuffled / smartShuffle / sameTrack (pure)
     embed.js          YouTube IFrame bridge + isEmbedEngine (pure)
@@ -193,27 +201,47 @@ web/src/
     lrc.js  format.js  palette.js  thumb.js
   styles.css          single stylesheet (base + Beautify v2 override layer)
 web/public/           sw.js (PWA cache), manifest.json, icons
+
+desktop/              Electron shell (Windows + macOS)
+  main.js             window, tray, server lifecycle, port fallback, update banner
+  preload.cjs         context-isolated bridge
+  scripts/            icon generators
+  build/yt-dlp/       bundled yt-dlp binary per platform
+
+mobile/android/       native Android app (Kotlin, Compose, Media3)
+  app/src/main/java/app/chordless/music/
+    data/             InnerTube client, streams, lyrics, library, addons
+    player/           PlayerManager (Media3), PlaybackService, MediaButtonReceiver
+    ui/               Compose screens (Home, NowPlaying, Lyrics, Library, Stats…)
+    download/         offline downloads
+    together/         Listen Together (Ktor)
+    widget/           Glance launcher widget
+  app/src/main/assets/ bundled AI model + labels
+
+public/               GitHub Pages redirect site (points at the live instance)
+Dockerfile            production image (web build + server + yt-dlp)
+render.yaml  fly.toml  Procfile
 ```
 
 ## How it works
 
 ```
- Browser (React SPA)                 Local server (Express)
- ┌───────────────────────┐   /api/*   ┌────────────────────────────────┐
- │ Home · Search · Lib   │ ◄────────► │ /api/search /api/home          │
- │ Player bar · Now Ply. │            │  → YouTube InnerTube (WEB_REMIX)│
- │ Queue · Lyrics panel  │  stream    │ /api/stream/:id                │
- │ Visualizer (WebAudio) │ ◄────────► │  → yt-dlp -g → googlevideo      │
- └───────────────────────┘  range     │  → Range-aware proxy            │
-                                        │ /api/lyrics                    │
-                                        │  → LRCLIB (synced LRC) + translate│
-                                        │ /api/cover                     │
-                                        │  → whitelisted artwork proxy     │
-                                        └────────────────────────────────┘
+ Browser (React SPA)                 Server (Express)                     Upstream
+ ┌───────────────────────┐   /api/*   ┌──────────────────────────────┐   ┌─────────────┐
+ │ Home · Search · Lib   │ ◄────────► │ /api/search /api/home        │ ◄─│ YouTube     │
+ │ Player bar · Now Ply. │            │  → InnerTube (WEB_REMIX)      │   │ Music      │
+ │ Queue · Lyrics panel  │  stream    │ /api/stream/:id                │ ◄─│ yt-dlp →   │
+ │ Visualizer (WebAudio) │ ◄────────► │  → multi-client resolution    │   │ googlevideo│
+ └───────────────────────┘  range     │  → Range-aware proxy          │   └─────────────┘
+                                       │ /api/lyrics → LRCLIB           │
+                                       │ /api/cover  → artwork proxy    │
+                                       └──────────────────────────────┘
 ```
 
 - **Search / home / metadata** come from YouTube Music's InnerTube API with no key. Cache: 5–15 min in memory.
-- **Streaming** resolves the direct audio URL per track with `yt-dlp`, tries embedded clients in order, verifies with a 1-byte range request, then streams with proper `206 Partial Content` (seeking + Web Audio analyser work). Stream URLs cached ~4 h; failures negatively cached 45 s.
+- **Runtimes** are missing from the InnerTube responses, so the server asks the player endpoint for them and caches them for 6 h (`GET /api/duration/:id`).
+- **Streaming** resolves the direct media URL per track with `yt-dlp`. The player clients are raced in pairs, the first one that resolves wins, and the *real* fetch is the verification — a separate “verification” request per client used to double the CDN traffic and made YouTube answer with 403. A refused URL automatically moves on to the next candidate, and the yt-dlp process pool is kept free so a background warm-up can never delay the track you are actually playing.
+- **Warm-up**: `GET /api/stream/:id?warm=1` resolves a URL ahead of time (on hover, on search, and always for the next track). The UI therefore asks for a cached URL and starts playing in ~1.3 s.
 - **If YouTube refuses**: toast + automatic fallback to the hidden YouTube player in Auto mode.
 - **Lyrics** are fetched from LRCLIB (`/api/lyrics`) — exact match by artist/track/duration with search fallback; cached 6 h.
 - **Library** (likes, playlists, history, queue, settings, shortcuts, together name) lives in `localStorage` under `cl:*` — nothing leaves your machine except the music requests themselves.
@@ -241,4 +269,4 @@ web/public/           sw.js (PWA cache), manifest.json, icons
 
 Chordless is an independent, unofficial client. It is **not affiliated with Google or YouTube**. It hosts no media — it streams what YouTube already serves to your browser (or what addons you configure). Use it for personal listening only, and at your own discretion; you are responsible for complying with YouTube's Terms of Service and your local copyright law.
 
-Inspired by BitChord (GPL-3.0) and limusic (GPL-3.0). Lyrics by LRCLIB. Built with React, Vite, Express and yt-dlp.
+Inspired by BitChord (GPL-3.0), LastWave (GPL-3.0) and limusic (GPL-3.0). Lyrics by LRCLIB. Built with React, Vite, Express, yt-dlp, Electron and Kotlin/Compose.
