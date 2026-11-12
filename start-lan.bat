@@ -38,8 +38,17 @@ if defined LANIP (
   echo   ^(open this on a phone connected to the same Wi-Fi^)
 )
 echo.
+echo   [!] This exposes Chordless to everyone on this network.
+echo   [!] Only use it on a network you trust - never on public or office Wi-Fi.
+echo.
 set NODE_ENV=production
 set HOST=0.0.0.0
+if not defined CHORDLESS_USER set CHORDLESS_USER=chordless
+if not defined CHORDLESS_PASS (
+  for /f %%p in ('powershell -NoProfile -Command "-join ((48..57)+(65..90)+(97..122) | Get-Random -Count 12 | ForEach-Object {[char]$_})"') do set CHORDLESS_PASS=%%p
+)
+echo   Login      : %CHORDLESS_USER% / %CHORDLESS_PASS%
+echo.
 node server\index.js
 goto :eof
 

@@ -111,6 +111,7 @@ async function waitHealth(port, timeoutMs) {
 function spawnServer(port, lan = false) {
   return new Promise((resolve) => {
     let proc;
+    const creds = lan ? lanCredentials() : null;
     try {
       proc = spawn(process.execPath, [SERVER_ENTRY], {
         cwd: APP_ROOT,
@@ -120,6 +121,8 @@ function spawnServer(port, lan = false) {
           NODE_ENV: 'production',
           PORT: String(port),
           HOST: lan ? '0.0.0.0' : HOST,
+          // LAN mode is always protected by a password.
+          ...(creds ? { CHORDLESS_USER: creds.user, CHORDLESS_PASS: creds.pass } : {}),
         },
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
@@ -171,8 +174,10 @@ async function startServer() {
       activePort = port;
       if (lan) {
         const lanUrl = `http://${lanAddress()}:${port}`;
-        logServer(`LAN url: ${lanUrl}`);
+        const creds = lanCredentials();
+        logServer(`LAN url: ${lanUrl} (user ${creds.user})`);
         console.log(`[desktop] LAN url: ${lanUrl}`);
+        console.log(`[desktop] LAN login: ${creds.user} / ${creds.pass}`);
       }
       return true;
     }
@@ -181,6 +186,27 @@ async function startServer() {
   }
   logServer('all server start attempts failed');
   return false;
+}
+
+/**
+ * LAN mode credentials.
+ *
+ * Binding 0.0.0.0 exposes the app to every device on the network — on a
+ * public or office Wi-Fi that is a real risk, so LAN mode ALWAYS requires a
+ * password. If none is configured we generate a random one and show it.
+ */
+let lanCreds = null;
+function lanCredentials() {
+  if (lanCreds) return lanCreds;
+  const user = String(process.env.CHORDLESS_USER || 'chordless');
+  let pass = String(process.env.CHORDLESS_PASS || '');
+  if (!pass) {
+    pass = require('node:crypto').randomBytes(9).toString('base64url');
+    console.log(`[desktop] LAN mode generated password: ${user} / ${pass}`);
+    logServer(`LAN mode generated password for user "${user}"`);
+  }
+  lanCreds = { user, pass };
+  return lanCreds;
 }
 
 /** Best guess at this machine's address on the local network. */

@@ -134,6 +134,11 @@ is the easiest way to get **streaming and offline downloads on a phone**:
 the traffic leaves from the machine's own residential IP, which YouTube
 does not block — unlike a free cloud runner.
 
+> ⚠️ **LAN mode is always password protected** — the app generates a random
+> password when `CHORDLESS_PASS` is not set, and the server refuses to serve
+> without credentials. Still: binding `0.0.0.0` exposes the app to every
+> device on that network, so **never use it on public or office Wi-Fi**.
+
 In-app settings: theme, UI scale (default 90 %), region, playback engine, stream client & quality, addons, EQ/spatial/normalise/balance, crossfade & gapless, SponsorBlock categories, library import/export.
 
 ---

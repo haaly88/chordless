@@ -34,6 +34,10 @@ The phone opens `http://<your-pc-ip>:3001` on the same Wi-Fi. Traffic leaves
 from your own connection, so streaming **and offline downloads work** there —
 unlike the free cloud instance, where YouTube blocks datacenter IPs.
 
+> LAN mode is password protected (a random one is generated and printed).
+> **Never use it on public or office Wi-Fi** — every device on that network
+> could otherwise reach the app.
+
 ## 📱 Apps
 
 | | |
