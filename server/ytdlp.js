@@ -34,13 +34,32 @@ export function ytDlpCommand() {
     try {
       if (fs.existsSync(candidate)) {
         if (process.platform !== 'win32') ensureExecutable(candidate);
-        return { cmd: candidate, prefix: [] };
+        return { cmd: candidate, prefix: cookieArgs() };
       }
     } catch { /* fall through */ }
   }
-  return { cmd: process.platform === 'win32' ? 'python' : 'python3', prefix: ['-m', 'yt_dlp'] };
+  return { cmd: process.platform === 'win32' ? 'python' : 'python3', prefix: [...cookieArgs(), '-m', 'yt_dlp'] };
 }
 
+/**
+ * Cookies for yt-dlp.
+ *
+ * YouTube blocks datacenter IPs with "Sign in to confirm you're not a bot".
+ * Exporting the cookies of a signed-in browser (Netscape format) and pointing
+ * YT_DLP_COOKIES at the file lifts that block; YT_DLP_COOKIES_FROM_BROWSER
+ * reads them straight from a local browser profile.
+ */
+function cookieArgs() {
+  const file = String(process.env.YT_DLP_COOKIES || '').trim();
+  if (file) {
+    try {
+      if (fs.existsSync(file)) return ['--cookies', file];
+    } catch { /* ignore */ }
+  }
+  const browser = String(process.env.YT_DLP_COOKIES_FROM_BROWSER || '').trim();
+  if (browser) return ['--cookies-from-browser', browser];
+  return [];
+}
 export function hasBundledYtDlp() {
   const { cmd, prefix } = ytDlpCommand();
   return prefix.length === 0;

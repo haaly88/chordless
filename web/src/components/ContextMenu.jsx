@@ -29,6 +29,7 @@ export default function ContextMenu() {
   const removeOfflineTrack = usePlayer((s) => s.removeOfflineTrack);
   const offlineIds = usePlayer((s) => s.offlineIds);
   const downloadingIds = usePlayer((s) => s.downloadingIds);
+  const downloadProgress = usePlayer((s) => s.downloadProgress);
   const lang = usePlayer((s) => s.settings.lang || 'en');
   const toast = usePlayer((s) => s.toast);
   const playTrackForChapter = usePlayer((s) => s.playTrack);
@@ -128,10 +129,13 @@ export default function ContextMenu() {
       {(() => {
         const downloading = downloadingIds.includes(track.id);
         const downloaded = offlineIds.includes(track.id);
+        const progress = downloadProgress?.id === track.id ? downloadProgress.pct : null;
         if (downloading) {
           return (
             <button className="ctx-item" disabled aria-disabled="true">
-              <Loader2 size={17} style={{ animation: 'spin .8s linear infinite' }} /> {t(lang, 'ctx.downloading')}
+              <Loader2 size={17} style={{ animation: 'spin .8s linear infinite' }} />
+              {t(lang, 'ctx.downloading')}
+              {progress != null ? ` ${Math.round(progress * 100)}%` : ''}
             </button>
           );
         }

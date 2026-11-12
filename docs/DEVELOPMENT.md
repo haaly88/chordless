@@ -98,7 +98,28 @@ Runtimes are not part of the InnerTube responses, so they are fetched from the p
 | `NODE_ENV` | unset | `production` for production mode |
 | `CHORDLESS_USER` / `CHORDLESS_PASS` | – | HTTP basic auth in front of the app |
 | `YT_DLP_BIN` | – | path to a custom `yt-dlp` binary |
+| `YT_DLP_COOKIES` | – | path to a Netscape `cookies.txt` (see below) |
+| `YT_DLP_COOKIES_FROM_BROWSER` | – | read cookies from a local browser profile (`chrome`, `firefox`, …) |
 | `YT_GL` / `YT_HL` | `ID` / `en` | fallback region (the browser usually detects it) |
+
+### YouTube's bot check on datacenter IPs
+
+YouTube answers requests from cloud IPs with
+`Sign in to confirm you're not a bot` — the stream proxy (and therefore
+offline downloads) then cannot resolve anything. The standard remedy is a
+cookies file of a signed-in browser:
+
+```bash
+# Netscape format export of a signed-in YouTube session
+YT_DLP_COOKIES=/path/cookies.txt npm start
+```
+
+For the public instance the same works as a repository secret: store the
+base64 of `cookies.txt` as `YTDLP_COOKIES_B64` and the workflow installs it
+inside the runner (it is only ever used there, never committed).
+
+Without cookies the app still works — playback falls back to the YouTube
+player — but the fast stream path and offline downloads stay unavailable.
 
 In-app settings: theme, UI scale (default 90 %), region, playback engine, stream client & quality, addons, EQ/spatial/normalise/balance, crossfade & gapless, SponsorBlock categories, library import/export.
 

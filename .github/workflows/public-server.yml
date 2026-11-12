@@ -55,6 +55,23 @@ jobs:
             pip3 install --break-system-packages --upgrade "yt-dlp==2026.10.26"
           ~/.local/bin/yt-dlp --version || yt-dlp --version
 
+      # YouTube blocks datacenter IPs with "Sign in to confirm you're not a
+      # bot". A Netscape cookies.txt of a signed-in browser lifts that block.
+      # Store it as the repository secret YTDLP_COOKIES_B64 (base64 of the
+      # file) and it is only ever used inside this runner.
+      - name: Install YouTube cookies (optional)
+        env:
+          COOKIES_B64: ${{ secrets.YTDLP_COOKIES_B64 }}
+        run: |
+          if [ -n "${COOKIES_B64:-}" ]; then
+            printf '%s' "$COOKIES_B64" | base64 -d > cookies.txt
+            chmod 600 cookies.txt
+            echo "YT_DLP_COOKIES=$(pwd)/cookies.txt" >> "$GITHUB_ENV"
+            echo "cookies installed"
+          else
+            echo "no cookies secret configured — the runner IP may be rate limited by YouTube"
+          fi
+
       - name: Start the server
         env:
           NODE_ENV: production

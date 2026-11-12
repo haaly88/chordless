@@ -436,6 +436,7 @@ export const usePlayer = create((set, get) => ({
   // ---- offline downloads (IndexedDB blobs) ----
   offlineIds: [],
   downloadingIds: [],
+  downloadProgress: null,
 
   // ---- Listen Together ----
   together: { code: null, memberId: null, name: '', isHost: false, members: [], messages: [], remoteVersion: 0, lastSyncAt: 0 },
@@ -1920,19 +1921,31 @@ export const usePlayer = create((set, get) => ({
     if (!track?.id) return false;
     if (get().offlineIds.includes(track.id)) return true;
     if (get().downloadingIds.includes(track.id)) return false;
-    set({ downloadingIds: [...get().downloadingIds, track.id] });
+    set({ downloadingIds: [...get().downloadingIds, track.id], downloadProgress: { id: track.id, pct: 0 } });
     try {
       const { url, orphan } = get()._resolveTrackUrl(track);
       if (orphan || !url) throw new Error('No playable source for this track.');
-      await saveOffline(track, url);
+      await saveOffline(track, url, (pct) => {
+        if (get().downloadProgress?.id === track.id) set({ downloadProgress: { id: track.id, pct } });
+        // Throttled progress toast (25 % steps) so the user sees it working.
+        const step = Math.floor(pct * 4);
+        if (step > (get()._downloadStep || 0)) {
+          set({ _downloadStep: step });
+          get().toast('Downloading', `${track.title} — ${Math.round(pct * 100)}%`);
+        }
+      });
       set({
         offlineIds: [...get().offlineIds, track.id],
         downloadingIds: get().downloadingIds.filter((x) => x !== track.id),
+        downloadProgress: null,
       });
       get().toast('Downloaded for offline', track.title);
       return true;
     } catch (e) {
-      set({ downloadingIds: get().downloadingIds.filter((x) => x !== track.id) });
+      set({
+        downloadingIds: get().downloadingIds.filter((x) => x !== track.id),
+        downloadProgress: null,
+      });
       get().toast('Download failed', e.message || 'Could not save this track.');
       return false;
     }

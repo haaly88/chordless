@@ -32,8 +32,21 @@ const BROWSER_HEADERS = {
  *
  * `web_embedded` is deliberately NOT used: it only exposes a ~48 KB preview
  * clip, never the full track. `tv_embedded` / `tv` answer with 403.
+ *
+ * The `*_skip` variants skip the initial webpage/config fetch — that request
+ * is what triggers YouTube's "Sign in to confirm you're not a bot" check on
+ * datacenter IPs, so trying it as a second strategy is often the difference
+ * between a working and a dead resolver.
  */
-const PLAYER_CLIENTS = ['android_vr', 'android', 'mweb', 'android_music', 'ios_music'];
+const PLAYER_CLIENTS = [
+  'android_vr',
+  'android',
+  'mweb',
+  'android_music',
+  'ios_music',
+  'tv_embedded_skip',
+  'android_vr_skip',
+];
 const CLIENT_PREFS = new Set(['auto', ...PLAYER_CLIENTS, 'default']);
 
 /**
@@ -99,6 +112,12 @@ function hasNodeRuntime() {
 
 function runYtDlpOnce(id, playerClient, quality) {
   const format = formatForQuality(quality, playerClient);
+  // "…_skip" variants skip the webpage/config fetch that triggers the bot check.
+  const base = playerClient?.replace(/_skip$/, '') || '';
+  const skip = playerClient?.endsWith('_skip');
+  const clientArg = skip
+    ? `youtube:player_client=${base};player_skip=webpage,configs`
+    : `youtube:player_client=${base}`;
   return new Promise((resolve, reject) => {
     const { cmd, prefix } = ytDlpCommand();
     const args = [
@@ -106,7 +125,8 @@ function runYtDlpOnce(id, playerClient, quality) {
       ...(hasNodeRuntime() ? ['--js-runtimes', 'node'] : []),
       '--no-playlist',
       '--no-warnings',
-      ...(playerClient && playerClient !== 'default' ? ['--extractor-args', `youtube:player_client=${playerClient}`] : []),
+      '--geo-bypass',
+      ...(base && base !== 'default' ? ['--extractor-args', clientArg] : []),
       '-f', format,
       '--print', '%(ext)s',
       '--print', '%(url)s',

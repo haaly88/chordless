@@ -65,7 +65,7 @@ export async function getOfflineUrl(id) {
   return url;
 }
 
-export async function saveOffline(track, url) {
+export async function saveOffline(track, url, onProgress) {
   if (!track?.id || !url) throw new Error('Cannot download this track.');
   const res = await fetch(url);
   if (!res.ok) {
@@ -74,7 +74,25 @@ export async function saveOffline(track, url) {
     }
     throw new Error(`Download failed (HTTP ${res.status}).`);
   }
-  const blob = await res.blob();
+
+  // Stream the body so the UI can show progress instead of appearing frozen.
+  let blob;
+  const total = Number(res.headers.get('content-length') || 0);
+  if (res.body && typeof onProgress === 'function') {
+    const reader = res.body.getReader();
+    const parts = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value);
+      received += value.length;
+      onProgress(total > 0 ? Math.min(0.99, received / total) : 0, received, total);
+    }
+    blob = new Blob(parts, { type: res.headers.get('content-type') || 'audio/mpeg' });
+  } else {
+    blob = await res.blob();
+  }
   if (!blob.size) throw new Error('Downloaded an empty file.');
   const rec = {
     id: track.id,
