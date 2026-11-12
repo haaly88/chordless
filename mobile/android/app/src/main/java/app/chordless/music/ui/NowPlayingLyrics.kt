@@ -105,17 +105,10 @@ fun NowPlayingLyrics(
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(26.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
-                    )
-                )
-            )
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 22.dp)
+            .padding(top = 48.dp, bottom = 120.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -162,7 +155,7 @@ fun NowPlayingLyrics(
             lines.isNotEmpty() -> {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxWidth().height(320.dp),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     itemsIndexed(lines) { index, (timeMs, text) ->
@@ -180,7 +173,7 @@ fun NowPlayingLyrics(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(320.dp)
+                        .weight(1f)
                         .verticalScroll(rememberScrollState()),
                 ) {
                     plainText.lines().forEach { line ->

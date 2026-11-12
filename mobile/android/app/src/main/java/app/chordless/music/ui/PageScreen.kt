@@ -83,7 +83,7 @@ fun PageScreen(
         val p = page!!
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = 210.dp),
         ) {
             item {
                 Row(

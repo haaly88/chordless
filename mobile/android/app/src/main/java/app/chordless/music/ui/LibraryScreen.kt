@@ -150,7 +150,7 @@ fun LibraryScreen(
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize().padding(padding),
-                        contentPadding = PaddingValues(bottom = 88.dp),
+                        contentPadding = PaddingValues(bottom = 210.dp),
                     ) {
                         item {
                             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
@@ -340,7 +340,7 @@ private fun PlaylistDetail(
     onTrackAction: (Track) -> Unit,
     onRemove: (Track) -> Unit,
 ) {
-    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 210.dp)) {
         item {
             Row(
                 modifier = Modifier.padding(20.dp),
@@ -394,7 +394,7 @@ private fun SmartList(
     onPlay: (Track, List<Track>) -> Unit,
     onTrackAction: (Track) -> Unit,
 ) {
-    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 210.dp)) {
         item {
             Row(
                 modifier = Modifier.padding(20.dp),

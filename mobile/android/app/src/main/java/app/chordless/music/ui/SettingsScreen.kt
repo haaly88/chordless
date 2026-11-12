@@ -88,7 +88,7 @@ fun SettingsScreen(onOpenEq: () -> Unit) {
 
     AuroraBackground {
         Column(
-            modifier = Modifier.fillMaxSize().padding(20.dp).verticalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxSize().padding(20.dp).padding(bottom = 190.dp).verticalScroll(rememberScrollState()),
         ) {
             Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))

@@ -179,29 +179,49 @@ fun NowPlayingScreen(
         } else {
             // --- Now playing lyric line ---
             if (activeLine.isNotBlank()) {
-                Row(
+                Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(percent = 50))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.70f))
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                                )
+                            )
+                        )
+                        .border(
+                            1.dp,
+                            Color.White.copy(alpha = 0.10f),
+                            RoundedCornerShape(22.dp),
+                        )
                         .clickable { showLyrics = true }
-                        .padding(horizontal = 18.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        .padding(horizontal = 18.dp, vertical = 14.dp),
                 ) {
-                    Box(
-                        Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                    )
-                    Text(
-                        activeLine.take(70),
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Box(
+                            Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
+                        Text(
+                            activeLine,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                lineHeight = 22.sp,
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
             }
 
             if (error != null) {
@@ -394,24 +414,30 @@ fun NowPlayingScreen(
                 )
             }
 
-            // --- Lyrics panel ---
-            if (showLyrics) {
-                Spacer(Modifier.height(14.dp))
-                NowPlayingLyrics(
-                    track = t,
-                    showLyrics = showLyrics,
-                    karaoke = karaoke,
-                    translating = translating,
-                    langTarget = langTarget,
-                    onSeek = { PlayerManager.seekTo(it) },
-                    onCloseLyrics = { showLyrics = false },
-                    onToggleKaraoke = { karaoke = it },
-                    onTranslate = { translating = !translating },
-                )
-            }
+            // --- Lyrics overlay (full screen, drawn above everything) ---
         }
 
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(150.dp))
+    }
+
+    if (showLyrics && t != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.97f)),
+        ) {
+            NowPlayingLyrics(
+                track = t,
+                showLyrics = true,
+                karaoke = karaoke,
+                translating = translating,
+                langTarget = langTarget,
+                onSeek = { PlayerManager.seekTo(it) },
+                onCloseLyrics = { showLyrics = false },
+                onToggleKaraoke = { karaoke = it },
+                onTranslate = { translating = !translating },
+            )
+        }
     }
 }
 

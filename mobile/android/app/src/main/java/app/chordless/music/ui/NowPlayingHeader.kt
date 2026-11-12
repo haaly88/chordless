@@ -1,6 +1,10 @@
 package app.chordless.music.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -57,69 +61,80 @@ fun NowPlayingHeader(
     val glow = palette?.dominant ?: MaterialTheme.colorScheme.primary
     val deep = palette?.dark ?: MaterialTheme.colorScheme.primary
 
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            // Soft palette glow behind the artwork.
-            Box(
-                modifier = Modifier
-                    .size(320.dp)
-                    .blur(60.dp)
-                    .clip(RoundedCornerShape(100.dp))
-                    .background(
-                        Brush.radialGradient(
-                            listOf(glow.copy(alpha = 0.75f), Color.Transparent),
-                        )
-                    ),
+    // Cover art scales with the screen so the controls always fit.
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val cover = minOf(maxWidth * 0.78f, 268.dp)
+        val glowSize = cover * 1.22f
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                // Soft palette glow behind the artwork.
+                Box(
+                    modifier = Modifier
+                        .size(glowSize)
+                        .blur(60.dp)
+                        .clip(RoundedCornerShape(100.dp))
+                        .background(
+                            Brush.radialGradient(
+                                listOf(glow.copy(alpha = 0.75f), Color.Transparent),
+                            )
+                        ),
+                )
+                // Deep halo ring for depth.
+                Box(
+                    modifier = Modifier
+                        .size(cover * 1.08f)
+                        .clip(RoundedCornerShape(48.dp))
+                        .background(
+                            Brush.radialGradient(
+                                listOf(deep.copy(alpha = 0.35f), Color.Transparent),
+                            )
+                        ),
+                )
+                AsyncImage(
+                    model = track.thumbnail,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(cover)
+                        .shadow(26.dp, RoundedCornerShape(30.dp), clip = false)
+                        .clip(RoundedCornerShape(30.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(30.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+
+            Spacer(Modifier.height(22.dp))
+
+            MarqueeText(
+                text = track.title,
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.W800,
+                    letterSpacing = (-0.5f).sp,
+                    lineHeight = 31.sp,
+                    shadow = Shadow(Color.Black.copy(alpha = 0.55f), Offset(0f, 2f), 6f),
+                ),
+                color = Color.White,
+                modifier = Modifier.fillMaxWidth(),
             )
-            // Deep halo ring for depth.
-            Box(
-                modifier = Modifier
-                    .size(288.dp)
-                    .clip(RoundedCornerShape(48.dp))
-                    .background(
-                        Brush.radialGradient(
-                            listOf(deep.copy(alpha = 0.35f), Color.Transparent),
-                        )
-                    ),
-            )
-            AsyncImage(
-                model = track.thumbnail,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(268.dp)
-                    .shadow(28.dp, RoundedCornerShape(30.dp), clip = false)
-                    .clip(RoundedCornerShape(30.dp)),
-                contentScale = ContentScale.Crop,
+
+            Spacer(Modifier.height(4.dp))
+
+            Text(
+                text = listOf(track.artist, track.album)
+                    .filter { !it.isNullOrBlank() }
+                    .joinToString("  •  "),
+                style = MaterialTheme.typography.titleSmall.copy(
+                    shadow = Shadow(Color.Black.copy(alpha = 0.5f), Offset(0f, 1f), 4f),
+                ),
+                color = Color.White.copy(alpha = 0.78f),
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
-
-        Spacer(Modifier.height(26.dp))
-
-        MarqueeText(
-            text = track.title,
-            style = MaterialTheme.typography.headlineSmall.copy(
-                fontSize = 27.sp,
-                fontWeight = FontWeight.W800,
-                letterSpacing = (-0.5f).sp,
-            ),
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Spacer(Modifier.height(4.dp))
-
-        Text(
-            text = listOf(track.artist, track.album)
-                .filter { !it.isNullOrBlank() }
-                .joinToString("  •  "),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
