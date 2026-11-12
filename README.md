@@ -24,6 +24,16 @@ Or with Docker:
 docker run -d -p 3001:3001 ghcr.io/haaly88/chordless:latest
 ```
 
+### Use it from your phone
+
+```bash
+npm run serve          # or: start-lan.bat on Windows
+```
+
+The phone opens `http://<your-pc-ip>:3001` on the same Wi-Fi. Traffic leaves
+from your own connection, so streaming **and offline downloads work** there —
+unlike the free cloud instance, where YouTube blocks datacenter IPs.
+
 ## 📱 Apps
 
 | | |

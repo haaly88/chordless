@@ -121,6 +121,19 @@ inside the runner (it is only ever used there, never committed).
 Without cookies the app still works — playback falls back to the YouTube
 player — but the fast stream path and offline downloads stay unavailable.
 
+### LAN mode (phones on the same Wi-Fi)
+
+```bash
+npm run serve           # HOST=0.0.0.0, reachable from the local network
+# or on Windows: start-lan.bat
+# or for the desktop app: CHORDLESS_LAN=1
+```
+
+The desktop app prints the LAN URL (and shows it in the tray tooltip). This
+is the easiest way to get **streaming and offline downloads on a phone**:
+the traffic leaves from the machine's own residential IP, which YouTube
+does not block — unlike a free cloud runner.
+
 In-app settings: theme, UI scale (default 90 %), region, playback engine, stream client & quality, addons, EQ/spatial/normalise/balance, crossfade & gapless, SponsorBlock categories, library import/export.
 
 ---

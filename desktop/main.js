@@ -108,7 +108,7 @@ async function waitHealth(port, timeoutMs) {
   return false;
 }
 
-function spawnServer(port) {
+function spawnServer(port, lan = false) {
   return new Promise((resolve) => {
     let proc;
     try {
@@ -119,7 +119,7 @@ function spawnServer(port) {
           ELECTRON_RUN_AS_NODE: '1',
           NODE_ENV: 'production',
           PORT: String(port),
-          HOST,
+          HOST: lan ? '0.0.0.0' : HOST,
         },
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
@@ -146,6 +146,11 @@ function spawnServer(port) {
 }
 
 async function startServer() {
+  // LAN mode: bind 0.0.0.0 so phones on the same Wi-Fi can use the app
+  // (their own residential IP is not blocked by YouTube, so streaming and
+  // offline downloads work there).
+  const lan = String(process.env.CHORDLESS_LAN || '').trim() === '1';
+
   // 1) Reuse a healthy orphaned server on the default port if one exists.
   if (await checkHealth(BASE_PORT)) {
     logServer('reusing healthy server already on ' + BASE_PORT);
@@ -155,8 +160,8 @@ async function startServer() {
   // 2) Otherwise spawn, trying a few ports in case of a stuck process.
   for (let attempt = 0; attempt < 3; attempt++) {
     const port = BASE_PORT + attempt;
-    logServer(`starting server on port ${port}`);
-    const proc = await spawnServer(port);
+    logServer(`starting server on port ${port}${lan ? ' (LAN mode)' : ''}`);
+    const proc = await spawnServer(port, lan);
     if (!proc) continue;
     // Do not wait for the full health timeout when the child dies right away
     // (for example because the port is still held by an old process).
@@ -164,6 +169,11 @@ async function startServer() {
     const healthy = await Promise.race([waitHealth(port, 12000), died.then(() => false)]);
     if (healthy) {
       activePort = port;
+      if (lan) {
+        const lanUrl = `http://${lanAddress()}:${port}`;
+        logServer(`LAN url: ${lanUrl}`);
+        console.log(`[desktop] LAN url: ${lanUrl}`);
+      }
       return true;
     }
     try { proc.kill(); } catch { /* ignore */ }
@@ -171,6 +181,19 @@ async function startServer() {
   }
   logServer('all server start attempts failed');
   return false;
+}
+
+/** Best guess at this machine's address on the local network. */
+function lanAddress() {
+  try {
+    const { networkInterfaces } = require('node:os');
+    for (const list of Object.values(networkInterfaces())) {
+      for (const net of list || []) {
+        if (net.family === 'IPv4' && !net.internal) return net.address;
+      }
+    }
+  } catch { /* ignore */ }
+  return '127.0.0.1';
 }
 
 function showWindow() {
@@ -182,7 +205,8 @@ function showWindow() {
 function createTray() {
   const image = fs.existsSync(ICON_PATH) ? nativeImage.createFromPath(ICON_PATH) : new nativeImage();
   tray = new Tray(image);
-  tray.setToolTip('Chordless');
+  const lan = String(process.env.CHORDLESS_LAN || '').trim() === '1';
+  tray.setToolTip(lan ? `Chordless — LAN: http://${lanAddress()}:${activePort}` : 'Chordless');
   const menu = Menu.buildFromTemplate([
     { label: 'Open Chordless', click: showWindow },
     { label: 'Play / Pause', click: () => win?.webContents.send('chordless:tray', 'togglePlay') },
